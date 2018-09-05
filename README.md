@@ -4,3 +4,8 @@ Authentication/authorization service to be used with Neuroglancer clients to con
 
 
 curl "https://neuroglancer-auth.seunglab.org/test" -H "Authorization: INSERT_TOKEN"
+
+
+The services requiring auth should respond with a 401 error when the provided token is missing from the request or missing from redis. This will inform the client that it needs to re-authenticate.
+
+If the token is valid but the user is not authorized, the service should respond with a 403.
