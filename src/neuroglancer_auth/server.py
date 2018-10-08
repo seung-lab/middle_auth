@@ -8,7 +8,7 @@ import googleapiclient.discovery
 # from google.auth.transport import requests
 import flask
 
-mod = flask.Blueprint('auth', 'auth')
+mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
 r = redis.Redis()
 
 CLIENT_SECRETS_FILE = "client_secret.json"
