@@ -24,7 +24,7 @@ with open('requirements.txt', 'r') as f:
     required = f.read().splitlines()
 
 setup(
-    version=find_version("src", "neuroglancer_auth", "__init__.py"),
+    version=find_version("neuroglancer_auth", "__init__.py"),
     name='neuroglancer_auth',
     description='an authorization service for neuroglancer related services ',
     author='Chris Jordan',
