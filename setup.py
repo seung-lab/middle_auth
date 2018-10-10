@@ -30,8 +30,8 @@ setup(
     author='Chris Jordan',
     author_email='chris@eyewire.org',
     url='https://github.com/seung-lab/neuroglancer-auth',
-    packages=find_packages('src'),
-    package_dir={'': 'src'},
+    packages=find_packages('neuroglancer_auth'),
+    package_dir={'': 'neuroglancer_auth'},
     include_package_data=True,
     install_requires=required
 )
