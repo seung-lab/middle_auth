@@ -12,5 +12,5 @@ def create_app():
     print(app.secret_key)
 
     app.wsgi_app = ProxyFix(app.wsgi_app)
-    app.register_blueprint(mod, url_prefix='/')
+    app.register_blueprint(mod)
     return app
