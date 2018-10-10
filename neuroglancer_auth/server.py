@@ -8,12 +8,17 @@ import googleapiclient.discovery
 # from google.auth.transport import requests
 import flask
 
+__version__ = '0.0.1'
+
 mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
 r = redis.Redis()
 
 CLIENT_SECRETS_FILE = "client_secret.json"
 SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
 
+@mod.route("/version")
+def version():
+    return "neuroglance_auth -- version " + __version__
 
 @mod.route("/")
 def hello():
