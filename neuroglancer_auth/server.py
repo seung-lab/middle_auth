@@ -9,7 +9,9 @@ import googleapiclient.discovery
 import flask
 
 mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
-r = redis.Redis()
+r = redis.Redis(
+        host=redis_config.redis_config['HOST'],
+        port=redis_config.redis_config['PORT'])
 
 CLIENT_SECRETS_FILE = "client_secret.json"
 SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
