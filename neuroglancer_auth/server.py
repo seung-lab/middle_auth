@@ -8,7 +8,7 @@ import googleapiclient.discovery
 # from google.auth.transport import requests
 import flask
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
 r = redis.Redis(
