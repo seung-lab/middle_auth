@@ -1,7 +1,7 @@
 import flask
 from .server import mod
 from werkzeug.contrib.fixers import ProxyFix
-__version__ = '0.0.5'
+__version__ = '0.0.6'
 
 
 def create_app():
