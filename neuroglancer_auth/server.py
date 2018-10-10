@@ -7,13 +7,14 @@ from oauthlib import oauth2
 import googleapiclient.discovery
 # from google.auth.transport import requests
 import flask
+from neuroglancer_auth.redis_config import redis_config
 
 __version__ = '0.0.4'
 
 mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
 r = redis.Redis(
-        host=redis_config.redis_config['HOST'],
-        port=redis_config.redis_config['PORT'])
+        host=redis_config['HOST'],
+        port=redis_config['PORT'])
 
 CLIENT_SECRETS_FILE = "client_secret.json"
 SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
