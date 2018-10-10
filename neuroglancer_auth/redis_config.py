@@ -1,4 +1,6 @@
+import os
+
 redis_config = dict(
-	HOST = '',
-	PORT = 6379
+    HOST=os.environ.get('REDISHOST', 'localhost'),
+    PORT=int(os.environ.get('REDISPORT', 6379))
 )
