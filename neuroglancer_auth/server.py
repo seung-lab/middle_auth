@@ -24,16 +24,11 @@ SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
 def version():
     return "neuroglance_auth -- version " + __version__
 
-@mod.route("/")
-def hello():
-    return flask.url_for('auth.oauth2callback', _external=True)
-
-
 @mod.route("/authorize")
 def auth():
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES)
-    flow.redirect_uri = flask.url_for('oauth2callback', _external=True)
+    flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True)
     authorization_url, state = flow.authorization_url(
         # Enable offline access so that you can refresh an access token without
         # re-prompting the user for permission. Recommended for web server apps.
@@ -52,7 +47,7 @@ def oauth2callback():
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
-    flow.redirect_uri = flask.url_for('oauth2callback', _external=True)
+    flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True)
 
     authorization_response = flask.request.url
 
