@@ -9,14 +9,15 @@ import googleapiclient.discovery
 import flask
 from neuroglancer_auth.redis_config import redis_config
 
-__version__ = '0.0.6'
+__version__ = '0.0.7'
+import os
 
 mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
 r = redis.Redis(
         host=redis_config['HOST'],
         port=redis_config['PORT'])
 
-CLIENT_SECRETS_FILE = "client_secret.json"
+CLIENT_SECRETS_FILE = os.environ['OAUTH_CLIENT_SECRET']
 SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
 
 @mod.route("/version")
