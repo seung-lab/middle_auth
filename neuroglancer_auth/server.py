@@ -9,7 +9,7 @@ import googleapiclient.discovery
 import flask
 from neuroglancer_auth.redis_config import redis_config
 
-__version__ = '0.0.10'
+__version__ = '0.0.11'
 import os
 
 mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
