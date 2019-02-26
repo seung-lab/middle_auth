@@ -17,7 +17,7 @@ r = redis.Redis(
         host=redis_config['HOST'],
         port=redis_config['PORT'])
 
-CLIENT_SECRETS_FILE = os.environ['OAUTH_CLIENT_SECRET']
+CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
 
 @mod.route("/version")
