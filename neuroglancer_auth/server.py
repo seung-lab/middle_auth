@@ -64,7 +64,7 @@ def oauth2callback():
 
     our_token = secrets.token_hex(16)
 
-    r.setex(our_token, res['id'], 24 * 60 * 60)  # 24 hours
+    r.setex(our_token, 24 * 60 * 60, res['id'])  # 24 hours
 
     return flask.jsonify(our_token)
 
