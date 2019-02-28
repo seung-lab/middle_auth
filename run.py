@@ -8,12 +8,7 @@ HOME = os.path.expanduser("~")
 
 application = create_app()
 
-if __name__ == "__main__":
-
-    WSGIRequestHandler.protocol_version = "HTTP/1.1"
-
-    application.run(host='0.0.0.0',
-                    port=4000,
-                    debug=True,
-                    threaded=True,
-                    ssl_context='adhoc')
+from gevent import pywsgi
+from geventwebsocket.handler import WebSocketHandler
+server = pywsgi.WSGIServer(('', 5000), application, handler_class=WebSocketHandler)
+server.serve_forever()
