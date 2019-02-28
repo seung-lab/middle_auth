@@ -3,3 +3,4 @@ google_auth
 Flask
 google_auth_oauthlib
 google-api-python-client
+Flask-Sockets

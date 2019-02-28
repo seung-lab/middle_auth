@@ -1,11 +1,8 @@
 import secrets
 import redis
-# import google.oauth2.credentials
 import google_auth_oauthlib.flow
-# from google.oauth2 import id_token
 from oauthlib import oauth2
 import googleapiclient.discovery
-# from google.auth.transport import requests
 import flask
 from neuroglancer_auth.redis_config import redis_config
 
@@ -13,6 +10,8 @@ __version__ = '0.0.13'
 import os
 
 mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
+ws = flask.Blueprint('ws', 'ws', url_prefix='/auth');
+
 r = redis.Redis(
         host=redis_config['HOST'],
         port=redis_config['PORT'])
@@ -20,12 +19,8 @@ r = redis.Redis(
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
 
-@mod.route("/version")
-def version():
-    return "neuroglance_auth -- version " + __version__
-
-@mod.route("/authorize")
-def auth():
+@ws.route('/authorize')
+def ws_auth(socket):
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES)
     flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True)
@@ -37,9 +32,8 @@ def auth():
         include_granted_scopes='true',
         prompt='consent')
     flask.session['state'] = state
-
-    return flask.redirect(authorization_url)
-
+    flask.session['ws'] = socket
+    socket.send(authorization_url)
 
 @mod.route("/oauth2callback")
 def oauth2callback():
@@ -68,10 +62,8 @@ def oauth2callback():
 
     return flask.jsonify(our_token)
 
-
 @mod.route('/test')
 def test_api_request():
-
     token = flask.request.headers.get(
         'authorization') or flask.request.args.get('token')
 
