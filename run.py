@@ -10,5 +10,5 @@ application = create_app()
 
 from gevent import pywsgi
 from geventwebsocket.handler import WebSocketHandler
-server = pywsgi.WSGIServer(('', 5000), application, handler_class=WebSocketHandler)
+server = pywsgi.WSGIServer(('', 80), application, handler_class=WebSocketHandler)
 server.serve_forever()
