@@ -6,11 +6,15 @@ import googleapiclient.discovery
 import flask
 from neuroglancer_auth.redis_config import redis_config
 
+import uuid
+
 __version__ = '0.0.13'
 import os
 
 mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
 ws = flask.Blueprint('ws', 'ws', url_prefix='/auth');
+
+sockets = {}
 
 r = redis.Redis(
         host=redis_config['HOST'],
@@ -32,8 +36,13 @@ def ws_auth(socket):
         include_granted_scopes='true',
         prompt='consent')
     flask.session['state'] = state
-    flask.session['ws'] = socket
+    flask.session['uuid'] = uuid.uuid4()
+    sockets[flask.session['uuid']] = socket
     socket.send(authorization_url)
+    flask.current_app.save_session(flask.session, flask.make_response(""))
+    
+    while not socket.closed:
+        message = socket.receive()
 
 @mod.route("/version")
 def version():
@@ -63,6 +72,9 @@ def oauth2callback():
     our_token = secrets.token_hex(16)
 
     r.setex(our_token, 24 * 60 * 60, res['id'])  # 24 hours
+
+    socket = sockets[flask.session['uuid']]
+    socket.send(our_token)
 
     return flask.jsonify(our_token)
 
