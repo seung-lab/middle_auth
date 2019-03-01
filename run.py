@@ -7,8 +7,3 @@ import os
 HOME = os.path.expanduser("~")
 
 application = create_app()
-
-from gevent import pywsgi
-from geventwebsocket.handler import WebSocketHandler
-server = pywsgi.WSGIServer(('', 4000), application, handler_class=WebSocketHandler)
-server.serve_forever()
