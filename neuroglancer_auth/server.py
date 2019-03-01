@@ -35,6 +35,10 @@ def ws_auth(socket):
     flask.session['ws'] = socket
     socket.send(authorization_url)
 
+@mod.route("/version")
+def version():
+    return "neuroglance_auth -- version " + __version__
+
 @mod.route("/oauth2callback")
 def oauth2callback():
     state = flask.session['state']
