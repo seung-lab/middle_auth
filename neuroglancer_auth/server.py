@@ -40,7 +40,9 @@ def ws_auth(socket):
     sockets[flask.session['uuid']] = socket
     socket.send(authorization_url)
     flask.current_app.save_session(flask.session, flask.make_response(""))
-    
+
+    print(dict(flask.session))
+
     while not socket.closed:
         message = socket.receive()
 
@@ -50,33 +52,35 @@ def version():
 
 @mod.route("/oauth2callback")
 def oauth2callback():
-    state = flask.session['state']
+    # state = flask.session['state']
 
-    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
-    flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True)
+    return flask.jsonify(dict(flask.session))
 
-    authorization_response = flask.request.url
+    # flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+    #     CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
+    # flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True)
 
-    try:
-        flow.fetch_token(authorization_response=authorization_response)
-    except oauth2.rfc6749.errors.InvalidGrantError as err:
-        print("OAuth Error: {0}".format(err))
-        return flask.jsonify("authorization error")
+    # authorization_response = flask.request.url
 
-    credentials = flow.credentials
+    # try:
+    #     flow.fetch_token(authorization_response=authorization_response)
+    # except oauth2.rfc6749.errors.InvalidGrantError as err:
+    #     print("OAuth Error: {0}".format(err))
+    #     return flask.jsonify("authorization error")
 
-    res = googleapiclient.discovery.build('oauth2', 'v2',
-                                          credentials=credentials).userinfo().v2().me().get().execute()
+    # credentials = flow.credentials
 
-    our_token = secrets.token_hex(16)
+    # res = googleapiclient.discovery.build('oauth2', 'v2',
+    #                                       credentials=credentials).userinfo().v2().me().get().execute()
 
-    r.setex(our_token, 24 * 60 * 60, res['id'])  # 24 hours
+    # our_token = secrets.token_hex(16)
 
-    socket = sockets[flask.session['uuid']]
-    socket.send(our_token)
+    # r.setex(our_token, 24 * 60 * 60, res['id'])  # 24 hours
 
-    return flask.jsonify(our_token)
+    # socket = sockets[flask.session['uuid']]
+    # socket.send(our_token)
+
+    # return flask.jsonify(our_token)
 
 @mod.route('/test')
 def test_api_request():
