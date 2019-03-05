@@ -50,11 +50,16 @@ def ws_auth(socket):
 def version():
     return "neuroglance_auth -- version " + __version__
 
+@mod.route("/debug")
+def debug():
+    flask.session['debug'] = uuid.uuid4()
+    return flask.jsonify(dict(flask.session))
+
 @mod.route("/oauth2callback")
 def oauth2callback():
+    print(dict(flask.session))
+    
     state = flask.session['state']
-
-    # return flask.jsonify(dict(flask.session))
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
