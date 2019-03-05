@@ -48,17 +48,14 @@ def ws_auth(socket):
 
 @mod.route("/version")
 def version():
-    return "neuroglance_auth -- version " + __version__
-
-@mod.route("/debug")
-def debug():
-    flask.session['debug'] = uuid.uuid4()
-    return flask.jsonify(dict(flask.session))
+    response = flask.jsonify({'version': __version__})
+    response.headers.add('Access-Control-Allow-Origin', 'https://developer.mozilla.org')
+    return response
 
 @mod.route("/oauth2callback")
 def oauth2callback():
     print(dict(flask.session))
-    
+
     state = flask.session['state']
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
@@ -80,12 +77,13 @@ def oauth2callback():
 
     our_token = secrets.token_hex(16)
 
-    r.setex(our_token, 24 * 60 * 60, res['id'])  # 24 hours
+    r.setex(our_token, 24 * 60 * 60, res['id']) # 24 hours
 
-    socket = sockets[flask.session['uuid']]
+    socket = sockets.pop(flask.session['uuid'])
     socket.send(our_token)
+    socket.close()
 
-    return flask.jsonify(dict(flask.session)) # return flask.jsonify(our_token)
+    return flask.jsonify("success")
 
 @mod.route('/test')
 def test_api_request():
