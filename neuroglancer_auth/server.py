@@ -48,10 +48,10 @@ def ws_auth(socket):
 
 @mod.route("/version")
 def version():
-    response = flask.jsonify({'version': __version__})
-    response.headers.add('Access-Control-Allow-Origin', 'https://developer.mozilla.org')
-    response.headers.add('X-TESTHEADER', 'https://developer.mozilla.org')
-    return response
+    resp = Response("neuroglance_auth -- version " + __version__)
+    resp.headers['Access-Control-Allow-Origin'] = 'https://developer.mozilla.org'
+    resp.headers['X-TEST-HEADER'] = 'https://developer.mozilla.org'
+    return resp
 
 @mod.route("/oauth2callback")
 def oauth2callback():
