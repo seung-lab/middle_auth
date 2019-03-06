@@ -50,6 +50,7 @@ def ws_auth(socket):
 def version():
     response = flask.jsonify({'version': __version__})
     response.headers.add('Access-Control-Allow-Origin', 'https://developer.mozilla.org')
+    response.headers.add('X-TESTHEADER', 'https://developer.mozilla.org')
     return response
 
 @mod.route("/oauth2callback")
