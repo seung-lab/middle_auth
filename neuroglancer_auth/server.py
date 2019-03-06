@@ -41,8 +41,6 @@ def ws_auth(socket):
     socket.send(authorization_url)
     flask.current_app.save_session(flask.session, flask.make_response(""))
 
-    print(dict(flask.session))
-
     while not socket.closed:
         message = socket.receive()
 
@@ -88,8 +86,12 @@ def oauth2callback():
 
 @mod.route('/test')
 def test_api_request():
-    token = flask.request.headers.get(
-        'authorization') or flask.request.args.get('token')
+    token = flask.request.headers.get('authorization')
+
+    if not token.startswith('Bearer '):
+        return "invalid/expired token", 403
+
+    token = token.split(' ')[1] # remove schema
 
     id_bytes = r.get(token)
 
