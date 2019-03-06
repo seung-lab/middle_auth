@@ -12,7 +12,7 @@ __version__ = '0.0.13'
 def create_app():
     app = flask.Flask(__name__)
     app.config.from_object('neuroglancer_auth.config.Config')
-	cors = CORS(application, resources={r"*": {"origins": "https://developer.mozilla.org"}})
+	cors = CORS(app, resources={r"*": {"origins": "https://developer.mozilla.org"}})
 
 
     Session(app)
