@@ -17,7 +17,7 @@
 from flask import Flask
 from flask_cors import CORS
 
-app = Flask(__name__)
+application = Flask(__name__)
 cors = CORS(app, resources={r"*": {"origins": "https://developer.mozilla.org"}})
 
 @app.route('/', defaults={'path': ''})
