@@ -18,9 +18,9 @@ from flask import Flask
 from flask_cors import CORS
 
 application = Flask(__name__)
-cors = CORS(app, resources={r"*": {"origins": "https://developer.mozilla.org"}})
+cors = CORS(application, resources={r"*": {"origins": "https://developer.mozilla.org"}})
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
+@application.route('/', defaults={'path': ''})
+@application.route('/<path:path>')
 def helloWorld(path):
 	return "Hello, cross-origin-world! " + path
