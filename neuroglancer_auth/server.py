@@ -48,7 +48,7 @@ def ws_auth(socket):
 def version():
     resp = flask.Response("neuroglance_auth -- version " + __version__)
     resp.headers['Access-Control-Allow-Origin'] = 'http://localhost:8000'
-    resp.headers['Access-Control-Allow-Credentials'] = True
+    resp.headers['Access-Control-Allow-Credentials'] = 'true'
     return resp
 
 @mod.route("/oauth2callback")
