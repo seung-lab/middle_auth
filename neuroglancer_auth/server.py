@@ -48,7 +48,7 @@ def ws_auth(socket):
 
 @mod.route("/version")
 def version():
-    resp = Response("neuroglance_auth -- version " + __version__)
+    resp = flask.Response("neuroglance_auth -- version " + __version__)
     resp.headers['Access-Control-Allow-Origin'] = 'https://developer.mozilla.org'
     resp.headers['X-TEST-HEADER'] = 'https://developer.mozilla.org'
     return resp
