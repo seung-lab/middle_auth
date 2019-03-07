@@ -1,6 +1,7 @@
 import flask
 from flask_sockets import Sockets
 from flask_session import Session
+from flask_cors import CORS
 
 from .server import mod, ws
 from werkzeug.contrib.fixers import ProxyFix
@@ -12,6 +13,7 @@ def create_app():
     app.config.from_object('neuroglancer_auth.config.Config')
 
     Session(app)
+    CORS(app)
 
     print(app.secret_key)
 
