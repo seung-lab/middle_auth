@@ -6,6 +6,8 @@ import googleapiclient.discovery
 import flask
 from neuroglancer_auth.redis_config import redis_config
 
+import urllib
+
 import uuid
 
 __version__ = '0.0.13'
@@ -46,8 +48,17 @@ def ws_auth(socket):
 
 @mod.route("/version")
 def version():
+    return "neuroglance_auth -- version " + __version__
+
+@mod.route("/establish_session")
+def establish_session():
+    url_encoded_origin = flask.request.args.get('origin')
+
+    if not url_encoded_origin:
+        return "missing origin", 400
+
     resp = flask.Response("neuroglance_auth -- version " + __version__)
-    resp.headers['Access-Control-Allow-Origin'] = 'http://localhost:8000'
+    resp.headers['Access-Control-Allow-Origin'] = urllib.parse.unquote(url_encoded_origin)
     resp.headers['Access-Control-Allow-Credentials'] = 'true'
     return resp
 
