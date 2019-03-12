@@ -1,20 +1,19 @@
+import flask
 import secrets
 import redis
 import google_auth_oauthlib.flow
 from oauthlib import oauth2
 import googleapiclient.discovery
-import flask
 from neuroglancer_auth.redis_config import redis_config
-
 import urllib
-
 import uuid
+from functools import wraps
 
 __version__ = '0.0.13'
 import os
 
-mod = flask.Blueprint('auth', 'auth', url_prefix='/auth')
-ws = flask.Blueprint('ws', 'ws', url_prefix='/auth');
+mod = flask.Blueprint('auth', __name__, url_prefix='/auth')
+ws = flask.Blueprint('ws', __name__, url_prefix='/auth');
 
 sockets = {}
 
@@ -64,8 +63,6 @@ def establish_session():
 
 @mod.route("/oauth2callback")
 def oauth2callback():
-    print(dict(flask.session))
-
     state = flask.session['state']
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
@@ -101,20 +98,35 @@ def oauth2callback():
 
     return flask.jsonify("success")
 
+
+AUTH_URI = "dev.dynamicannotationframework.com/auth"
+
+def auth_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = flask.request.headers.get('authorization')
+        if not token:
+            resp = flask.Response("Unauthorized", 401)
+            resp.headers['WWW-Authenticate'] = 'Bearer realm="' + AUTH_URI + '"'
+            return resp
+        elif not token.startswith('Bearer '):
+            resp = flask.Response("Invalid Request", 400)
+            resp.headers['WWW-Authenticate'] = 'Bearer realm="' + AUTH_URI + '", error="invalid_request", error_description="Header must begin with \'Bearer\'"'
+            return resp
+        else:
+            token = token.split(' ')[1] # remove schema
+            id_bytes = r.get(token)
+
+            if id_bytes:
+                flask.g.user_id = int(id_bytes)
+                return f(*args, **kwargs)
+            else:
+                resp = flask.Response("Invalid/Expired Token", 401)
+                resp.headers['WWW-Authenticate'] = 'Bearer realm="' + AUTH_URI + '", error="invalid_token", error_description="Invalid/Expired Token"'
+                return resp
+    return decorated_function
+
 @mod.route('/test')
+@auth_required
 def test_api_request():
-    token = flask.request.headers.get('authorization')
-
-    if not token.startswith('Bearer '):
-        return "invalid/expired token", 403
-
-    token = token.split(' ')[1] # remove schema
-
-    id_bytes = r.get(token)
-
-    if id_bytes:
-        return flask.jsonify(int(id_bytes))
-    else:
-        return "invalid/expired token", 403
-
-    return flask.jsonify(int(r.get(flask.request.args.get('token'))))
+    return flask.jsonify(flask.g.user_id)
