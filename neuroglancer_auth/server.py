@@ -85,9 +85,15 @@ def oauth2callback():
     res = googleapiclient.discovery.build('oauth2', 'v2',
                                           credentials=credentials).userinfo().v2().me().get().execute()
 
-    our_token = secrets.token_hex(16)
+    our_token = None
 
-    r.setex(our_token, 24 * 60 * 60, res['id']) # 24 hours
+    # keep trying to insert a random token into redis until it finds one that is not already in use
+    while True:
+        our_token = secrets.token_hex(16)
+        not_dupe = r.set(our_token, res['id'], nx=True, ex=24 * 60 * 60) # 24 hours
+
+        if not_dupe:
+            break
 
     socket = sockets.pop(flask.session['uuid'])
     socket.send(our_token)
