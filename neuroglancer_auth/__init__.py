@@ -13,7 +13,7 @@ def create_app():
     app.config.from_object('neuroglancer_auth.config.Config')
 
     Session(app)
-    CORS(app)
+    CORS(app, expose_headers='WWW-Authenticate')
 
     print(app.secret_key)
 
