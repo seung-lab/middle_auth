@@ -24,6 +24,8 @@ r = redis.Redis(
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
 
+AUTH_URI = os.environ.get('AUTH_URI', 'localhost:5000/auth')
+
 @ws.route('/authorize')
 def ws_auth(socket):
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
@@ -97,9 +99,6 @@ def oauth2callback():
     socket.close()
 
     return flask.jsonify("success")
-
-
-AUTH_URI = "dev.dynamicannotationframework.com/auth"
 
 def auth_required(f):
     @wraps(f)
