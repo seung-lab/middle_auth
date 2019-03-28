@@ -118,6 +118,7 @@ def auth_required(f):
 
             if id_bytes:
                 flask.g.user_id = int(id_bytes)
+                flask.g.token = token
                 return f(*args, **kwargs)
             else:
                 resp = flask.Response("Invalid/Expired Token", 401)
@@ -129,3 +130,9 @@ def auth_required(f):
 @auth_required
 def test_api_request():
     return flask.jsonify(flask.g.user_id)
+
+@mod.route('/logout')
+@auth_required
+def logout():
+    r.delete(flask.g.token)
+    return flask.jsonify("success")
