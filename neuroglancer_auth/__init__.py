@@ -1,5 +1,5 @@
 import flask
-from flask_sockets import Sockets
+from flask_uwsgi_websocket import GeventWebSocket
 from flask_session import Session
 from flask_cors import CORS
 
@@ -20,7 +20,7 @@ def create_app():
     app.wsgi_app = ProxyFix(app.wsgi_app)
     app.register_blueprint(mod)
 
-    sockets = Sockets(app)
+    sockets = GeventWebSocket(app)
     sockets.register_blueprint(ws)
 
     return app
