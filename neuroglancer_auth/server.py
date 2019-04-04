@@ -47,7 +47,7 @@ def setup_socket_route(app):
             socket.send(authorization_url)
             flask.current_app.save_session(flask.session, flask.make_response(""))
 
-            while not socket.closed:
+            while socket.connected:
                 message = socket.receive()
 
     return ws
