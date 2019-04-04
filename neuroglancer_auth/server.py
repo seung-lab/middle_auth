@@ -13,7 +13,6 @@ __version__ = '0.0.16'
 import os
 
 mod = flask.Blueprint('auth', __name__, url_prefix='/auth')
-ws = flask.Blueprint('ws', __name__, url_prefix='/auth');
 
 sockets = {}
 
@@ -26,26 +25,32 @@ SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
 
 AUTH_URI = os.environ.get('AUTH_URI', 'localhost:5000/auth')
 
-@ws.route('/authorize')
-def ws_auth(socket):
-    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE, scopes=SCOPES)
-    flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True, _scheme='https')
-    authorization_url, state = flow.authorization_url(
-        # Enable offline access so that you can refresh an access token without
-        # re-prompting the user for permission. Recommended for web server apps.
-        access_type='offline',
-        # Enable incremental authorization. Recommended as a best practice.
-        include_granted_scopes='true',
-        prompt='consent')
-    flask.session['state'] = state
-    flask.session['uuid'] = uuid.uuid4()
-    sockets[flask.session['uuid']] = socket
-    socket.send(authorization_url)
-    flask.current_app.save_session(flask.session, flask.make_response(""))
+def setup_socket_route(app):
+    ws = flask.Blueprint('ws', __name__, url_prefix='/auth');
 
-    while not socket.closed:
-        message = socket.receive()
+    @ws.route('/authorize')
+    def ws_auth(socket):
+        with app.request_context(socket.environ):
+            flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+                CLIENT_SECRETS_FILE, scopes=SCOPES)
+            flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True, _scheme='https')
+            authorization_url, state = flow.authorization_url(
+                # Enable offline access so that you can refresh an access token without
+                # re-prompting the user for permission. Recommended for web server apps.
+                access_type='offline',
+                # Enable incremental authorization. Recommended as a best practice.
+                include_granted_scopes='true',
+                prompt='consent')
+            flask.session['state'] = state
+            flask.session['uuid'] = uuid.uuid4()
+            sockets[flask.session['uuid']] = socket
+            socket.send(authorization_url)
+            flask.current_app.save_session(flask.session, flask.make_response(""))
+
+            while not socket.closed:
+                message = socket.receive()
+
+    return ws
 
 @mod.route("/version")
 def version():
