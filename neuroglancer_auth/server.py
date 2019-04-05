@@ -69,43 +69,41 @@ def establish_session():
     return resp
 
 @mod.route("/oauth2callback")
-def oauth2callback():
+def oauth2callback():    
+    state = flask.session['state']
+
+    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
+    flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True)
+
+    authorization_response = flask.request.url
+
+    try:
+        flow.fetch_token(authorization_response=authorization_response)
+    except oauth2.rfc6749.errors.InvalidGrantError as err:
+        print("OAuth Error: {0}".format(err))
+        return flask.jsonify("authorization error")
+
+    credentials = flow.credentials
+
+    res = googleapiclient.discovery.build('oauth2', 'v2',
+                                          credentials=credentials).userinfo().v2().me().get().execute()
+
+    our_token = None
+
+    # keep trying to insert a random token into redis until it finds one that is not already in use
+    while True:
+        our_token = secrets.token_hex(16)
+        not_dupe = r.set(our_token, res['id'], nx=True, ex=24 * 60 * 60) # 24 hours
+
+        if not_dupe:
+            break
+
+    socket = sockets.pop(flask.session['uuid'])
+    socket.send(our_token)
+    socket.close()
+
     return flask.jsonify("success")
-    
-    # state = flask.session['state']
-
-    # flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-    #     CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
-    # flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True)
-
-    # authorization_response = flask.request.url
-
-    # try:
-    #     flow.fetch_token(authorization_response=authorization_response)
-    # except oauth2.rfc6749.errors.InvalidGrantError as err:
-    #     print("OAuth Error: {0}".format(err))
-    #     return flask.jsonify("authorization error")
-
-    # credentials = flow.credentials
-
-    # res = googleapiclient.discovery.build('oauth2', 'v2',
-    #                                       credentials=credentials).userinfo().v2().me().get().execute()
-
-    # our_token = None
-
-    # # keep trying to insert a random token into redis until it finds one that is not already in use
-    # while True:
-    #     our_token = secrets.token_hex(16)
-    #     not_dupe = r.set(our_token, res['id'], nx=True, ex=24 * 60 * 60) # 24 hours
-
-    #     if not_dupe:
-    #         break
-
-    # socket = sockets.pop(flask.session['uuid'])
-    # socket.send(our_token)
-    # socket.close()
-
-    # return flask.jsonify("success")
 
 def auth_required(f):
     @wraps(f)
