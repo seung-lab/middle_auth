@@ -1,4 +1,4 @@
 # Run a test server.
-from neuroglancer_auth import create_app
+from neuroglancer_auth import setup_app
 
-application = create_app()
+application = setup_app()
