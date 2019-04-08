@@ -69,7 +69,7 @@ def establish_session():
     return resp
 
 @mod.route("/oauth2callback")
-def oauth2callback():    
+def oauth2callback():
     state = flask.session['state']
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
