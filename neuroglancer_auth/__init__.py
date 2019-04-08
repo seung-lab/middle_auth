@@ -1,4 +1,4 @@
-import flask
+from flask import Flask
 from flask_uwsgi_websocket import GeventWebSocket
 from flask_session import Session
 from flask_cors import CORS
@@ -9,8 +9,10 @@ __version__ = '0.0.16'
 
 
 def create_app():
-    app = flask.Flask(__name__)
+    app = Flask(__name__)
     app.config.from_object('neuroglancer_auth.config.Config')
+
+    sockets = GeventWebSocket(app) # trying it here to see if this fixes the monkeypatch ssl issue
 
     Session(app)
     CORS(app, expose_headers='WWW-Authenticate')
@@ -19,8 +21,6 @@ def create_app():
 
     app.wsgi_app = ProxyFix(app.wsgi_app)
     app.register_blueprint(mod)
-
-    sockets = GeventWebSocket(app)
 
     ws = setup_socket_route(app)
 

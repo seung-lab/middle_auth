@@ -5,7 +5,7 @@ import google_auth_oauthlib.flow
 from oauthlib import oauth2
 import googleapiclient.discovery
 from neuroglancer_auth.redis_config import redis_config
-import urllib
+# import urllib
 import uuid
 from functools import wraps
 
@@ -64,12 +64,12 @@ def establish_session():
         return "missing origin", 400
 
     resp = flask.Response("neuroglance_auth -- version " + __version__)
-    resp.headers['Access-Control-Allow-Origin'] = urllib.parse.unquote(url_encoded_origin)
+    resp.headers['Access-Control-Allow-Origin'] = url_encoded_origin #urllib.parse.unquote(url_encoded_origin)
     resp.headers['Access-Control-Allow-Credentials'] = 'true'
     return resp
 
 @mod.route("/oauth2callback")
-def oauth2callback():    
+def oauth2callback():
     state = flask.session['state']
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
