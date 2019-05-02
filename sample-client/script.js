@@ -1,9 +1,5 @@
 // returns a token to be used with services that use the given auth service
 async function authorize(auth_url) {
-	await fetch(`https://${auth_url}/establish_session?origin=${encodeURI(window.location.origin)}`, {
-		credentials: 'include'
-	});
-
 	return await new Promise((f, r) => {
 		const socket = new WebSocket(`wss://${auth_url}/authorize`);
 

@@ -31,6 +31,11 @@ def setup_socket_route(app):
     @ws.route('/authorize')
     def ws_auth(socket):
         with app.request_context(socket.environ):
+
+            test_state = uuid.uuid4()
+
+            print("State1: " + test_state)
+
             flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
                 CLIENT_SECRETS_FILE, scopes=SCOPES)
             flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True, _scheme='https')
@@ -40,12 +45,13 @@ def setup_socket_route(app):
                 access_type='offline',
                 # Enable incremental authorization. Recommended as a best practice.
                 include_granted_scopes='true',
+                state=test_state,
                 prompt='consent')
-            flask.session['state'] = state
-            flask.session['uuid'] = uuid.uuid4()
-            sockets[flask.session['uuid']] = socket
+
+            print("State2: " + state)
+
+            sockets[state] = socket
             socket.send(authorization_url)
-            flask.current_app.save_session(flask.session, flask.make_response(""))
 
             while socket.connected:
                 message = socket.receive()
@@ -56,21 +62,11 @@ def setup_socket_route(app):
 def version():
     return "neuroglance_auth -- version " + __version__
 
-@mod.route("/establish_session")
-def establish_session():
-    url_encoded_origin = flask.request.args.get('origin')
-
-    if not url_encoded_origin:
-        return "missing origin", 400
-
-    resp = flask.Response("neuroglance_auth -- version " + __version__)
-    resp.headers['Access-Control-Allow-Origin'] = urllib.parse.unquote(url_encoded_origin)
-    resp.headers['Access-Control-Allow-Credentials'] = 'true'
-    return resp
-
 @mod.route("/oauth2callback")
 def oauth2callback():
-    state = flask.session['state']
+    state = flask.request.args.get('state')
+
+    print("state3: " + state)
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
@@ -99,7 +95,7 @@ def oauth2callback():
         if not_dupe:
             break
 
-    socket = sockets.pop(flask.session['uuid'])
+    socket = sockets.pop(state)
     socket.send(our_token)
     socket.close()
 

@@ -4,7 +4,6 @@ from flask_uwsgi_websocket import GeventWebSocket
 app = Flask(__name__)
 sockets = GeventWebSocket(app) # need to monkeypatch before loading a module that imports ssl https://github.com/gevent/gevent/issues/1016
 
-from flask_session import Session
 from flask_cors import CORS
 
 from .server import mod, setup_socket_route
@@ -14,7 +13,6 @@ __version__ = '0.0.19'
 
 def setup_app():
     app.config.from_object('neuroglancer_auth.config.Config')
-    Session(app)
     CORS(app, expose_headers='WWW-Authenticate')
 
     print(app.secret_key)
