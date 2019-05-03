@@ -14,8 +14,6 @@ import os
 
 mod = flask.Blueprint('auth', __name__, url_prefix='/auth')
 
-sockets = {}
-
 r = redis.Redis(
         host=redis_config['HOST'],
         port=redis_config['PORT'])
@@ -25,48 +23,42 @@ SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
 
 AUTH_URI = os.environ.get('AUTH_URI', 'localhost:5000/auth')
 
-def setup_socket_route(app):
-    ws = flask.Blueprint('ws', __name__, url_prefix='/auth');
+@mod.route("/authorize")
+def authorize():
+    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE, scopes=SCOPES)
+    flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True, _scheme='https')
+    authorization_url, state = flow.authorization_url(
+        # Enable offline access so that you can refresh an access token without
+        # re-prompting the user for permission. Recommended for web server apps.
+        access_type='offline',
+        # Enable incremental authorization. Recommended as a best practice.
+        include_granted_scopes='true',
+        prompt='consent')
 
-    @ws.route('/authorize')
-    def ws_auth(socket):
-        with app.request_context(socket.environ):
-            flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-                CLIENT_SECRETS_FILE, scopes=SCOPES)
-            flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True, _scheme='https')
-            authorization_url, state = flow.authorization_url(
-                # Enable offline access so that you can refresh an access token without
-                # re-prompting the user for permission. Recommended for web server apps.
-                access_type='offline',
-                # Enable incremental authorization. Recommended as a best practice.
-                include_granted_scopes='true',
-                prompt='consent')
-            flask.session['state'] = state
-            flask.session['uuid'] = uuid.uuid4()
-            sockets[flask.session['uuid']] = socket
-            socket.send(authorization_url)
-            flask.current_app.save_session(flask.session, flask.make_response(""))
+    flask.session['state'] = state
+    flask.session['redirect'] = flask.request.args.get('redirect')
 
-            while socket.connected:
-                message = socket.receive()
-
-    return ws
+    resp = flask.Response(authorization_url)
+    resp.headers['Access-Control-Allow-Origin'] = urllib.parse.unquote(url_encoded_origin)
+    resp.headers['Access-Control-Allow-Credentials'] = 'true'
+    return resp
 
 @mod.route("/version")
 def version():
     return "neuroglance_auth -- version " + __version__
 
-@mod.route("/establish_session")
-def establish_session():
-    url_encoded_origin = flask.request.args.get('origin')
+# @mod.route("/establish_session")
+# def establish_session():
+#     url_encoded_origin = flask.request.args.get('origin')
 
-    if not url_encoded_origin:
-        return "missing origin", 400
+#     if not url_encoded_origin:
+#         return "missing origin", 400
 
-    resp = flask.Response("neuroglance_auth -- version " + __version__)
-    resp.headers['Access-Control-Allow-Origin'] = urllib.parse.unquote(url_encoded_origin)
-    resp.headers['Access-Control-Allow-Credentials'] = 'true'
-    return resp
+    # resp = flask.Response("neuroglance_auth -- version " + __version__)
+    # resp.headers['Access-Control-Allow-Origin'] = urllib.parse.unquote(url_encoded_origin)
+    # resp.headers['Access-Control-Allow-Credentials'] = 'true'
+    # return resp
 
 @mod.route("/oauth2callback")
 def oauth2callback():
@@ -99,11 +91,7 @@ def oauth2callback():
         if not_dupe:
             break
 
-    socket = sockets.pop(flask.session['uuid'])
-    socket.send(our_token)
-    socket.close()
-
-    return flask.jsonify("success")
+    return redirect(flask.session['redirect'] + '?token=' + our_token, code=302)
 
 def auth_required(f):
     @wraps(f)

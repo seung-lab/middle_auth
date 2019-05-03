@@ -1,27 +1,29 @@
 // returns a token to be used with services that use the given auth service
 async function authorize(auth_url) {
-	await fetch(`https://${auth_url}/establish_session?origin=${encodeURI(window.location.origin)}`, {
+	await fetch(`https://${auth_url}/authorize?origin=${encodeURI(window.location.origin)}`, {
 		credentials: 'include'
+	}).then((res) => {
+		console.log(res.text());
 	});
 
-	return await new Promise((f, r) => {
-		const socket = new WebSocket(`wss://${auth_url}/authorize`);
+	// return await new Promise((f, r) => {
+	// 	const socket = new WebSocket(`wss://${auth_url}/authorize`);
 
-		let auth_popup = null;
+	// 	let auth_popup = null;
 
-		socket.onmessage = function (msg) {
-			if (msg.data.startsWith('http')) {
-				auth_popup = window.open(msg.data);
+	// 	socket.onmessage = function (msg) {
+	// 		if (msg.data.startsWith('http')) {
+	// 			auth_popup = window.open(msg.data);
 
-				if (!auth_popup) {
-					alert('Allow popups on this page to authenticate');
-				}
-			} else {
-				auth_popup.close();
-				f(msg.data);
-			}
-		}
-	});
+	// 			if (!auth_popup) {
+	// 				alert('Allow popups on this page to authenticate');
+	// 			}
+	// 		} else {
+	// 			auth_popup.close();
+	// 			f(msg.data);
+	// 		}
+	// 	}
+	// });
 }
 
 function parseWWWAuthHeader(headerVal) {
@@ -87,7 +89,10 @@ function reauthenticate(realm) {
 	});
 }
 
-authFetch('https://dev.dynamicannotationframework.com/auth/test').then((res) => {
+// const local_url = 'http://localhost:5000/auth';
+const test_url = 'https://dev.dynamicannotationframework.com/auth/test';
+
+authFetch(test_url).then((res) => {
 	return res.json();
 }).then((user_id) => {
 	alert(`User ID: ${user_id}`);
