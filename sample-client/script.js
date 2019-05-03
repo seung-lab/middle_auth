@@ -1,26 +1,28 @@
 // returns a token to be used with services that use the given auth service
 async function authorize(auth_url) {
-	await fetch(`https://${auth_url}/establish_session?origin=${encodeURI(window.location.origin)}`, {
+	const oauth_uri = await fetch(`https://${auth_url}/authorize?redirect=${encodeURI(window.location.origin + '/redirect.html')}`, {
 		credentials: 'include'
+	}).then((res) => {
+		return res.text();
 	});
 
-	return await new Promise((f, r) => {
-		const socket = new WebSocket(`wss://${auth_url}/authorize`);
+	const auth_popup = window.open(oauth_uri);
 
-		let auth_popup = null;
+	if (!auth_popup) {
+		alert('Allow popups on this page to authenticate');
+		return;
+	}
 
-		socket.onmessage = function (msg) {
-			if (msg.data.startsWith('http')) {
-				auth_popup = window.open(msg.data);
-
-				if (!auth_popup) {
-					alert('Allow popups on this page to authenticate');
-				}
-			} else {
+	return new Promise((f, r) => {
+		const tokenListener = (ev) => {
+			if (ev.source === auth_popup) {
 				auth_popup.close();
-				f(msg.data);
+				window.removeEventListener("message", tokenListener);
+				f(ev.data.token);
 			}
 		}
+		
+		window.addEventListener("message", tokenListener);
 	});
 }
 
@@ -40,7 +42,7 @@ function authFetch(input, init, retry = 1) {
 		return fetch(input); // to keep the errors consistent
 	}
 
-	const token = localStorage.getItem('auth_token');
+	const token = undefined;//localStorage.getItem('auth_token');
 
 	options = init ? JSON.parse(JSON.stringify(init)) : {};
 	
@@ -87,7 +89,10 @@ function reauthenticate(realm) {
 	});
 }
 
-authFetch('https://dev.dynamicannotationframework.com/auth/test').then((res) => {
+// const local_url = 'http://localhost:5000/auth';
+const test_url = 'https://dev.dynamicannotationframework.com/auth/test';
+
+authFetch(test_url).then((res) => {
 	return res.json();
 }).then((user_id) => {
 	alert(`User ID: ${user_id}`);
