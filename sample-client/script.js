@@ -1,26 +1,28 @@
 // returns a token to be used with services that use the given auth service
 async function authorize(auth_url) {
-	await fetch(`https://${auth_url}/establish_session?origin=${encodeURI(window.location.origin)}`, {
+	const oauth_uri = await fetch(`https://${auth_url}/authorize?redirect=${encodeURI(window.location.origin + '/redirect.html')}`, {
 		credentials: 'include'
+	}).then((res) => {
+		return res.text();
 	});
 
-	return await new Promise((f, r) => {
-		const socket = new WebSocket(`wss://${auth_url}/authorize`);
+	const auth_popup = window.open(oauth_uri);
 
-		let auth_popup = null;
+	if (!auth_popup) {
+		alert('Allow popups on this page to authenticate');
+		return;
+	}
 
-		socket.onmessage = function (msg) {
-			if (msg.data.startsWith('http')) {
-				auth_popup = window.open(msg.data);
-
-				if (!auth_popup) {
-					alert('Allow popups on this page to authenticate');
-				}
-			} else {
+	return new Promise((f, r) => {
+		const tokenListener = (ev) => {
+			if (ev.source === auth_popup) {
 				auth_popup.close();
-				f(msg.data);
+				window.removeEventListener("message", tokenListener);
+				f(ev.data.token);
 			}
 		}
+		
+		window.addEventListener("message", tokenListener);
 	});
 }
 
