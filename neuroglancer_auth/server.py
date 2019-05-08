@@ -9,7 +9,7 @@ import urllib
 import uuid
 from functools import wraps
 
-__version__ = '0.0.19'
+__version__ = '0.0.20'
 import os
 
 mod = flask.Blueprint('auth', __name__, url_prefix='/auth')

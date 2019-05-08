@@ -7,7 +7,7 @@ from flask_cors import CORS
 
 from .server import mod
 from werkzeug.contrib.fixers import ProxyFix
-__version__ = '0.0.19'
+__version__ = '0.0.20'
 
 
 def setup_app():
