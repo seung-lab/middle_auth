@@ -7,7 +7,9 @@ import googleapiclient.discovery
 from neuroglancer_auth.redis_config import redis_config
 import urllib
 import uuid
+import json
 from functools import wraps
+from flask_sqlalchemy import SQLAlchemy
 
 __version__ = '0.0.20'
 import os
@@ -18,8 +20,11 @@ r = redis.Redis(
         host=redis_config['HOST'],
         port=redis_config['PORT'])
 
+db = SQLAlchemy()
+
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
-SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
+
+SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
 
 AUTH_URI = os.environ.get('AUTH_URI', 'localhost:5000/auth')
 
@@ -55,6 +60,42 @@ def authorize():
 def version():
     return "neuroglance_auth -- version " + __version__
 
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    username = db.Column(db.String(80), unique=False, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(120), unique=True, nullable=False)
+
+class UserRole(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
+    role_id = db.Column('role_id', db.Integer, db.ForeignKey("role.id"), nullable=False)
+
+def get_user(email):
+    return User.query.filter_by(email=email).first()
+
+def get_roles_for_user(user):
+    roles = db.session.query(Role.name)\
+        .join(UserRole, UserRole.user_id == Role.id)\
+        .filter(UserRole.user_id == user.id)\
+        .all()
+
+    return [val for val, in roles]
+
+def create_account(info):
+    user = User(username=info['name'], email=info['email'])
+    db.session.add(user)
+    db.session.flush() # get inserted id
+
+    role = UserRole(user_id=user.id, role_id=Role.query.filter_by(name="edit_all").first().id)
+    db.session.add(role)
+
+    db.session.commit()
+    return user
+
 @mod.route("/oauth2callback")
 def oauth2callback():
     if not 'state' in flask.session:
@@ -79,15 +120,28 @@ def oauth2callback():
 
     credentials = flow.credentials
 
-    res = googleapiclient.discovery.build('oauth2', 'v2',
+    info = googleapiclient.discovery.build('oauth2', 'v2',
                                           credentials=credentials).userinfo().v2().me().get().execute()
 
+    user = get_user(info['email'])
+
+    if user is None:
+        user = create_account(info)
+
     our_token = None
+
+    user_json = json.dumps({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'roles': get_roles_for_user(user),
+    });
 
     # keep trying to insert a random token into redis until it finds one that is not already in use
     while True:
         our_token = secrets.token_hex(16)
-        not_dupe = r.set(our_token, res['id'], nx=True, ex=24 * 60 * 60) # 24 hours
+        # nx = Only set the key if it does not already exist
+        not_dupe = r.set(our_token, user_json, nx=True, ex=24 * 60 * 60) # 24 hours
 
         if not_dupe:
             break
@@ -108,10 +162,10 @@ def auth_required(f):
             return resp
         else:
             token = token.split(' ')[1] # remove schema
-            id_bytes = r.get(token)
+            cached_user_data = r.get(token)
 
-            if id_bytes:
-                flask.g.user_id = int(id_bytes)
+            if cached_user_data:
+                flask.g.user = json.loads(cached_user_data.decode('utf-8'))
                 flask.g.token = token
                 return f(*args, **kwargs)
             else:
@@ -123,7 +177,7 @@ def auth_required(f):
 @mod.route('/test')
 @auth_required
 def test_api_request():
-    return flask.jsonify(flask.g.user_id)
+    return flask.jsonify(flask.g.user)
 
 @mod.route('/logout')
 @auth_required
