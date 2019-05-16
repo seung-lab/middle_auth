@@ -7,7 +7,12 @@ import googleapiclient.discovery
 from neuroglancer_auth.redis_config import redis_config
 import urllib
 import uuid
+import json
 from functools import wraps
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import exc
+from .model import User, Role, UserRole, APIKey
+from .decorators import auth_required, requires_role
 
 __version__ = '0.0.20'
 import os
@@ -18,8 +23,11 @@ r = redis.Redis(
         host=redis_config['HOST'],
         port=redis_config['PORT'])
 
+db = SQLAlchemy()
+
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
-SCOPES = ['https://www.googleapis.com/auth/userinfo.profile']
+
+SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
 
 AUTH_URI = os.environ.get('AUTH_URI', 'localhost:5000/auth')
 
@@ -55,6 +63,111 @@ def authorize():
 def version():
     return "neuroglance_auth -- version " + __version__
 
+def generate_hash():
+    return secrets.token_hex(16)
+
+# load api keys into cache if they don't already exist in redit
+# i.e. new deployment or some redis failure
+def load_api_keys():
+    api_keys = APIKey().query.all()
+
+    for api_key in api_keys:
+        user = get_user_by_id(api_key.user_id)
+        r.set("token_" + api_keys, json.dumps(create_cache_for_user(user)), nx=True)
+
+def generate_api_key(user_id):
+    entry = APIKey.query.filter_by(user_id=user_id).first()
+
+    new_entry = not entry
+
+    if not entry:
+        entry = APIKey(user_id=user_id, key="")
+
+    user = get_user_by_id(user_id)
+    user_json = json.dumps(create_cache_for_user(user));
+    token = insert_and_generate_unique_token(user_id, user_json)
+
+    if not new_entry:
+        delete_token(entry.key)
+
+    entry.key = token
+
+    if new_entry:
+        db.session.add(entry)
+
+    db.session.commit()
+
+    return token
+
+def get_user_by_id(id):
+    return User.query.filter_by(id=id).first()
+
+def get_user_by_email(email):
+    return User.query.filter_by(email=email).first()
+
+def get_roles_for_user(user_id):
+    query = db.session.query(Role.name)\
+        .join(UserRole, UserRole.role_id == Role.id)\
+        .filter(UserRole.user_id == user_id)
+
+    print(query.statement.compile(compile_kwargs={"literal_binds": True}))
+    
+    roles = query.all()
+
+    return [val for val, in roles]
+
+def create_account(info):
+    user = User(username=info['name'], email=info['email'])
+    db.session.add(user)
+    db.session.flush() # get inserted id
+
+    role = UserRole(user_id=user.id, role_id=Role.query.filter_by(name="edit_all").first().id)
+    db.session.add(role)
+
+    db.session.commit()
+    return user
+
+def create_cache_for_user(user):
+    return {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'roles': get_roles_for_user(user.id),
+    }
+
+def update_cache(user_id):
+    tokens = r.smembers("userid_" + user_id)
+
+    user = User.query.filter_by(id=email).first()
+
+    user_json = json.dumps(create_cache_for_user(user));
+
+    for token in tokens:
+        ttl = r.ttl("token_" + token) # update token without changing ttl
+        r.set("token_" + token, user_json, nx=False, ex=ttl)
+
+def insert_and_generate_unique_token(user_id, value, ex=None):
+    token = None
+
+    # keep trying to insert a random token into redis until it finds one that is not already in use
+    while True:
+        token = generate_hash()
+        # nx = Only set the key if it does not already exist
+        not_dupe = r.set("token_" + token, value, nx=True, ex=ex)
+
+        if not_dupe:
+            break
+
+    r.sadd("userid_" + str(user_id), token)
+
+    return token
+
+def delete_token(user_id, token):
+    p = r.pipeline()
+    p.delete("token_" + token)
+    p.srem("userid_" + str(user_id), token)
+    p.execute()
+
 @mod.route("/oauth2callback")
 def oauth2callback():
     if not 'state' in flask.session:
@@ -79,54 +192,82 @@ def oauth2callback():
 
     credentials = flow.credentials
 
-    res = googleapiclient.discovery.build('oauth2', 'v2',
+    info = googleapiclient.discovery.build('oauth2', 'v2',
                                           credentials=credentials).userinfo().v2().me().get().execute()
+
+    user = get_user_by_email(info['email'])
+
+    # TODO - detect if there are any differences (username) update the database it is?
+
+    if user is None:
+        user = create_account(info)
 
     our_token = None
 
-    # keep trying to insert a random token into redis until it finds one that is not already in use
-    while True:
-        our_token = secrets.token_hex(16)
-        not_dupe = r.set(our_token, res['id'], nx=True, ex=24 * 60 * 60) # 24 hours
+    user_json = json.dumps(create_cache_for_user(user));
 
-        if not_dupe:
-            break
+    token = insert_and_generate_unique_token(user.id, user_json, ex=24 * 60 * 60) # 24 hours
 
     return flask.redirect(flask.session['redirect'] + '?token=' + our_token, code=302)
 
-def auth_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        token = flask.request.headers.get('authorization')
-        if not token:
-            resp = flask.Response("Unauthorized", 401)
-            resp.headers['WWW-Authenticate'] = 'Bearer realm="' + AUTH_URI + '"'
-            return resp
-        elif not token.startswith('Bearer '):
-            resp = flask.Response("Invalid Request", 400)
-            resp.headers['WWW-Authenticate'] = 'Bearer realm="' + AUTH_URI + '", error="invalid_request", error_description="Header must begin with \'Bearer\'"'
-            return resp
-        else:
-            token = token.split(' ')[1] # remove schema
-            id_bytes = r.get(token)
 
-            if id_bytes:
-                flask.g.user_id = int(id_bytes)
-                flask.g.token = token
-                return f(*args, **kwargs)
-            else:
-                resp = flask.Response("Invalid/Expired Token", 401)
-                resp.headers['WWW-Authenticate'] = 'Bearer realm="' + AUTH_URI + '", error="invalid_token", error_description="Invalid/Expired Token"'
-                return resp
-    return decorated_function
+
+
 
 @mod.route('/test')
 @auth_required
 def test_api_request():
-    return flask.jsonify(flask.g.user_id)
+    return flask.jsonify(flask.g.user)
+
+@mod.route('/get_roles')
+@auth_required
+def get_roles():
+    return flask.jsonify(get_roles_for_user(flask.g.user['id']))
+
+@mod.route('/set_role/<user_id>/<role_id>')
+@auth_required
+@requires_role('admin')
+def set_role(user_id, role_id):
+    user_id = int(user_id)
+    role_id = int(role_id)
+    role = UserRole(user_id=user_id, role_id=role_id)
+    db.session.add(role)
+    db.session.commit()
+
+    update_cache(user_id)
+
+    return flask.jsonify(get_roles_for_user(flask.g.user['id']))
+
+@mod.route('/remove_role/<user_id>/<role_id>')
+@auth_required
+@requires_role('admin')
+def remove_role(user_id, role_id):
+    UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
+    db.session.commit()
+    return flask.jsonify("success")
+
+@mod.route('/create_role/<role_id>')
+@auth_required
+@requires_role('admin')
+def create_role(user_id, role_id):
+    UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
+    db.session.commit()
+    return flask.jsonify("success")
+
+@mod.route('/refresh_token')
+@auth_required
+def refresh_token():
+    key = generate_api_key(flask.g.user['id'])
+    return flask.jsonify(key)
+
+@mod.route('/admin_panel')
+@auth_required
+@requires_role('admin')
+def admin_panel():
+    return flask.jsonify("hello admin")
 
 @mod.route('/logout')
 @auth_required
 def logout():
-    r.delete(flask.g.token)
+    delete_token(flask.g.token)
     return flask.jsonify("success")
