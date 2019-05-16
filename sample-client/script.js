@@ -91,6 +91,6 @@ function reauthenticate(realm) {
 
 authFetch('https://dev.dynamicannotationframework.com/auth/test').then((res) => {
 	return res.json();
-}).then((user_id) => {
-	alert(`User ID: ${user_id}`);
+}).then((userData) => {
+	alert(`User ID: ${JSON.stringify(userData)}`);
 });
