@@ -89,7 +89,7 @@ function reauthenticate(realm) {
 	});
 }
 
-authFetch('https://dev.dynamicannotationframework.com/auth/test').then((res) => {
+authFetch('https://dev8.dynamicannotationframework.com/auth/test').then((res) => {
 	return res.json();
 }).then((user_id) => {
 	alert(`User ID: ${user_id}`);
