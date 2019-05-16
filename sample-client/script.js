@@ -74,7 +74,7 @@ function authFetch(input, init, retry = 1) {
 						}
 					}
 
-					throw new Error(`status ${res.status} auth error - ${wwwAuthMap.error} + " Reason: ${wwwAuthMap.reason}`);
+					throw new Error(`status ${res.status} auth error - ${wwwAuthMap.error} + " Reason: ${wwwAuthMap.error_description}`);
 				}
 			}
 		}
@@ -91,6 +91,6 @@ function reauthenticate(realm) {
 
 authFetch('https://dev.dynamicannotationframework.com/auth/test').then((res) => {
 	return res.json();
-}).then((user_id) => {
-	alert(`User ID: ${user_id}`);
+}).then((userData) => {
+	alert(`User ID: ${JSON.stringify(userData)}`);
 });
