@@ -11,7 +11,7 @@ import json
 from .model import db, User, Role, UserRole, APIKey
 from .auth_decorators import auth_required, requires_role
 
-__version__ = '0.0.20'
+__version__ = '0.0.21'
 import os
 
 mod = flask.Blueprint('auth', __name__, url_prefix='/auth')
