@@ -11,7 +11,7 @@ __version__ = '0.0.22'
 
 
 def setup_app():
-    app.config.from_object('neuroglancer_auth.config.Config')
+    app.config.from_envvar('AUTH_CONFIG_SETTINGS')
     Session(app)
     CORS(app, expose_headers='WWW-Authenticate')
 
