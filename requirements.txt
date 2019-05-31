@@ -8,3 +8,4 @@ Flask-Cors
 psycopg2
 sqlalchemy
 flask-sqlalchemy
+middle-auth-client>=0.1.3
