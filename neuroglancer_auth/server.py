@@ -9,7 +9,7 @@ import urllib
 import uuid
 import json
 from .model import db, User, Role, UserRole, APIKey
-from .auth_decorators import auth_required, requires_role
+from middle_auth_client import auth_required, requires_role
 
 __version__ = '0.0.21'
 import os
@@ -206,17 +206,17 @@ def oauth2callback():
 
 
 @mod.route('/test')
-@auth_required(r)
+@auth_required
 def test_api_request():
     return flask.jsonify(flask.g.auth_user)
 
 @mod.route('/get_roles')
-@auth_required(r)
+@auth_required
 def get_roles():
     return flask.jsonify(get_roles_for_user(flask.g.auth_user['id']))
 
 @mod.route('/set_role/<user_id>/<role_id>')
-@auth_required(r)
+@auth_required
 @requires_role('admin')
 def set_role(user_id, role_id):
     user_id = int(user_id)
@@ -230,7 +230,7 @@ def set_role(user_id, role_id):
     return flask.jsonify(get_roles_for_user(flask.g.auth_user['id']))
 
 @mod.route('/remove_role/<user_id>/<role_id>')
-@auth_required(r)
+@auth_required
 @requires_role('admin')
 def remove_role(user_id, role_id):
     UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
@@ -238,7 +238,7 @@ def remove_role(user_id, role_id):
     return flask.jsonify("success")
 
 @mod.route('/create_role/<role_id>')
-@auth_required(r)
+@auth_required
 @requires_role('admin')
 def create_role(user_id, role_id):
     UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
@@ -246,19 +246,19 @@ def create_role(user_id, role_id):
     return flask.jsonify("success")
 
 @mod.route('/refresh_token')
-@auth_required(r)
+@auth_required
 def refresh_token():
     key = generate_api_key(flask.g.auth_user['id'])
     return flask.jsonify(key)
 
 @mod.route('/admin_panel')
-@auth_required(r)
+@auth_required
 @requires_role('admin')
 def admin_panel():
     return flask.jsonify("hello admin")
 
 @mod.route('/logout')
-@auth_required(r)
+@auth_required
 def logout():
     delete_token(flask.g.auth_user['id'], flask.g.auth_token)
     return flask.jsonify("success")
