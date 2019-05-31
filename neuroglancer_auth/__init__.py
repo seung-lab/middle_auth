@@ -7,6 +7,8 @@ from flask_cors import CORS
 
 from .server import mod, db, load_api_keys
 from werkzeug.contrib.fixers import ProxyFix
+import redis # used in the envvar config
+
 __version__ = '0.0.23'
 
 
