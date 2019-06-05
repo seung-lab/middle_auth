@@ -89,8 +89,19 @@ function reauthenticate(realm) {
 	});
 }
 
-authFetch('https://dev.dynamicannotationframework.com/auth/test').then((res) => {
+const logoutBtn = document.getElementById('logoutBtn');
+
+logoutBtn.addEventListener('click', () => {
+	authFetch(`${AUTH_URL}/logout`);
+});
+
+const userDataEl = document.getElementById('userData');
+
+const AUTH_URL = 'https://dev.dynamicannotationframework.com/auth';
+
+authFetch(`${AUTH_URL}/test`).then((res) => {
 	return res.json();
 }).then((userData) => {
-	alert(`User ID: ${JSON.stringify(userData)}`);
+	document.body.classList.toggle('loggedIn', true);
+	userDataEl.innerHTML = JSON.stringify(userData, null, '\t');
 });
