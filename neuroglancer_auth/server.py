@@ -9,7 +9,9 @@ import urllib
 import uuid
 import json
 from .model import db, User, Role, UserRole, APIKey
-from middle_auth_client import auth_required, requires_role
+from middle_auth_client import auth_required, auth_requires_roles
+
+from functools import wraps
 
 __version__ = '0.0.24'
 import os
@@ -109,6 +111,12 @@ def get_roles_for_user(user_id):
 
     return [val for val, in roles]
 
+def create_role(role_name):
+    role = Role(name=role_name)
+    db.session.add(role)
+    db.session.flush() # get inserted id
+    return role
+
 def create_account(info):
     user = User(username=info['name'], email=info['email'])
     db.session.add(user)
@@ -201,10 +209,6 @@ def oauth2callback():
 
     return flask.redirect(flask.session['redirect'] + '?token=' + token, code=302)
 
-
-
-
-
 @mod.route('/test')
 @auth_required
 def test_api_request():
@@ -215,10 +219,9 @@ def test_api_request():
 def get_roles():
     return flask.jsonify(get_roles_for_user(flask.g.auth_user['id']))
 
-@mod.route('/set_role/<user_id>/<role_id>')
-@auth_required
-@requires_role('admin')
-def set_role(user_id, role_id):
+@mod.route('/add_role/<user_id>/<role_id>')
+@auth_requires_roles('admin')
+def add_role(user_id, role_id):
     user_id = int(user_id)
     role_id = int(role_id)
     role = UserRole(user_id=user_id, role_id=role_id)
@@ -230,20 +233,20 @@ def set_role(user_id, role_id):
     return flask.jsonify(get_roles_for_user(flask.g.auth_user['id']))
 
 @mod.route('/remove_role/<user_id>/<role_id>')
-@auth_required
-@requires_role('admin')
+@auth_requires_roles('admin')
 def remove_role(user_id, role_id):
     UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
     db.session.commit()
+
+    update_cache(user_id)
+
     return flask.jsonify("success")
 
-@mod.route('/create_role/<role_id>')
-@auth_required
-@requires_role('admin')
-def create_role(user_id, role_id):
-    UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
-    db.session.commit()
-    return flask.jsonify("success")
+@mod.route('/create_role/<role_name>')
+@auth_requires_roles('admin')
+def create_role_route(role_name):
+    role = create_role(role_name)
+    return flask.jsonify(role.id)
 
 @mod.route('/refresh_token')
 @auth_required
@@ -252,10 +255,9 @@ def refresh_token():
     return flask.jsonify(key)
 
 @mod.route('/admin_panel')
-@auth_required
-@requires_role('admin')
+@auth_requires_roles('admin', 'boop')
 def admin_panel():
-    return flask.jsonify("hello admin")
+    return flask.jsonify("hello admin 3")
 
 @mod.route('/logout')
 @auth_required
