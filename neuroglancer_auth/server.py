@@ -9,7 +9,10 @@ import urllib
 import uuid
 import json
 from .model import db, User, Role, UserRole, APIKey
-from middle_auth_client import auth_required, requires_role
+from middle_auth_client import auth_required, auth_requires_roles
+import sqlalchemy
+
+from functools import wraps
 
 __version__ = '0.0.24'
 import os
@@ -109,6 +112,12 @@ def get_roles_for_user(user_id):
 
     return [val for val, in roles]
 
+def create_role(role_name):
+    role = Role(name=role_name)
+    db.session.add(role)
+    db.session.commit() # get inserted id
+    return role
+
 def create_account(info):
     user = User(username=info['name'], email=info['email'])
     db.session.add(user)
@@ -129,15 +138,20 @@ def create_cache_for_user(user):
     }
 
 def update_cache(user_id):
-    tokens = r.smembers("userid_" + user_id)
-
-    user = User.query.filter_by(id=email).first()
-
+    user = User.query.filter_by(id=user_id).first()
     user_json = json.dumps(create_cache_for_user(user));
 
-    for token in tokens:
+    tokens = r.smembers("userid_" + str(user_id))
+
+    for token_bytes in tokens:
+        token = token_bytes.decode('utf-8')
         ttl = r.ttl("token_" + token) # update token without changing ttl
-        r.set("token_" + token, user_json, nx=False, ex=ttl)
+
+        # ttl should never be -1 (no expiration)
+        if ttl > -1:
+            r.set("token_" + token, user_json, nx=False, ex=ttl)
+        elif ttl == -2: # doesn't exist (expired)
+            r.srem("userid_" + str(user_id), token)
 
 def insert_and_generate_unique_token(user_id, value, ex=None):
     token = None
@@ -201,10 +215,6 @@ def oauth2callback():
 
     return flask.redirect(flask.session['redirect'] + '?token=' + token, code=302)
 
-
-
-
-
 @mod.route('/test')
 @auth_required
 def test_api_request():
@@ -215,35 +225,45 @@ def test_api_request():
 def get_roles():
     return flask.jsonify(get_roles_for_user(flask.g.auth_user['id']))
 
-@mod.route('/set_role/<user_id>/<role_id>')
+@mod.route('/get_all_roles')
 @auth_required
-@requires_role('admin')
-def set_role(user_id, role_id):
+def get_all_roles():
+    roles = Role().query.all()
+    return flask.jsonify([role.as_dict() for role in roles])
+
+@mod.route('/add_role/<user_id>/<role_id>')
+@auth_requires_roles('admin')
+def add_role(user_id, role_id):
     user_id = int(user_id)
     role_id = int(role_id)
-    role = UserRole(user_id=user_id, role_id=role_id)
-    db.session.add(role)
+
+    try:
+        role = UserRole(user_id=user_id, role_id=role_id)
+        db.session.add(role)
+        db.session.commit()
+        update_cache(user_id)
+        return flask.jsonify(get_roles_for_user(flask.g.auth_user['id']))
+    except sqlalchemy.exc.IntegrityError as err:
+        return flask.Response("User already has role.", 422)
+
+@mod.route('/remove_role/<user_id>/<role_id>')
+@auth_requires_roles('admin')
+def remove_role(user_id, role_id):
+    UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
     db.session.commit()
 
     update_cache(user_id)
 
-    return flask.jsonify(get_roles_for_user(flask.g.auth_user['id']))
-
-@mod.route('/remove_role/<user_id>/<role_id>')
-@auth_required
-@requires_role('admin')
-def remove_role(user_id, role_id):
-    UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
-    db.session.commit()
     return flask.jsonify("success")
 
-@mod.route('/create_role/<role_id>')
-@auth_required
-@requires_role('admin')
-def create_role(user_id, role_id):
-    UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
-    db.session.commit()
-    return flask.jsonify("success")
+@mod.route('/create_role/<role_name>')
+@auth_requires_roles('admin')
+def create_role_route(role_name):
+    try:
+        role = create_role(role_name)
+        return flask.jsonify(role.id)
+    except sqlalchemy.exc.IntegrityError as err:
+        return flask.Response("Role already exists.", 422)
 
 @mod.route('/refresh_token')
 @auth_required
@@ -252,10 +272,9 @@ def refresh_token():
     return flask.jsonify(key)
 
 @mod.route('/admin_panel')
-@auth_required
-@requires_role('admin')
+@auth_requires_roles('admin', 'boop')
 def admin_panel():
-    return flask.jsonify("hello admin")
+    return flask.jsonify("hello admin 3")
 
 @mod.route('/logout')
 @auth_required
