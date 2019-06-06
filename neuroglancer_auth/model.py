@@ -1,4 +1,4 @@
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy, event
 
 db = SQLAlchemy()
 
@@ -10,6 +10,13 @@ class User(db.Model):
 class Role(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
+
+# initial data for roles
+def insert_roles(target, connection, **kw):
+    db.session.add(Role(name="admin"))
+    db.session.add(Role(name="edit_all"))
+
+event.listen(Role.__table__, 'after_create', insert_roles)
 
 class UserRole(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
