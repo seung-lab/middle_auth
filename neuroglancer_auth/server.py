@@ -14,7 +14,7 @@ import sqlalchemy
 
 from functools import wraps
 
-__version__ = '0.0.26'
+__version__ = '0.0.27'
 import os
 
 mod = flask.Blueprint('auth', __name__, url_prefix='/auth')
