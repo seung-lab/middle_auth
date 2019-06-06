@@ -12,11 +12,12 @@ class Role(db.Model):
     name = db.Column(db.String(120), unique=True, nullable=False)
 
 # initial data for roles
-def insert_roles(target, connection, **kw):
+def insert_default_roles(target, connection, **kw):
     db.session.add(Role(name="admin"))
     db.session.add(Role(name="edit_all"))
+    db.session.commit()
 
-event.listen(Role.__table__, 'after_create', insert_roles)
+event.listen(Role.__table__, 'after_create', insert_default_roles)
 
 class UserRole(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
