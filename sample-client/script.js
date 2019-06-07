@@ -97,7 +97,7 @@ logoutBtn.addEventListener('click', () => {
 
 const userDataEl = document.getElementById('userData');
 
-const AUTH_URL = 'https://dev.dynamicannotationframework.com/auth';
+const AUTH_URL = 'https://dev12.dynamicannotationframework.com/auth';
 
 authFetch(`${AUTH_URL}/test`).then((res) => {
 	return res.json();
