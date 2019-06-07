@@ -5,7 +5,8 @@ app = Flask(__name__)
 from flask_session import Session
 from flask_cors import CORS
 
-from .server import mod, db, load_api_keys
+from .server import mod, db
+from .model import create_account, User, APIKey
 from werkzeug.contrib.fixers import ProxyFix
 import redis # used in the envvar config
 
@@ -17,14 +18,18 @@ def setup_app():
     Session(app)
     CORS(app, expose_headers='WWW-Authenticate')
 
-    print(app.secret_key)
-
     app.wsgi_app = ProxyFix(app.wsgi_app)
 
     with app.app_context():
         db.init_app(app)
         db.create_all()
-        load_api_keys()
+
+        existing_admin = User.get_by_email("chris@eyewire.org")
+
+        if not existing_admin:
+            create_account("chris@eyewire.org", "chris", role_names=["admin", "edit_all"])
+
+        APIKey.load_into_cache()
     
     app.register_blueprint(mod)
 
