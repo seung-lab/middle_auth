@@ -1,14 +1,12 @@
 import flask
 import secrets
-import redis
 import google_auth_oauthlib.flow
 from oauthlib import oauth2
 import googleapiclient.discovery
-from neuroglancer_auth.redis_config import redis_config
 import urllib
 import uuid
 import json
-from .model import db, User, Role, UserRole, APIKey
+from .model import db, User, Role, UserRole, APIKey, create_account, create_role, r
 from middle_auth_client import auth_required, auth_requires_roles
 import sqlalchemy
 
@@ -18,10 +16,6 @@ __version__ = '0.0.27'
 import os
 
 mod = flask.Blueprint('auth', __name__, url_prefix='/auth')
-
-r = redis.Redis(
-        host=redis_config['HOST'],
-        port=redis_config['PORT'])
 
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 
@@ -62,15 +56,6 @@ def version():
 def generate_hash():
     return secrets.token_hex(16)
 
-# load api keys into cache if they don't already exist in redit
-# i.e. new deployment or some redis failure
-def load_api_keys():
-    api_keys = APIKey().query.all()
-
-    for api_key in api_keys:
-        user = get_user_by_id(api_key.user_id)
-        r.set("token_" + api_key.key, json.dumps(create_cache_for_user(user)), nx=True)
-
 def generate_api_key(user_id):
     entry = APIKey.query.filter_by(user_id=user_id).first()
 
@@ -79,8 +64,8 @@ def generate_api_key(user_id):
     if not entry:
         entry = APIKey(user_id=user_id, key="")
 
-    user = get_user_by_id(user_id)
-    user_json = json.dumps(create_cache_for_user(user));
+    user = User.get(user_id)
+    user_json = json.dumps(user.create_cache())
     token = insert_and_generate_unique_token(user_id, user_json)
 
     if not new_entry:
@@ -95,63 +80,8 @@ def generate_api_key(user_id):
 
     return token
 
-def get_user_by_id(id):
-    return User.query.filter_by(id=id).first()
-
 def get_user_by_email(email):
     return User.query.filter_by(email=email).first()
-
-def get_roles_for_user(user_id):
-    query = db.session.query(Role.name)\
-        .join(UserRole, UserRole.role_id == Role.id)\
-        .filter(UserRole.user_id == user_id)
-
-    print(query.statement.compile(compile_kwargs={"literal_binds": True}))
-    
-    roles = query.all()
-
-    return [val for val, in roles]
-
-def create_role(role_name):
-    role = Role(name=role_name)
-    db.session.add(role)
-    db.session.commit() # get inserted id
-    return role
-
-def create_account(info):
-    user = User(username=info['name'], email=info['email'])
-    db.session.add(user)
-    db.session.flush() # get inserted id
-
-    role = UserRole(user_id=user.id, role_id=Role.query.filter_by(name="edit_all").first().id)
-    db.session.add(role)
-
-    db.session.commit()
-    return user
-
-def create_cache_for_user(user):
-    return {
-        'id': user.id,
-        'username': user.username,
-        'email': user.email,
-        'roles': get_roles_for_user(user.id),
-    }
-
-def update_cache(user_id):
-    user = User.query.filter_by(id=user_id).first()
-    user_json = json.dumps(create_cache_for_user(user));
-
-    tokens = r.smembers("userid_" + str(user_id))
-
-    for token_bytes in tokens:
-        token = token_bytes.decode('utf-8')
-        ttl = r.ttl("token_" + token) # update token without changing ttl
-
-        # ttl should never be -1 (no expiration)
-        if ttl > -1:
-            r.set("token_" + token, user_json, nx=False, ex=ttl)
-        elif ttl == -2: # doesn't exist (expired)
-            r.srem("userid_" + str(user_id), token)
 
 def insert_and_generate_unique_token(user_id, value, ex=None):
     token = None
@@ -207,9 +137,9 @@ def oauth2callback():
     # TODO - detect if there are any differences (username) update the database it is?
 
     if user is None:
-        user = create_account(info)
+        user = create_account(info, role_names=["edit_all"])
 
-    user_json = json.dumps(create_cache_for_user(user));
+    user_json = json.dumps(user.create_cache())
 
     token = insert_and_generate_unique_token(user.id, user_json, ex=24 * 60 * 60) # 24 hours
 
@@ -223,7 +153,7 @@ def test_api_request():
 @mod.route('/get_roles')
 @auth_required
 def get_roles():
-    return flask.jsonify(get_roles_for_user(flask.g.auth_user['id']))
+    return flask.jsonify(User.get(flask.g.auth_user['id']).get_roles())
 
 @mod.route('/get_all_roles')
 @auth_required
@@ -241,8 +171,9 @@ def add_role(user_id, role_id):
         role = UserRole(user_id=user_id, role_id=role_id)
         db.session.add(role)
         db.session.commit()
-        update_cache(user_id)
-        return flask.jsonify(get_roles_for_user(flask.g.auth_user['id']))
+        user = User.get(user_id)
+        user.update_cache()
+        return flask.jsonify(user.get_roles())
     except sqlalchemy.exc.IntegrityError as err:
         return flask.Response("User already has role.", 422)
 
@@ -252,7 +183,7 @@ def remove_role(user_id, role_id):
     UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
     db.session.commit()
 
-    update_cache(user_id)
+    User.get(user_id).update_cache()
 
     return flask.jsonify("success")
 
