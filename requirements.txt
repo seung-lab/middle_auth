@@ -1,7 +1,7 @@
 redis
 google_auth
 Flask
-google_auth_oauthlib
+google_auth_oauthlib==0.3.0
 google-api-python-client
 Flask-Session
 Flask-Cors
