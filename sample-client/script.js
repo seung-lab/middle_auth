@@ -83,9 +83,10 @@ function authFetch(input, init, retry = 1) {
 	});
 }
 
-async function reauthenticate(realm) {
-	const token = await authorize(realm);
-	localStorage.setItem('auth_token', token);
+function reauthenticate(realm) {
+	return authorize(realm).then((token) => {
+		localStorage.setItem('auth_token', token);
+	});
 }
 
 const logoutBtn = document.getElementById('logoutBtn');
@@ -96,13 +97,11 @@ logoutBtn.addEventListener('click', () => {
 
 const userDataEl = document.getElementById('userData');
 
-const AUTH_URL = 'https://dev12.dynamicannotationframework.com/auth';
+const AUTH_URL = 'https://dev.dynamicannotationframework.com/auth';
 
 authFetch(`${AUTH_URL}/test`).then((res) => {
 	return res.json();
 }).then((userData) => {
 	document.body.classList.toggle('loggedIn', true);
 	userDataEl.innerHTML = JSON.stringify(userData, null, '\t');
-
-	document.body.classList.toggle('isAdmin', userData.roles.includes('admin'));
 });
