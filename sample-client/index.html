@@ -5,13 +5,15 @@
     <body>
         <div class="requiresLoggedIn">
             <button id="logoutBtn">Logout</button>
-            <div id="userData"></div>
+            <div class="userData" id="myData"></div>
 
             <div class="requiresAdmin">
                 Hello Admin!
-                <input id="addRoleUserIdInput" type="number">
-                <input id="addRoleRoleIdInput" type="number">
-                <button id="addRoleBtn">Add Role</button>
+
+                <div class="userData" id="otherUserData"></div>
+
+                <input id="getUserInput" type="number">
+                <button id="getUserBtn">Get User</button>
             </div>
         </div>
     </body>
