@@ -49,12 +49,16 @@ function authFetch(input, init, retry = 1) {
 	if (token) {
 		options.headers = options.headers || new Headers();
 
-		// Headers object seems to be the correct format but a regular object is supported as well
-		if (options.headers instanceof Headers) {
-			options.headers.append('Authorization', `Bearer ${token}`);
-		} else {
-			options.headers['Authorization'] = `Bearer ${token}`;
+		function addHeader(key, value) {
+			if (options.headers instanceof Headers) {
+				options.headers.append(key, value);
+			} else {
+				options.headers[key] = value;
+			}
 		}
+
+		addHeader('Authorization', `Bearer ${token}`);
+		addHeader('X-Requested-With', `Fetch`);
 	}
 
 	return fetch(input, options).then((res) => {
@@ -94,7 +98,18 @@ logoutBtn.addEventListener('click', () => {
 	authFetch(`${AUTH_URL}/logout`);
 });
 
-const userDataEl = document.getElementById('userData');
+const getUserBtn = document.getElementById('getUserBtn');
+const getUserInput = document.getElementById('getUserInput');
+getUserBtn.addEventListener('click', () => {
+	authFetch(`${AUTH_URL}/get_user/${getUserInput.value}`).then((res) => {
+		return res.json();
+	}).then((res) => {
+		otherUserDataEl.innerHTML = JSON.stringify(res, null, '\t');
+	});
+});
+
+const myDataEl = document.getElementById('myData');
+const otherUserDataEl = document.getElementById('otherUserData');
 
 const AUTH_URL = 'https://dev12.dynamicannotationframework.com/auth';
 
@@ -102,7 +117,6 @@ authFetch(`${AUTH_URL}/test`).then((res) => {
 	return res.json();
 }).then((userData) => {
 	document.body.classList.toggle('loggedIn', true);
-	userDataEl.innerHTML = JSON.stringify(userData, null, '\t');
-
+	myDataEl.innerHTML = JSON.stringify(userData, null, '\t');
 	document.body.classList.toggle('isAdmin', userData.roles.includes('admin'));
 });
