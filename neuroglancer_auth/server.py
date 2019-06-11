@@ -22,7 +22,7 @@ SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://w
 
 @mod.route("/version")
 def version():
-    return "neuroglance_auth -- version ddd" + __version__
+    return "neuroglance_auth -- version ddd " + flask.request.environ['HTTP_ORIGIN']
 
 @mod.route("/authorize")
 def authorize():
@@ -41,6 +41,10 @@ def authorize():
         prompt='consent')
 
     flask.session['state'] = state
+
+    print("Redirect: {0}".format(flask.request.args.get('redirect')))
+    print("origin: {0}".format(flask.request.environ['HTTP_ORIGIN']))
+
     flask.session['redirect'] = flask.request.args.get('redirect')
 
     if not 'redirect' in flask.session:
@@ -84,7 +88,7 @@ def oauth2callback():
     # TODO - detect if there are any differences (username) update the database
 
     if user is None:
-        user = create_account(info, role_names=["edit_all"])
+        user = create_account(info['email'], info['name'], role_names=["edit_all"])
 
     user_json = json.dumps(user.create_cache())
 
