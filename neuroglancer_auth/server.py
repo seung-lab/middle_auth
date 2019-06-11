@@ -22,13 +22,10 @@ SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://w
 
 @mod.route("/version")
 def version():
-    return "neuroglance_auth -- version ddd" + __version__
+    return "neuroglance_auth -- version fff origin: " + flask.request.environ.get('HTTP_ORIGIN', "no origin")
 
 @mod.route("/authorize")
 def authorize():
-    if flask.request.environ['HTTP_ORIGIN'] is None:
-        return flask.Response("Invalid Request", 400)
-
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES)
     flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True, _scheme='https')
@@ -46,11 +43,13 @@ def authorize():
     if not 'redirect' in flask.session:
         return flask.Response("Invalid Request", 400)
 
-    resp = flask.Response(authorization_url)
-    resp.headers['Access-Control-Allow-Credentials'] = 'true'
-    resp.headers['Access-Control-Allow-Origin'] = flask.request.environ['HTTP_ORIGIN']
-
-    return resp
+    if flask.request.environ.get('HTTP_ORIGIN', None) is None:
+        return flask.redirect(authorization_url, code=302)
+    else:
+        resp = flask.Response(authorization_url)
+        resp.headers['Access-Control-Allow-Credentials'] = 'true'
+        resp.headers['Access-Control-Allow-Origin'] = flask.request.environ['HTTP_ORIGIN']
+        return resp
 
 @mod.route("/oauth2callback")
 def oauth2callback():
@@ -84,7 +83,7 @@ def oauth2callback():
     # TODO - detect if there are any differences (username) update the database
 
     if user is None:
-        user = create_account(info, role_names=["edit_all"])
+        user = create_account(info['email'], info['name'], role_names=["edit_all"])
 
     user_json = json.dumps(user.create_cache())
 
