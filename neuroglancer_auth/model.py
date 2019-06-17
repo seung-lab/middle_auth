@@ -112,14 +112,18 @@ class APIKey(db.Model):
 
         new_entry = not entry
 
-        if not entry:
+        if new_entry:
+            print("we have a new entry")
             entry = APIKey(user_id=user_id, key="")
+        else:
+            print("we have a old entry")
 
         user = User.get_by_id(user_id)
         user_json = json.dumps(user.create_cache())
         token = insert_and_generate_unique_token(user_id, user_json)
 
         if not new_entry:
+            print("delete_token: {0}".format(entry.key))
             delete_token(user_id, entry.key)
 
         entry.key = token
