@@ -1,0 +1,72 @@
+body:not(.loggedIn) .requiresLoggedIn {
+    display: none;
+}
+
+body.loggedIn .requiresLoggedOut {
+    display: none;
+}
+
+body:not(.selectedUser) .requiresSelectedUser {
+    display: none;
+}
+
+body:not(.isAdmin) .requiresAdmin {
+    display: none;
+}
+
+#loggedInUserBar {
+    display: grid;
+    grid-template-columns: 1fr 50px;
+    padding: 5px;
+    border: 1px solid #e4e4e4;
+}
+
+.username:before {
+    content: "Username: "
+}
+
+.email:before {
+    content: "Email: "
+}
+
+.userData .roles {
+    display: grid;
+    grid-template-columns: min-content min-content;
+}
+
+.userData .roles > .deleteRole {
+    cursor: pointer;
+}
+
+.list:not(.hasResult) {
+    display: none;
+}
+
+.list {
+    display: grid;
+    border-radius: 2px;
+    border: 1px solid #e4e4e4;
+}
+
+.list > div {
+    cursor: pointer;
+    padding: 5px;
+    border-bottom: 1px solid #e4e4e4;
+}
+
+.list > div:last-child {
+    border-bottom: none;
+}
+
+#searchResults > div:nth-child(2n) {
+    background-color: #d3d3d333;
+}
+
+input {
+    padding: 5px;
+}
+
+div.requiresLoggedIn {
+    display: grid;
+    grid-row-gap: 10px;
+}
