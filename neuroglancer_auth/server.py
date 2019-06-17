@@ -108,18 +108,13 @@ def logout():
     delete_token(flask.g.auth_user['id'], flask.g.auth_token)
     return flask.jsonify("success")
 
-@mod.route('/get_roles')
-@auth_required
-def get_roles():
-    return flask.jsonify(User.get_by_id(flask.g.auth_user['id']).get_roles())
-
-@mod.route('/get_all_roles')
+@mod.route('/role')
 @auth_required
 def get_all_roles():
     roles = Role().query.all()
     return flask.jsonify([role.as_dict() for role in roles])
 
-@mod.route('/get_user/<user_id>')
+@mod.route('/user/<user_id>')
 @auth_requires_roles('admin')
 def get_user(user_id):
     user = User.get_by_id(int(user_id))
@@ -129,22 +124,40 @@ def get_user(user_id):
     else:
         return flask.Response("User Doesn't exist", 404)
 
-@mod.route('/add_role/<user_id>/<role_id>')
+@mod.route('/user')
 @auth_requires_roles('admin')
-def add_role(user_id, role_id):
-    try:
-        UserRole.add(int(user_id), int(role_id))
-        return flask.jsonify("success")
-    except sqlalchemy.exc.IntegrityError as err:
+def get_user_by_filter():
+    email_filter = flask.request.args.get('email')
+
+    if email_filter:
+        user = User.get_by_email(email_filter)
+
+        if user:
+            return flask.jsonify(user.create_cache())
+    
+    return flask.Response("User Doesn't exist", 404)
+
+@mod.route('/user/<user_id>/role')
+@auth_requires_roles('admin', methods=['POST'])
+def user_roles(user_id):
+    data = flask.request.json
+
+    if data and data.role_id:
+        try:
+            UserRole.add(int(user_id), data.role_id)
+            return flask.jsonify("success")
+        except sqlalchemy.exc.IntegrityError as err:
+            return flask.Response("User already has role.", 422)
+    else:
         return flask.Response("User already has role.", 422)
 
-@mod.route('/remove_role/<user_id>/<role_id>')
+@mod.route('/user/<user_id>/role/<role_id>', methods=['DELETE'])
 @auth_requires_roles('admin')
 def remove_role(user_id, role_id):
     UserRole.remove(int(user_id), int(role_id)) # no error possible? if user doesn't have role, just return success? should probably fail
     return flask.jsonify("success")
 
-@mod.route('/create_role/<role_name>')
+@mod.route('/role/<role_name>', methods=['POST'])
 @auth_requires_roles('admin')
 def create_role_route(role_name):
     try:
@@ -152,3 +165,17 @@ def create_role_route(role_name):
         return flask.jsonify(role.id)
     except sqlalchemy.exc.IntegrityError as err:
         return flask.Response("Role already exists.", 422)
+
+@mod.route('/role/<role_name>', methods=['POST'])
+@auth_requires_roles('admin')
+def create_role_route(role_name):
+    try:
+        role = create_role(role_name)
+        return flask.jsonify(role.id)
+    except sqlalchemy.exc.IntegrityError as err:
+        return flask.Response("Role already exists.", 422)
+
+@mod.route('/my_roles')
+@auth_required
+def get_roles():
+    return flask.jsonify(User.get_by_id(flask.g.auth_user['id']).get_roles())
