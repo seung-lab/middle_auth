@@ -112,7 +112,7 @@ class APIKey(db.Model):
 
         new_entry = not entry
 
-        if not entry:
+        if new_entry:
             entry = APIKey(user_id=user_id, key="")
 
         user = User.get_by_id(user_id)
