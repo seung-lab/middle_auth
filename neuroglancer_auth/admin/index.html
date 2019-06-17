@@ -1,0 +1,52 @@
+<html>
+    <head>
+            <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+        <h1>Middle Auth Admin Panel</h1>
+        <div class="requiresLoggedOut">
+            <button id="loginBtn">Login</button>
+        </div>
+
+        <div class="requiresLoggedIn">
+
+            <div id="loggedInUserBar" class="block">
+                <div id="email"></div>
+                <button id="logoutBtn">Logout</button>
+            </div>
+
+            <div class="requiresAdmin">
+
+                <div class="selectFromList">
+                    <div class="searchAndResults">
+                        <div class="searchForm">
+                            <input id="getUserInput" type="email" placeholder="email">
+                            <button id="searchBtn">Search</button>
+                        </div>
+
+                        <div id="searchResults" class="listContainer block">
+                            <div class="header">Users</div>
+                            <div class="list selectable"></div>
+                        </div>
+                    </div>
+
+                    <div class="userData block requiresSelectedUser" id="otherUserData">
+                        <div class="username"></div>
+                        <div class="email"></div>
+
+                        <div class="listContainer">
+                            <div class="header">Roles</div>
+                            <div class="roles list"></div>
+                        </div>
+
+                        <div>
+                            <select id="addRoleSelect"></select>
+                            <button id="addRoleBtn">Add Role</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script src="./script.js"></script>
+</html>
