@@ -8,6 +8,7 @@ import json
 from .model import db, User, Role, UserRole, APIKey, create_account, create_role, insert_and_generate_unique_token, delete_token
 from middle_auth_client import auth_required, auth_requires_roles
 import sqlalchemy
+from furl import furl
 
 from functools import wraps
 
@@ -42,14 +43,25 @@ def authorize():
 
     if not 'redirect' in flask.session:
         return flask.Response("Invalid Request", 400)
+    
+    cors_origin = flask.request.environ.get('HTTP_ORIGIN', None)
+    programmatic_access = flask.request.headers.get('X-Requested-With') or cors_origin
 
-    if flask.request.environ.get('HTTP_ORIGIN', None) is None:
-        return flask.redirect(authorization_url, code=302)
+    if cors_origin:
+        print("has cors_origin")
     else:
+        print("no cors_origin")
+
+    if programmatic_access:
         resp = flask.Response(authorization_url)
-        resp.headers['Access-Control-Allow-Credentials'] = 'true'
-        resp.headers['Access-Control-Allow-Origin'] = flask.request.environ['HTTP_ORIGIN']
+
+        if cors_origin:
+            resp.headers['Access-Control-Allow-Credentials'] = 'true'
+            resp.headers['Access-Control-Allow-Origin'] = cors_origin
+
         return resp
+    else:
+        return flask.redirect(authorization_url, code=302)
 
 @mod.route("/oauth2callback")
 def oauth2callback():
@@ -92,7 +104,7 @@ def oauth2callback():
 
     token = insert_and_generate_unique_token(user.id, user_json, ex=24 * 60 * 60) # 24 hours
 
-    return flask.redirect(flask.session['redirect'] + '?token=' + token, code=302)
+    return flask.redirect(furl(flask.session['redirect']).add({'token': token}).url, code=302)
 
 @mod.route('/test')
 @auth_required
@@ -111,18 +123,24 @@ def logout():
     delete_token(flask.g.auth_user['id'], flask.g.auth_token)
     return flask.jsonify("success")
 
-@mod.route('/get_roles')
-@auth_required
-def get_roles():
-    return flask.jsonify(User.get_by_id(flask.g.auth_user['id']).get_roles())
-
-@mod.route('/get_all_roles')
+@mod.route('/role')
 @auth_required
 def get_all_roles():
     roles = Role().query.all()
     return flask.jsonify([role.as_dict() for role in roles])
 
-@mod.route('/get_user/<user_id>')
+@mod.route('/user')
+@auth_requires_roles('admin')
+def get_users_by_filter():
+    email_filter = flask.request.args.get('email')
+
+    if email_filter:
+        users = User.search_by_email(email_filter)
+        return flask.jsonify([user.as_dict() for user in users])
+
+    return flask.Response([])
+
+@mod.route('/user/<user_id>')
 @auth_requires_roles('admin')
 def get_user(user_id):
     user = User.get_by_id(int(user_id))
@@ -132,22 +150,30 @@ def get_user(user_id):
     else:
         return flask.Response("User Doesn't exist", 404)
 
-@mod.route('/add_role/<user_id>/<role_id>')
+@mod.route('/user/<user_id>/role', methods=['POST'])
 @auth_requires_roles('admin')
-def add_role(user_id, role_id):
-    try:
-        UserRole.add(int(user_id), int(role_id))
-        return flask.jsonify("success")
-    except sqlalchemy.exc.IntegrityError as err:
-        return flask.Response("User already has role.", 422)
+def user_roles(user_id):
+    data = flask.request.json
 
-@mod.route('/remove_role/<user_id>/<role_id>')
+    if data and 'role_id' in data:
+        try:
+            UserRole.add(int(user_id), data['role_id'])
+            return flask.jsonify("success")
+        except sqlalchemy.exc.IntegrityError as err:
+            return flask.Response("User already has role.", 422)
+    else:
+        return flask.Response("Missing role_id.", 400)
+
+@mod.route('/user/<user_id>/role/<role_id>', methods=['DELETE'])
 @auth_requires_roles('admin')
 def remove_role(user_id, role_id):
+    if Role.get_by_id(role_id).name == 'admin':
+        return flask.Response("An admin cannot remove admin role from themself.", 422)
+
     UserRole.remove(int(user_id), int(role_id)) # no error possible? if user doesn't have role, just return success? should probably fail
     return flask.jsonify("success")
 
-@mod.route('/create_role/<role_name>')
+@mod.route('/role/<role_name>', methods=['POST', 'OPTIONS'])
 @auth_requires_roles('admin')
 def create_role_route(role_name):
     try:
@@ -155,3 +181,12 @@ def create_role_route(role_name):
         return flask.jsonify(role.id)
     except sqlalchemy.exc.IntegrityError as err:
         return flask.Response("Role already exists.", 422)
+
+@mod.route('/my_roles')
+@auth_required
+def get_roles():
+    return flask.jsonify(User.get_by_id(flask.g.auth_user['id']).get_roles())
+
+@mod.route('/admin/<path:path>')
+def send_admin_files(path):
+    return flask.send_from_directory('admin', path)
