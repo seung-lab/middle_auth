@@ -1,0 +1,37 @@
+<html>
+    <head>
+            <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+        <div class="requiresLoggedOut">
+            <button id="loginBtn">Login</button>
+        </div>
+
+        <div class="requiresLoggedIn">
+
+            <div id="loggedInUserBar">
+                <div id="email"></div>
+                <button id="logoutBtn">Logout</button>
+            </div>
+
+            <div class="requiresAdmin">
+                <input id="getUserInput" type="email" placeholder="email">
+                <button id="searchBtn">Search</button>
+
+                <div id="searchResults" class="list"></div>
+
+                <div class="requiresSelectedUser">
+                    <div class="userData" id="otherUserData">
+                        <div class="username"></div>
+                        <div class="email"></div>
+                        <div class="roles"></div>
+                    </div>
+    
+                    <select id="addRoleSelect"></select>
+                    <button id="addRoleBtn">Add Role</button>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script src="./script.js"></script>
+</html>
