@@ -129,6 +129,16 @@ def get_user(user_id):
     else:
         return flask.Response("User Doesn't exist", 404)
 
+@mod.route('/get_user_by_email/<email>')
+@auth_requires_roles('admin')
+def get_user_by_email(email):
+    user = User.get_by_email(email)
+
+    if user:
+        return flask.jsonify(user.create_cache())
+    else:
+        return flask.Response("User Doesn't exist", 404)
+
 @mod.route('/add_role/<user_id>/<role_id>')
 @auth_requires_roles('admin')
 def add_role(user_id, role_id):
