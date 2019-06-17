@@ -23,6 +23,10 @@ class User(db.Model):
     @staticmethod
     def get_by_email(email):
         return User.query.filter_by(email=email).first()
+    
+    @staticmethod
+    def search_by_email(email):
+        return User.query.filter(User.email.like(f'%{email}%')).all()
 
     def get_roles(self):
         query = db.session.query(Role.name)\
@@ -59,6 +63,10 @@ class User(db.Model):
 class Role(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
+
+    @staticmethod
+    def get_by_id(id):
+        return Role.query.filter_by(id=id).first()
 
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
@@ -112,7 +120,7 @@ class APIKey(db.Model):
 
         new_entry = not entry
 
-        if not entry:
+        if new_entry:
             entry = APIKey(user_id=user_id, key="")
 
         user = User.get_by_id(user_id)
