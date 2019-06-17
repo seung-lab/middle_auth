@@ -122,7 +122,12 @@ def get_all_roles():
 @mod.route('/get_user/<user_id>')
 @auth_requires_roles('admin')
 def get_user(user_id):
-    return flask.jsonify(User.get_by_id(int(user_id)).create_cache())
+    user = User.get_by_id(int(user_id))
+
+    if user:
+        return flask.jsonify(user.create_cache())
+    else:
+        return flask.Response("User Doesn't exist", 404)
 
 @mod.route('/add_role/<user_id>/<role_id>')
 @auth_requires_roles('admin')
