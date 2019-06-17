@@ -16,7 +16,7 @@ __version__ = '0.0.30'
 def setup_app():
     app.config.from_envvar('AUTH_CONFIG_SETTINGS')
     Session(app)
-    CORS(app, expose_headers='WWW-Authenticate')
+    CORS(app, expose_headers=['WWW-Authenticate', 'X-Requested-With'])
 
     app.wsgi_app = ProxyFix(app.wsgi_app)
 
