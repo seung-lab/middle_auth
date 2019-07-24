@@ -5,7 +5,7 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from .model import db, User, Role, UserRole, APIKey, create_account, create_role, insert_and_generate_unique_token, delete_token
+from .model import db, User, APIKey, Group, Dataset, UserGroup, insert_and_generate_unique_token, delete_token
 from middle_auth_client import auth_required, auth_requires_roles
 import sqlalchemy
 from furl import furl
@@ -98,7 +98,7 @@ def oauth2callback():
     # TODO - detect if there are any differences (username) update the database
 
     if user is None:
-        user = create_account(info['email'], info['name'], role_names=["edit_all"])
+        user = User.create_account(info['email'], info['name'], False, group_names=["default"])
 
     user_json = json.dumps(user.create_cache())
 
@@ -123,11 +123,11 @@ def logout():
     delete_token(flask.g.auth_user['id'], flask.g.auth_token)
     return flask.jsonify("success")
 
-@mod.route('/role')
-@auth_required
-def get_all_roles():
-    roles = Role().query.all()
-    return flask.jsonify([role.as_dict() for role in roles])
+# @mod.route('/role')
+# @auth_required
+# def get_all_roles():
+#     roles = Role().query.all()
+#     return flask.jsonify([role.as_dict() for role in roles])
 
 @mod.route('/user')
 @auth_requires_roles('admin')
@@ -150,42 +150,71 @@ def get_user(user_id):
     else:
         return flask.Response("User Doesn't exist", 404)
 
-@mod.route('/user/<user_id>/role', methods=['POST'])
+# @mod.route('/user/<user_id>/role', methods=['POST'])
+# @auth_requires_roles('admin')
+# def user_roles(user_id):
+#     data = flask.request.json
+
+#     if data and 'role_id' in data:
+#         try:
+#             UserRole.add(int(user_id), data['role_id'])
+#             return flask.jsonify("success")
+#         except sqlalchemy.exc.IntegrityError as err:
+#             return flask.Response("User already has role.", 422)
+#     else:
+#         return flask.Response("Missing role_id.", 400)
+
+# @mod.route('/user/<user_id>/role/<role_id>', methods=['DELETE'])
+# @auth_requires_roles('admin')
+# def remove_role(user_id, role_id):
+#     if Role.get_by_id(role_id).name == 'admin':
+#         return flask.Response("An admin cannot remove admin role from themself.", 422)
+
+#     UserRole.remove(int(user_id), int(role_id)) # no error possible? if user doesn't have role, just return success? should probably fail
+#     return flask.jsonify("success")
+
+@mod.route('/group/<group_name>', methods=['POST'])
 @auth_requires_roles('admin')
-def user_roles(user_id):
+def create_dataset_route(group_name):
+    try:
+        group = Group.add(group_name)
+        return flask.jsonify(group.id)
+    except sqlalchemy.exc.IntegrityError as err:
+        return flask.Response("Dataset already exists.", 422)
+
+@mod.route('/group/<group_id>/add_user', methods=['POST'])
+@auth_requires_roles('admin')
+def user_roles(group_id):
     data = flask.request.json
 
-    if data and 'role_id' in data:
+    if data and 'user_id' in data:
         try:
-            UserRole.add(int(user_id), data['role_id'])
+            UserGroup.add(data['user_id'], int(group_id))
             return flask.jsonify("success")
         except sqlalchemy.exc.IntegrityError as err:
-            return flask.Response("User already has role.", 422)
+            return flask.Response("User already belongs to group.", 422)
     else:
-        return flask.Response("Missing role_id.", 400)
+        return flask.Response("Missing user_id.", 400)
 
-@mod.route('/user/<user_id>/role/<role_id>', methods=['DELETE'])
+@mod.route('/group/<group_id>/user/<user_id>', methods=['DELETE'])
 @auth_requires_roles('admin')
-def remove_role(user_id, role_id):
-    if Role.get_by_id(role_id).name == 'admin':
-        return flask.Response("An admin cannot remove admin role from themself.", 422)
-
-    UserRole.remove(int(user_id), int(role_id)) # no error possible? if user doesn't have role, just return success? should probably fail
+def remove_role(group_id, user_id):
+    UserGroup.remove(int(user_id), int(group_id)) # no error possible? if user doesn't have role, just return success? should probably fail
     return flask.jsonify("success")
 
-@mod.route('/role/<role_name>', methods=['POST', 'OPTIONS'])
+@mod.route('/dataset/<dataset_name>', methods=['POST'])
 @auth_requires_roles('admin')
-def create_role_route(role_name):
+def create_dataset_route(dataset_name):
     try:
-        role = create_role(role_name)
-        return flask.jsonify(role.id)
+        dataset = Dataset.add(dataset_name)
+        return flask.jsonify(dataset.id)
     except sqlalchemy.exc.IntegrityError as err:
-        return flask.Response("Role already exists.", 422)
+        return flask.Response("Dataset already exists.", 422)
 
-@mod.route('/my_roles')
+@mod.route('/my_permissions')
 @auth_required
 def get_roles():
-    return flask.jsonify(User.get_by_id(flask.g.auth_user['id']).get_roles())
+    return flask.jsonify(User.get_by_id(flask.g.auth_user['id']).get_permissions())
 
 @mod.route('/admin/<path:path>')
 def send_admin_files(path):
