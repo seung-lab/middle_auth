@@ -99,23 +99,23 @@ async function reauthenticate(realm) {
 const loginBtn = document.getElementById('loginBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 
-let availableRoles = null;
+let availableGroups = null;
 
-const refreshAvailableRoles = () => {
+const refreshAvailableGroups = () => {
 	return new Promise((f, r) => {
-		authFetch(`${AUTH_URL}/role`).then((res) => {
+		authFetch(`${AUTH_URL}/group`).then((res) => {
 			return res.json();
 		}).then((res) => {
-			availableRoles = res;
+			availableGroups = res;
 
-			addRoleSelect.innerHTML = "";
+			addGroupSelect.innerHTML = "";
 
-			for (let role of res) {
+			for (let group of res) {
 				const optionEl = document.createElement('option');
-				optionEl.value = role.id;
-				optionEl.innerHTML = role.name;
+				optionEl.value = group.id;
+				optionEl.innerHTML = group.name;
 
-				addRoleSelect.appendChild(optionEl);
+				addGroupSelect.appendChild(optionEl);
 			}
 
 			f();
@@ -128,11 +128,11 @@ const login = () => {
 		return res.json();
 	}).then((userData) => {
 		document.body.classList.toggle('loggedIn', true);
-		document.body.classList.toggle('isAdmin', userData.roles.includes('admin'));
+		document.body.classList.toggle('isAdmin', userData.admin);
 
-		document.getElementById('email').innerHTML = `${userData.email} (${userData.roles.join(', ')})`;
+		document.getElementById('email').innerHTML = `${userData.email} (${JSON.stringify(userData.permissions)})`;
 
-		refreshAvailableRoles();
+		refreshAvailableGroups();
 	});
 };
 
@@ -145,12 +145,46 @@ logoutBtn.addEventListener('click', () => {
 	});
 });
 
+function renderItem(item, containerEl) {
+	for (let [key, value] of Object.entries(item)) {
+		const el = containerEl.querySelector(`.${key}`);
+
+		if (el) {
+			el.innerHTML = '';
+
+			if (el.classList.contains('list')) {
+				for (let val of value) {
+					const valEL = document.createElement('div');
+					valEL.innerHTML = val;
+
+					const deleteRowEl = document.createElement('div');
+					deleteRowEl.className = "deleteRow";
+
+					el.appendChild(valEL);
+					el.appendChild(deleteRowEl);
+
+					deleteRowEl.addEventListener('click', () => {
+						
+
+						for (let {id, name} of availableGroups) {
+							if (name === val) {
+								authFetch(`${AUTH_URL}/group/${id}/user/${selectedUserId}`, {
+									method: 'DELETE'
+								}).then((res) => {
+									refreshSelectedUser();
+								});
+							}
+						}
+					});
+				}
+			} else {
+				el.innerHTML = value;
+			}
+		}
+	}
+}
+
 let selectedUserId = null;
-
-let selectedUser = null;
-
-const searchBtn = document.getElementById('searchBtn');
-const getUserInput = document.getElementById('getUserInput');
 
 const refreshSelectedUser = () => {
 	if (selectedUserId === null) {
@@ -160,92 +194,95 @@ const refreshSelectedUser = () => {
 	authFetch(`${AUTH_URL}/user/${selectedUserId}`).then((res) => {
 		return res.json();
 	}).then((res) => {
-		selectedUser = res;
-
-		otherUserDataEl.querySelector('.username').innerHTML = res.username;
-		otherUserDataEl.querySelector('.email').innerHTML = res.email;
-
-		const selectedUsersRoles = otherUserDataEl.querySelector('.roles');
-		
-		selectedUsersRoles.innerHTML = "";
-
-		for (let role of res.roles) {
-			const roleEl = document.createElement('div');
-			roleEl.innerHTML = role;
-
-			const deleteRoleEl = document.createElement('div');
-			deleteRoleEl.className = "deleteRole";
-
-			deleteRoleEl.addEventListener('click', () => {
-				for (let {id, name} of availableRoles) {
-					if (name === role) {
-						authFetch(`${AUTH_URL}/user/${selectedUser.id}/role/${id}`, {
-							method: 'DELETE'
-						}).then((res) => {
-							refreshSelectedUser();
-						});
-					}
-				}
-			});
-
-			selectedUsersRoles.appendChild(roleEl);
-			selectedUsersRoles.appendChild(deleteRoleEl);
-		}
-
+		renderItem(res, document.getElementById('otherUserData'));
 		document.body.classList.toggle('selectedUser', true);
 	});
 };
 
-const searchResultsEl = document.getElementById('searchResults');
+let selectedGroupId = null;
 
-searchBtn.addEventListener('click', () => {
-	if (!getUserInput.value.length) {
+function refreshSelectedGroup() {
+	if (selectedGroupId === null) {
 		return;
 	}
 
-	authFetch(`${AUTH_URL}/user?email=${getUserInput.value}`).then((res) => {
+	authFetch(`${AUTH_URL}/group/${selectedGroupId}`).then((res) => {
 		return res.json();
-	}).then((rows) => {
-		const searchResultsListEl = searchResultsEl.querySelector('.list');
-		searchResultsListEl.innerHTML = "";
-
-		// searchResultsListEl.classList.toggle('hasResult', true);
-
-		if (rows.length === 0) {
-			const rowEl = document.createElement('div');
-			rowEl.innerHTML = 'No Results';
-			searchResultsListEl.appendChild(rowEl);
-		}
-
-		for (let user of rows) {
-			const rowEl = document.createElement('div');
-			rowEl.innerHTML = `${user.email}`;
-			searchResultsListEl.appendChild(rowEl);
-
-			rowEl.addEventListener('click', () => {
-				selectedUserId = user.id;
-				refreshSelectedUser();
-			});
-		}
+	}).then((res) => {
+		renderItem(res, document.getElementById('groupData'));
+		document.body.classList.toggle('selectedGroup', true);
 	});
-});
+}
 
-const addRoleSelect = document.getElementById('addRoleSelect');
-const addRoleBtn = document.getElementById('addRoleBtn');
-const removeRoleBtn = document.getElementById('removeRoleBtn');
+function searchList(searchBtn, searchInput, url, listEl, clickHandler) {
+	searchBtn.addEventListener('click', () => {
+		if (!searchInput.value.length) {
+			return;
+		}
+	
+		authFetch(`${AUTH_URL}${url}${searchInput.value}`).then((res) => {
+			return res.json();
+		}).then((rows) => {
+			const searchResultsListEl = listEl.querySelector('.list');
+			searchResultsListEl.innerHTML = "";
+	
+			// searchResultsListEl.classList.toggle('hasResult', true);
+	
+			if (rows.length === 0) {
+				const rowEl = document.createElement('div');
+				rowEl.innerHTML = 'No Results';
+				searchResultsListEl.appendChild(rowEl);
+			}
+	
+			for (let row of rows) {
+				const rowEl = document.createElement('div');
+				rowEl.innerHTML = JSON.stringify(row);
+				searchResultsListEl.appendChild(rowEl);
+	
+				rowEl.addEventListener('click', () => {
+					clickHandler(row.id);
+				});
+			}
+		});
+	});
+}
 
-addRoleBtn.addEventListener('click', () => {
-	if (!selectedUser) {
+searchList(
+	document.getElementById('searchUserBtn'),
+	document.getElementById('getUserInput'),
+	"/user?email=",
+	document.getElementById('searchUserResults'),
+	(id) => {
+		selectedUserId = id;
+		refreshSelectedUser();
+	});
+
+searchList(
+	document.getElementById('searchGroupBtn'),
+	document.getElementById('getGroupInput'),
+	"/group?name=",
+	document.getElementById('searchGroupResults'),
+	(id) => {
+		selectedGroupId = id;
+		refreshSelectedGroup();
+	});
+
+const addGroupSelect = document.getElementById('addGroupSelect');
+const addGroupBtn = document.getElementById('addGroupBtn');
+const removeGroupBtn = document.getElementById('removeGroupBtn');
+
+addGroupBtn.addEventListener('click', () => {
+	if (!selectedUserId) {
 		return;
 	}
 
-	authFetch(`${AUTH_URL}/user/${selectedUser.id}/role`, {
+	authFetch(`${AUTH_URL}/group/${addGroupSelect.value}/user`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json'
 		},
 		body: JSON.stringify({
-			role_id: Number(addRoleSelect.value)
+			user_id: Number(selectedUserId)
 		})
 	}).then((res) => {
 		refreshSelectedUser();
@@ -253,7 +290,6 @@ addRoleBtn.addEventListener('click', () => {
 });
 
 const myDataEl = document.getElementById('myData');
-const otherUserDataEl = document.getElementById('otherUserData');
 
 const AUTH_URL = 'https://dev.dynamicannotationframework.com/auth';
 
