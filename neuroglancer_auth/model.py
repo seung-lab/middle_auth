@@ -13,11 +13,31 @@ r = redis.Redis(
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    username = db.Column(db.String(80), unique=False, nullable=False)
+    name = db.Column(db.String(80), unique=False, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    admin = db.Column('admin', db.Boolean, default=False)
 
     def as_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "admin": self.admin,
+        }
+    
+    @staticmethod
+    def create_account(email, name, admin=False, group_names=[]):
+        user = User(name=name, email=email, admin=admin)
+        db.session.add(user)
+        db.session.flush() # get inserted id
+
+        groups = Group.query.filter(Group.name.in_(group_names)).all()
+
+        for group in groups:
+            db.session.add(UserGroup(user_id=user.id, group_id=group.id))
+
+        db.session.commit()
+        return user
 
     @staticmethod
     def get_by_id(id):
@@ -29,23 +49,57 @@ class User(db.Model):
     
     @staticmethod
     def search_by_email(email):
-        return User.query.filter(User.email.like(f'%{email}%')).all()
-
-    def get_roles(self):
-        query = db.session.query(Role.name)\
-            .join(UserRole, UserRole.role_id == Role.id)\
-            .filter(UserRole.user_id == self.id)
+        if email:
+            return User.query.filter(User.email.like(f'%{email}%')).all()
+        else:
+            return User.query.limit(20)
+    
+    def update(self, data):
+        if 'admin' in data:
+            self.admin = data['admin']
         
-        roles = query.all()
+        if 'name' in data:
+            self.name = data['name']
 
-        return [val for val, in roles]
+        db.session.commit()
+
+    def get_groups(self):
+        query = db.session.query(Group.id, Group.name)\
+            .join(UserGroup, UserGroup.group_id == Group.id)\
+            .filter(UserGroup.user_id == self.id)
+        
+        groups = query.all()
+
+        return [{'id': id, 'name': name} for id, name in groups]
+
+    def get_permissions(self):
+        query = db.session.query(GroupDataset.dataset_name, GroupDataset.can_view, GroupDataset.can_edit, GroupDataset.can_admin)\
+            .join(UserGroup, UserGroup.group_id == GroupDataset.group_id)\
+            .filter(UserGroup.user_id == self.id)
+        
+        permissions = query.all()
+
+        permissions_combined = {}
+
+        for (dataset_name, can_view, can_edit, can_admin) in permissions:
+            current = permissions_combined.get(dataset_name, 0)
+
+            current |= (1<<0) * can_view
+            current |= (1<<1) * can_edit
+            current |= (1<<2) * can_admin
+
+            permissions_combined[dataset_name] = current
+        
+        return permissions_combined
 
     def create_cache(self):
         return {
             'id': self.id,
-            'username': self.username,
+            'name': self.name,
             'email': self.email,
-            'roles': self.get_roles(),
+            'admin': self.admin,
+            'groups': self.get_groups(),
+            'permissions': self.get_permissions(),
         }
 
     def update_cache(self):
@@ -63,51 +117,128 @@ class User(db.Model):
                 ttl = ttl if ttl != -1 else None # -1 is no expiration (API KEYS)
                 r.set("token_" + token, user_json, nx=False, ex=ttl)
 
-class Role(db.Model):
+class Group(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
 
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+        }
+
     @staticmethod
     def get_by_id(id):
-        return Role.query.filter_by(id=id).first()
-
-    def as_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-# initial data for roles
-def insert_default_roles(target, connection, **kw):
-    db.session.add(Role(name="admin"))
-    db.session.add(Role(name="edit_all"))
-    db.session.commit()
-
-event.listen(Role.__table__, 'after_create', insert_default_roles)
-
-class UserRole(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
-    role_id = db.Column('role_id', db.Integer, db.ForeignKey("role.id"), nullable=False)
-    __table_args__ = (db.UniqueConstraint("user_id", "role_id"),)
+        return Group.query.filter_by(id=id).first()
 
     @staticmethod
-    def add(user_id, role_id):
-        role = UserRole(user_id=user_id, role_id=role_id)
-        db.session.add(role)
+    def add(name):
+        group = Group(name=name)
+        db.session.add(group)
+        db.session.commit()
+        return group
+    
+    def get_permissions(self):
+        query = db.session.query(GroupDataset.dataset_name, GroupDataset.can_view, GroupDataset.can_edit, GroupDataset.can_admin)\
+            .filter(GroupDataset.group_id == self.id)
+        
+        permissions = query.all()
+
+        permissions_combined = {}
+
+        for (dataset_name, can_view, can_edit, can_admin) in permissions:
+            current = permissions_combined.get(dataset_name, 0)
+
+            current |= (1<<0) * can_view
+            current |= (1<<1) * can_edit
+            current |= (1<<2) * can_admin
+
+            permissions_combined[dataset_name] = current
+        
+        return list(permissions_combined.items())
+
+    def get_users(self):
+        users = db.session.query(UserGroup.user_id, User.name)\
+            .filter(UserGroup.user_id == User.id)\
+            .filter(UserGroup.group_id == self.id).all()
+
+        return [{"id": id, "name": name} for (id,name) in users]
+
+    def update_cache(self):
+        users = self.get_users()
+
+        for user in users:
+            User.get_by_id(user.id).update_cache()
+
+class UserGroup(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
+    group_id = db.Column('group_id', db.Integer, db.ForeignKey("group.id"), nullable=False)
+    __table_args__ = (db.UniqueConstraint("user_id", "group_id"),)
+
+    @staticmethod
+    def add(user_id, group_id):
+        ug = UserGroup(user_id=user_id, group_id=group_id)
+        db.session.add(ug)
         db.session.commit()
         user = User.get_by_id(user_id)
         user.update_cache()
     
     @staticmethod
-    def remove(user_id, role_id):
-        UserRole.query.filter_by(user_id=user_id, role_id=role_id).delete()
+    def remove(user_id, group_id):
+        UserGroup.query.filter_by(user_id=user_id, group_id=group_id).delete()
         db.session.commit()
-        User.get_by_id(user_id).update_cache()
+        user = User.get_by_id(user_id).update_cache()
+
+def insert_default_groups(target, connection, **kw):
+    db.session.add(Group(name="default"))
+    db.session.commit()
+
+event.listen(Group.__table__, 'after_create', insert_default_groups)
+
+class GroupDataset(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    group_id = db.Column('group_id', db.Integer, db.ForeignKey("group.id"), nullable=False)
+    dataset_name = db.Column('dataset_name', db.String(32), nullable=True, index=True) # nullable because the dataset may be deleted and we want to represent that without deleting the row
+    __table_args__ = (db.UniqueConstraint("group_id", "dataset_name"),)
+
+    can_view = db.Column('can_view', db.Boolean, server_default='f', nullable=False)
+    can_edit = db.Column('can_edit', db.Boolean, server_default='f', nullable=False)
+    can_admin = db.Column('can_admin', db.Boolean, server_default='f', nullable=False)
+
+    @staticmethod
+    def add(group_id, dataset_name, can_view, can_edit, can_admin):
+        gd = GroupDataset(group_id=group_id, dataset_name=dataset_name, can_view=can_view, can_edit=can_edit, can_admin=can_admin)
+        db.session.add(gd)
+        db.session.commit()
+        group = Group.get_by_id(group_id)
+        group.update_cache()
+    
+    @staticmethod
+    def remove(group_id, dataset_name):
+        GroupDataset.query.filter_by(group_id=group_id, dataset_name=dataset_name).delete()
+        db.session.commit()
+        group = Group.get_by_id(group_id).update_cache()
+    
+    @staticmethod
+    def get_all_datasets():
+        datasets = db.session.query(GroupDataset.dataset_name).all()
+        return [dataset_name for dataset_name, in datasets]
+    
+    def update(can_view, can_edit, can_admin):
+        self.can_view = can_view
+        self.can_edit = can_edit
+        self.can_admin = can_admin
+        db.session.commit()
+        group = Group.get_by_id(self.group_id)
+        group.update_cache()
 
 class APIKey(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
     key = db.Column(db.String(32), unique=True, nullable=False)
 
-    # load api keys into cache if they don't already exist in redit
+    # load api keys into cache if they don't already exist in redis
     # i.e. new deployment or some redis failure
     @staticmethod
     def load_into_cache():
@@ -163,22 +294,3 @@ def delete_token(user_id, token):
     p.delete("token_" + token)
     p.srem("userid_" + str(user_id), token)
     p.execute()
-
-def create_role(role_name):
-    role = Role(name=role_name)
-    db.session.add(role)
-    db.session.commit() # get inserted id
-    return role
-
-def create_account(email, name, role_names=[]):
-    user = User(username=name, email=email)
-    db.session.add(user)
-    db.session.flush() # get inserted id
-
-    roles = Role.query.filter(Role.name.in_(role_names)).all()
-
-    for role in roles:
-        db.session.add(UserRole(user_id=user.id, role_id=role.id))
-
-    db.session.commit()
-    return user
