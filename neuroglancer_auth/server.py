@@ -98,7 +98,7 @@ def oauth2callback():
     # TODO - detect if there are any differences (username) update the database
 
     if user is None:
-        user = create_account(info['email'], info['name'], role_names=["edit_all"])
+        user = create_account(info['email'], info['name'], False, group_names=["default"])
 
     user_json = json.dumps(user.create_cache())
 
