@@ -33,6 +33,10 @@ body:not(.selectedUser) .requiresSelectedUser {
     display: none !important;
 }
 
+body:not(.selectedGroup) .requiresSelectedGroup {
+    display: none !important;
+}
+
 body:not(.isAdmin) .requiresAdmin {
     display: none !important;
 }
@@ -52,16 +56,16 @@ body:not(.isAdmin) .requiresAdmin {
     content: "Email: "
 }
 
-.userData .roles {
+.userData .groups {
     display: grid;
     grid-template-columns: 1fr min-content;
 }
 
-.userData .roles > .deleteRole {
+.userData .groups > .deleteRow {
     cursor: pointer;
 }
 
-.userData .roles > .deleteRole::before {
+.userData .groups > .deleteRow::before {
     content: '×';
     line-height: 10px;
 }
@@ -98,11 +102,11 @@ body:not(.isAdmin) .requiresAdmin {
     border-bottom: none;
 }
 
-.roles > div:nth-last-child(-n+2) {
+.groups > div:nth-last-child(-n+2) {
     border-bottom: none;
 }
 
-#searchResults .list > div:nth-child(2n), .roles > div:nth-child(4n+3), .roles > div:nth-child(4n+4) {
+#searchResults .list > div:nth-child(2n), .groups > div:nth-child(4n+3), .groups > div:nth-child(4n+4) {
     background-color: #d3d3d333;
 }
 
