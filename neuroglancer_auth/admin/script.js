@@ -101,38 +101,38 @@ const logoutBtn = document.getElementById('logoutBtn');
 
 let availableRoles = null;
 
-const refreshAvailableRoles = () => {
-	return new Promise((f, r) => {
-		authFetch(`${AUTH_URL}/role`).then((res) => {
-			return res.json();
-		}).then((res) => {
-			availableRoles = res;
+// const refreshAvailableRoles = () => {
+// 	return new Promise((f, r) => {
+// 		authFetch(`${AUTH_URL}/role`).then((res) => {
+// 			return res.json();
+// 		}).then((res) => {
+// 			availableRoles = res;
 
-			addRoleSelect.innerHTML = "";
+// 			addRoleSelect.innerHTML = "";
 
-			for (let role of res) {
-				const optionEl = document.createElement('option');
-				optionEl.value = role.id;
-				optionEl.innerHTML = role.name;
+// 			for (let role of res) {
+// 				const optionEl = document.createElement('option');
+// 				optionEl.value = role.id;
+// 				optionEl.innerHTML = role.name;
 
-				addRoleSelect.appendChild(optionEl);
-			}
+// 				addRoleSelect.appendChild(optionEl);
+// 			}
 
-			f();
-		});
-	})
-};
+// 			f();
+// 		});
+// 	})
+// };
 
 const login = () => {
 	authFetch(`${AUTH_URL}/test`).then((res) => {
 		return res.json();
 	}).then((userData) => {
 		document.body.classList.toggle('loggedIn', true);
-		document.body.classList.toggle('isAdmin', userData.roles.includes('admin'));
+		document.body.classList.toggle('isAdmin', userData.admin);
 
-		document.getElementById('email').innerHTML = `${userData.email} (${userData.roles.join(', ')})`;
+		document.getElementById('email').innerHTML = `${userData.email} (${JSON.stringify(userData.permissions)})`;
 
-		refreshAvailableRoles();
+		// refreshAvailableRoles();
 	});
 };
 
@@ -169,7 +169,7 @@ const refreshSelectedUser = () => {
 		
 		selectedUsersRoles.innerHTML = "";
 
-		for (let role of res.roles) {
+		for (let role of selectedUser.dataset) {
 			const roleEl = document.createElement('div');
 			roleEl.innerHTML = role;
 
