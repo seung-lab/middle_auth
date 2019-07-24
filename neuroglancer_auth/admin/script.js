@@ -99,23 +99,23 @@ async function reauthenticate(realm) {
 const loginBtn = document.getElementById('loginBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 
-let availableRoles = null;
+let availableGroups = null;
 
-const refreshAvailableRoles = () => {
+const refreshAvailableGroups = () => {
 	return new Promise((f, r) => {
-		authFetch(`${AUTH_URL}/role`).then((res) => {
+		authFetch(`${AUTH_URL}/group`).then((res) => {
 			return res.json();
 		}).then((res) => {
-			availableRoles = res;
+			availableGroups = res;
 
-			addRoleSelect.innerHTML = "";
+			addGroupSelect.innerHTML = "";
 
-			for (let role of res) {
+			for (let group of res) {
 				const optionEl = document.createElement('option');
-				optionEl.value = role.id;
-				optionEl.innerHTML = role.name;
+				optionEl.value = group.id;
+				optionEl.innerHTML = group.name;
 
-				addRoleSelect.appendChild(optionEl);
+				addGroupSelect.appendChild(optionEl);
 			}
 
 			f();
@@ -128,11 +128,11 @@ const login = () => {
 		return res.json();
 	}).then((userData) => {
 		document.body.classList.toggle('loggedIn', true);
-		document.body.classList.toggle('isAdmin', userData.roles.includes('admin'));
+		document.body.classList.toggle('isAdmin', userData.admin);
 
-		document.getElementById('email').innerHTML = `${userData.email} (${userData.roles.join(', ')})`;
+		document.getElementById('email').innerHTML = `${userData.email} (${JSON.stringify(userData.permissions)})`;
 
-		refreshAvailableRoles();
+		refreshAvailableGroups();
 	});
 };
 
@@ -165,20 +165,20 @@ const refreshSelectedUser = () => {
 		otherUserDataEl.querySelector('.username').innerHTML = res.username;
 		otherUserDataEl.querySelector('.email').innerHTML = res.email;
 
-		const selectedUsersRoles = otherUserDataEl.querySelector('.roles');
+		const selectedUsersGroups = otherUserDataEl.querySelector('.groups');
 		
-		selectedUsersRoles.innerHTML = "";
+		selectedUsersGroups.innerHTML = "";
 
-		for (let role of res.roles) {
-			const roleEl = document.createElement('div');
-			roleEl.innerHTML = role;
+		for (let group of selectedUser.groups) {
+			const groupEl = document.createElement('div');
+			groupEl.innerHTML = group;
 
-			const deleteRoleEl = document.createElement('div');
-			deleteRoleEl.className = "deleteRole";
+			const deleteGroupEl = document.createElement('div');
+			deleteGroupEl.className = "deleteRow";
 
-			deleteRoleEl.addEventListener('click', () => {
-				for (let {id, name} of availableRoles) {
-					if (name === role) {
+			deleteGroupEl.addEventListener('click', () => {
+				for (let {id, name} of availableGroups) {
+					if (name === group) {
 						authFetch(`${AUTH_URL}/user/${selectedUser.id}/role/${id}`, {
 							method: 'DELETE'
 						}).then((res) => {
@@ -188,8 +188,8 @@ const refreshSelectedUser = () => {
 				}
 			});
 
-			selectedUsersRoles.appendChild(roleEl);
-			selectedUsersRoles.appendChild(deleteRoleEl);
+			selectedUsersGroups.appendChild(groupEl);
+			selectedUsersGroups.appendChild(deleteGroupEl);
 		}
 
 		document.body.classList.toggle('selectedUser', true);
@@ -230,11 +230,11 @@ searchBtn.addEventListener('click', () => {
 	});
 });
 
-const addRoleSelect = document.getElementById('addRoleSelect');
-const addRoleBtn = document.getElementById('addRoleBtn');
-const removeRoleBtn = document.getElementById('removeRoleBtn');
+const addGroupSelect = document.getElementById('addGroupSelect');
+const addGroupBtn = document.getElementById('addGroupBtn');
+const removeGroupBtn = document.getElementById('removeGroupBtn');
 
-addRoleBtn.addEventListener('click', () => {
+addGroupBtn.addEventListener('click', () => {
 	if (!selectedUser) {
 		return;
 	}
