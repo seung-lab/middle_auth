@@ -10,6 +10,11 @@ button {
     font-family: inherit;
 }
 
+.title {
+    font-weight: bold;
+    white-space: nowrap;
+}
+
 button, .block {
     border: 1px solid #e4e4e4;
     border-radius: 2px;
@@ -19,6 +24,72 @@ button, .block {
 body {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 13px;
+    margin: 0px;
+}
+
+#main, #menuBar {
+    padding: 10px;
+}
+
+#main {
+    padding-top: 60px;
+}
+
+#menuBar {
+    position: absolute;
+    display: grid;
+    grid-template-columns: min-content auto;
+    border-bottom: 1px solid #e4e4e4;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    height: 45px;
+    z-index: 100;
+    background-color: white;
+}
+
+.sideBar, .right {
+    transition: margin-right 200ms;
+}
+
+.sideBar {
+    display: grid;
+    grid-auto-rows: min-content;
+    grid-row-gap: 5px;
+    box-sizing: border-box;
+    position: fixed;
+    top: 0px;
+    right: 0;
+    height: 100vh;
+    width: 350px;
+    margin-right: -350px;
+    background-color: white;
+    padding: 10px;
+    padding-top: 60px;
+}
+
+body.selectedUser #userData.sideBar, body.selectedGroup #groupData.sideBar {
+    margin-right: 0;
+    box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.5);
+}
+
+.closeBtn {
+    justify-self: end;
+    width: 25px;
+    height: 25px;
+    font-size: 22px;
+    padding: 0;
+    margin: 0;
+    border: none;
+}
+
+.closeBtn::before {
+    content: '×';
+    line-height: 25px;
+}
+
+body.selectedUser .right, body.selectedGroup .right {
+    margin-right: 350px;
 }
 
 body:not(.loggedIn) .requiresLoggedIn {
@@ -33,37 +104,54 @@ body:not(.selectedUser) .requiresSelectedUser {
     display: none !important;
 }
 
+body:not(.selectedGroup) .requiresSelectedGroup {
+    display: none !important;
+}
+
 body:not(.isAdmin) .requiresAdmin {
     display: none !important;
+}
+
+#loggedOutUserBar {
+    justify-self: end;
 }
 
 #loggedInUserBar {
     display: grid;
     grid-template-columns: 1fr 50px;
+    grid-column-gap: 10px;
+    justify-self: end;
     align-items: center;
-    background-color: #e4e4e4;
 }
 
-.username:before {
-    content: "Username: "
+.name:before {
+    content: "Name: "
 }
 
 .email:before {
     content: "Email: "
 }
 
-.userData .roles {
+.admin:before {
+    content: "Admin: "
+}
+
+.sideBar .list {
     display: grid;
     grid-template-columns: 1fr min-content;
 }
 
-.userData .roles > .deleteRole {
+.sideBar .list[data-link] {
     cursor: pointer;
 }
 
-.userData .roles > .deleteRole::before {
+.sideBar .list > .deleteRow {
+    cursor: pointer;
+}
+
+.sideBar .list > .deleteRow::before {
     content: '×';
-    line-height: 10px;
+    line-height: 15px;
 }
 
 /* #searchResults:not(.hasResult) {
@@ -98,11 +186,11 @@ body:not(.isAdmin) .requiresAdmin {
     border-bottom: none;
 }
 
-.roles > div:nth-last-child(-n+2) {
+.sideBar .list > div:nth-last-child(-n+2) {
     border-bottom: none;
 }
 
-#searchResults .list > div:nth-child(2n), .roles > div:nth-child(4n+3), .roles > div:nth-child(4n+4) {
+#searchResults .list > div:nth-child(2n), .groups > div:nth-child(4n+3), .groups > div:nth-child(4n+4) {
     background-color: #d3d3d333;
 }
 
@@ -125,15 +213,11 @@ div.requiresLoggedIn {
     align-self: start;
 }
 
-#editUser {
-    display: grid;
+.searchForm {
+    justify-self: end;
 }
 
 .searchAndResults {
     display: grid;
     grid-row-gap: 10px;
-}
-
-.searchForm {
-    justify-self: end;
 }
