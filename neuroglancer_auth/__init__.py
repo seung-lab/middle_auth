@@ -6,7 +6,7 @@ from flask_session import Session
 from flask_cors import CORS
 
 from .server import mod, db
-from .model import create_account, User, APIKey
+from .model import User, APIKey
 from werkzeug.contrib.fixers import ProxyFix
 import redis # used in the envvar config
 
@@ -27,7 +27,7 @@ def setup_app():
         existing_admin = User.get_by_email("chris@eyewire.org")
 
         if not existing_admin:
-            create_account("chris@eyewire.org", "chris", role_names=["admin", "edit_all"])
+            User.create_account("chris@eyewire.org", "chris", admin=True, group_names=["default"])
 
         APIKey.load_into_cache()
 
