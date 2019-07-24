@@ -3,48 +3,101 @@
             <link rel="stylesheet" type="text/css" href="style.css">
     </head>
     <body>
-        <h1>Middle Auth Admin Panel</h1>
-        <div class="requiresLoggedOut">
-            <button id="loginBtn">Login</button>
-        </div>
-
-        <div class="requiresLoggedIn">
-
-            <div id="loggedInUserBar" class="block">
+        <div id="menuBar">
+            <div class="title">Admin Panel</div>
+            <div class="requiresLoggedOut" id="loggedOutUserBar">
+                <button id="loginBtn">Login</button>
+            </div>
+            <div class="requiresLoggedIn" id="loggedInUserBar">
                 <div id="email"></div>
                 <button id="logoutBtn">Logout</button>
             </div>
+        </div>
 
-            <div class="requiresAdmin">
-
-                <div class="selectFromList">
-                    <div class="searchAndResults">
-                        <div class="searchForm">
-                            <input id="getUserInput" type="email" placeholder="email">
-                            <button id="searchBtn">Search</button>
-                        </div>
-
-                        <div id="searchResults" class="listContainer block">
-                            <div class="header">Users</div>
-                            <div class="list selectable"></div>
-                        </div>
+        <div id="main" class="requiresLoggedIn requiresAdmin">
+            <div>
+                <div class="searchAndResults">
+                    <div class="searchForm right">
+                        <input id="getUserInput" type="email" placeholder="email">
+                        <button id="searchUserBtn">Search</button>
                     </div>
 
-                    <div class="userData block requiresSelectedUser" id="otherUserData">
-                        <div class="username"></div>
-                        <div class="email"></div>
-
-                        <div class="listContainer">
-                            <div class="header">Roles</div>
-                            <div class="roles list"></div>
-                        </div>
-
-                        <div>
-                            <select id="addRoleSelect"></select>
-                            <button id="addRoleBtn">Add Role</button>
-                        </div>
+                    <div id="searchUserResults" class="listContainer block">
+                        <div class="header">Users</div>
+                        <div class="list selectable"></div>
                     </div>
                 </div>
+
+                <div class="sideBar userData" id="userData">
+                    <button class="closeBtn"></button>
+                    <div class="title">Edit User</div>
+                    <div class="name"></div>
+                    <div class="email"></div>
+                    <div class="admin editable"></div>
+
+                    <div class="listContainer">
+                        <div class="header">Groups</div>
+                        <div class="groups list" data-link="group"></div>
+                    </div>
+
+                    <div>
+                        <select id="addGroupSelect"></select>
+                        <button id="addGroupBtn">Add Group</button>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="searchAndResults">
+                    <div class="searchForm right">
+                        <input id="getGroupInput" type="text" placeholder="group name">
+                        <button id="searchGroupBtn">Search</button>
+                    </div>
+
+                    <div id="searchGroupResults" class="listContainer block">
+                        <div class="header">Groups</div>
+                        <div class="list selectable"></div>
+                    </div>
+                </div>
+
+                <div class="sideBar" id="groupData">
+                    <button class="closeBtn"></button>
+                    <div class="title">Edit Group</div>
+                    <div class="name"></div>
+
+                    <div class="listContainer">
+                        <div class="header">Users</div>
+                        <div class="users list" data-link="user"></div>
+                    </div>
+
+                    <div class="listContainer">
+                        <div class="header">Datasets</div>
+                        <div class="datasets list"></div>
+                    </div>
+
+                    <div>
+                        <select id="addDatasetSelect"></select>
+                        <input id="addDatasetInput" type="text" placeholder="dataset name">
+                        <div>
+                            <input type="checkbox" id="canViewCheckbox">
+                            <label for="canViewCheckbox">View</label>
+                            <input type="checkbox" id="canEditCheckbox">
+                            <label for="canEditCheckbox">Edit</label>
+                            <input type="checkbox" id="canAdminCheckbox">
+                            <label for="canAdminCheckbox">Admin</label>
+                        </div>
+                        <button id="addDatasetBtn">Add Dataset</button>
+                    </div>
+                </div>
+
+                <div>
+                    <input id="createGroupInput" type="text" placeholder="group name">
+                    <button id="createGroupBtn">Create Group</button>
+                </div>
+                <div>
+                        <input id="createDatasetInput" type="text" placeholder="dataset name">
+                        <button id="createDatasetBtn">Create Dataset (not working)</button>
+                    </div>
             </div>
         </div>
     </body>
