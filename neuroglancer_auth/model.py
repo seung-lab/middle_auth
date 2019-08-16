@@ -11,10 +11,38 @@ r = redis.Redis(
         host=os.environ.get('REDISHOST', 'localhost'),
         port=int(os.environ.get('REDISPORT', 6379)))
 
+class DatasetAdmin(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
+    dataset_id = db.Column('dataset_id', db.Integer, db.ForeignKey("dataset.id"), nullable=False)
+    __table_args__ = (db.UniqueConstraint("user_id", "dataset_id"),)
+
+    @staticmethod
+    def exists(user_id, dataset_id):
+        query = DatasetAdmin.query.filter_by(user_id=user_id, dataset_id=dataset_id).exists()
+        return db.session.query(query).scalar()
+
+    @staticmethod
+    def add(user_id, dataset_id):
+        da = DatasetAdmin(user_id=user_id, dataset_id=dataset_id)
+        db.session.add(da)
+        db.session.commit()
+
+    @staticmethod
+    def remove(user_id, dataset_id):
+        DatasetAdmin.query.filter_by(user_id=user_id, dataset_id=dataset_id).delete()
+        db.session.commit()
+
+# class UserGroupAdmin(db.Model): # TODO, should this be in User GROUP?
+#     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+#     user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
+#     group_id = db.Column('group_id', db.Integer, db.ForeignKey("dataset.id"), nullable=False)
+#     __table_args__ = (db.UniqueConstraint("user_id", "dataset_id"),)
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(80), unique=False, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    name = db.Column(db.String(80), unique=False, nullable=False) # public
+    email = db.Column(db.String(120), unique=True, nullable=False) # public + affiliation
     admin = db.Column('admin', db.Boolean, default=False)
 
     def as_dict(self):
@@ -23,8 +51,9 @@ class User(db.Model):
             "name": self.name,
             "email": self.email,
             "admin": self.admin,
+            "admin_datasets": self.get_datasets_adminning()
         }
-    
+
     @staticmethod
     def create_account(email, name, admin=False, group_names=[]):
         user = User(name=name, email=email, admin=admin)
@@ -46,14 +75,19 @@ class User(db.Model):
     @staticmethod
     def get_by_email(email):
         return User.query.filter_by(email=email).first()
-    
+
+    @staticmethod
+    def filter_by_ids(ids):
+        return User.query.filter(User.id.in_(ids)).all()
+
     @staticmethod
     def search_by_email(email):
-        if email:
-            return User.query.filter(User.email.like(f'%{email}%')).all()
-        else:
-            return User.query.limit(20)
-    
+        return User.query.filter(User.email.ilike(f'%{email}%')).all()
+
+    @staticmethod
+    def search_by_name(name):
+        return User.query.filter(User.name.ilike(f'%{name}%')).all()
+
     def update(self, data):
         if 'admin' in data:
             self.admin = data['admin']
@@ -74,24 +108,23 @@ class User(db.Model):
         return [{'id': id, 'name': name} for id, name in groups]
 
     def get_permissions(self):
-        query = db.session.query(GroupDataset.dataset_name, GroupDataset.can_view, GroupDataset.can_edit, GroupDataset.can_admin)\
+        query = db.session.query(GroupDataset.dataset_id, Dataset.name, GroupDataset.level)\
             .join(UserGroup, UserGroup.group_id == GroupDataset.group_id)\
+            .join(Dataset, Dataset.id == GroupDataset.dataset_id)\
             .filter(UserGroup.user_id == self.id)
         
         permissions = query.all()
-
-        # permissions_combined = {}
-
-        # for (dataset_name, can_view, can_edit, can_admin) in permissions:
-        #     current = permissions_combined.get(dataset_name, 0)
-
-        #     current |= (1<<0) * can_view
-        #     current |= (1<<1) * can_edit
-        #     current |= (1<<2) * can_admin
-
-        #     permissions_combined[dataset_name] = current
         
-        return [{'name': dataset_name, 'can_view': can_view, 'can_edit': can_edit, 'can_admin': can_admin} for dataset_name, can_view, can_edit, can_admin in permissions]
+        return [{'id': dataset_id, 'name': dataset_name, 'level': level} for dataset_id, dataset_name, level in permissions]
+
+    def get_datasets_adminning(self):
+        query = db.session.query(DatasetAdmin.dataset_id, Dataset.name)\
+            .join(Dataset, DatasetAdmin.dataset_id == Dataset.id)\
+            .filter(DatasetAdmin.user_id == self.id)
+        
+        datasets = query.all()
+        
+        return [{'id': dataset_id, 'name': dataset_name} for dataset_id, dataset_name in datasets]
 
     def create_cache(self):
         return {
@@ -100,7 +133,7 @@ class User(db.Model):
             'email': self.email,
             'admin': self.admin,
             'groups': self.get_groups(),
-            'permissions': self.get_permissions(),
+            'permissions': {x['name']: x['level'] for x in self.get_permissions()},
         }
 
     def update_cache(self):
@@ -135,7 +168,7 @@ class Group(db.Model):
     @staticmethod
     def search_by_name(name):
         if name:
-            return Group.query.filter(Group.name.like(f'%{name}%')).all()
+            return Group.query.filter(Group.name.ilike(f'%{name}%')).all()
         else:
             return Group.query.limit(20)
 
@@ -147,46 +180,37 @@ class Group(db.Model):
         return group
     
     def get_permissions(self):
-        query = db.session.query(GroupDataset.dataset_name, GroupDataset.can_view, GroupDataset.can_edit, GroupDataset.can_admin)\
-            .filter(GroupDataset.group_id == self.id)
-        
+        query = db.session.query(GroupDataset.dataset_id, Dataset.name, GroupDataset.level)\
+            .join(Dataset, Dataset.id == GroupDataset.dataset_id)\
+            .filter(GroupDataset.group_id == self.id)\
+            .order_by(GroupDataset.dataset_id.asc())
+
         permissions = query.all()
 
-        # permissions_combined = {}
-
-        return [{'name': dataset_name, 'can_view': can_view, 'can_edit': can_edit, 'can_admin': can_admin} for dataset_name, can_view, can_edit, can_admin in permissions]
-
-        # for (dataset_name, can_view, can_edit, can_admin) in permissions:
-        #     current = permissions_combined.get(dataset_name, 0)
-
-        #     current |= (1<<0) * can_view
-        #     current |= (1<<1) * can_edit
-        #     current |= (1<<2) * can_admin
-
-        #     permissions_combined[dataset_name] = current
-        
-
-        
-        # return list(permissions_combined.items())
+        return [{'id': dataset_id, 'name': dataset_name, 'level': level} for dataset_id, dataset_name, level in permissions]
 
     def get_users(self):
-        users = db.session.query(UserGroup.user_id, User.name)\
+        return db.session.query(UserGroup.user_id, User.name, UserGroup.admin)\
             .filter(UserGroup.user_id == User.id)\
             .filter(UserGroup.group_id == self.id).all()
-
-        return [{"id": id, "name": name} for (id,name) in users]
 
     def update_cache(self):
         users = self.get_users()
 
         for user in users:
-            User.get_by_id(user.id).update_cache()
+            User.get_by_id(user["id"]).update_cache()
 
 class UserGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
     group_id = db.Column('group_id', db.Integer, db.ForeignKey("group.id"), nullable=False)
+    admin = db.Column('admin', db.Boolean, server_default="0")
     __table_args__ = (db.UniqueConstraint("user_id", "group_id"),)
+
+    @staticmethod
+    def is_group_admin(user_id, group_id):
+        query = UserGroup.query.filter_by(user_id=user_id, group_id=group_id, admin=True).exists()
+        return db.session.query(query).scalar()
 
     @staticmethod
     def add(user_id, group_id):
@@ -208,39 +232,81 @@ def insert_default_groups(target, connection, **kw):
 
 event.listen(Group.__table__, 'after_create', insert_default_groups)
 
+class Dataset(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(120), unique=True, nullable=False)
+
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+        }
+
+    @staticmethod
+    def get_by_id(id):
+        return Dataset.query.filter_by(id=id).first()
+
+    @staticmethod
+    def search_by_name(name):
+        if name:
+            return Dataset.query.filter(Dataset.name.ilike(f'%{name}%')).all()
+        else:
+            return Dataset.query.limit(20)
+
+    @staticmethod
+    def get_all_by_admin(user_id):
+        datasets = db.session.query(Dataset)\
+            .filter(Dataset.id == DatasetAdmin.dataset_id)\
+            .filter(DatasetAdmin.user_id == user_id).all()
+
+        return datasets
+
+    @staticmethod
+    def add(name):
+        dataset = Dataset(name=name)
+        db.session.add(dataset)
+        db.session.commit()
+        return dataset
+
+    def get_admins(self):
+        users = db.session.query(DatasetAdmin.user_id, User.name)\
+            .filter(DatasetAdmin.user_id == User.id)\
+            .filter(DatasetAdmin.dataset_id == self.id).all()
+
+        return [{"id": id, "name": name} for (id, name) in users]
+
+    def get_permissions(self):
+        query = db.session.query(GroupDataset.group_id, Group.name, GroupDataset.level)\
+            .join(Group, Group.id == GroupDataset.group_id)\
+            .filter(GroupDataset.dataset_id == self.id)
+        
+        permissions = query.all()
+
+        return [{'id': dataset_id, 'name': dataset_name, 'level': level} for group, dataset_name, level in permissions]
+
 class GroupDataset(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     group_id = db.Column('group_id', db.Integer, db.ForeignKey("group.id"), nullable=False)
-    dataset_name = db.Column('dataset_name', db.String(32), nullable=True, index=True) # nullable because the dataset may be deleted and we want to represent that without deleting the row
-    __table_args__ = (db.UniqueConstraint("group_id", "dataset_name"),)
-
-    can_view = db.Column('can_view', db.Boolean, server_default='f', nullable=False)
-    can_edit = db.Column('can_edit', db.Boolean, server_default='f', nullable=False)
-    can_admin = db.Column('can_admin', db.Boolean, server_default='f', nullable=False)
+    dataset_id = db.Column('dataset_id', db.Integer, db.ForeignKey("dataset.id"), nullable=False)
+    level = db.Column('level', db.Integer, nullable=False, default=0)
+    __table_args__ = (db.UniqueConstraint("group_id", "dataset_id"),)
 
     @staticmethod
-    def add(group_id, dataset_name, can_view, can_edit, can_admin):
-        gd = GroupDataset(group_id=group_id, dataset_name=dataset_name, can_view=can_view, can_edit=can_edit, can_admin=can_admin)
+    def add(group_id, dataset_id, level):
+        gd = GroupDataset(group_id=group_id, dataset_id=dataset_id, level=level)
         db.session.add(gd)
         db.session.commit()
         group = Group.get_by_id(group_id)
         group.update_cache()
     
     @staticmethod
-    def remove(group_id, dataset_name):
-        GroupDataset.query.filter_by(group_id=group_id, dataset_name=dataset_name).delete()
+    def remove(group_id, dataset_id):
+        GroupDataset.query.filter_by(group_id=group_id, dataset_id=dataset_id).delete()
         db.session.commit()
         group = Group.get_by_id(group_id).update_cache()
     
-    @staticmethod
-    def get_all_datasets():
-        datasets = db.session.query(GroupDataset.dataset_name).all()
-        return [dataset_name for dataset_name, in datasets]
-    
-    def update(can_view, can_edit, can_admin):
-        self.can_view = can_view
-        self.can_edit = can_edit
-        self.can_admin = can_admin
+    def update(self, level):
+        self.level = level
         db.session.commit()
         group = Group.get_by_id(self.group_id)
         group.update_cache()
