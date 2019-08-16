@@ -1,6 +1,651 @@
+const AUTH_URL = 'https://fafbm.dynamicannotationframework.com/auth';
+
+const datasetDataApp = {
+	data: () => ({
+		loading: true,
+		newEntry: false,
+		dataset: null,
+		errors: [],
+		groups: [],
+		admins: [],
+		allGroups: [],
+		availableGroups: [],
+		selectedGroup: '',
+		selectedLevel: '',
+		availableLevels: ['none', 'view', 'edit'],
+		newAdmin: ''
+	}),
+	mounted: async function () {
+		if (this.$route.params.id === 'create') {
+			this.newEntry = true;
+			this.loading = false;
+
+			this.dataset = {
+				name: ''
+			};
+
+			return;
+		}
+
+		const id = Number.parseInt(this.$route.params.id);
+
+		this.dataset = await authFetch(`${AUTH_URL}/dataset/${id}`);
+		this.allGroups = await authFetch(`${AUTH_URL}/group`);
+
+		this.admins = await authFetch(`${AUTH_URL}/dataset/${id}/admin`);
+
+		this.updateAvailableGroups();
+
+		this.loading = false;
+	},
+	methods: {
+		async updateAvailableGroups() {
+			this.groups = await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group`);
+
+			this.availableGroups = this.allGroups.filter((group) => {
+				return !this.groups.map((g) => g.id).includes(group.id);
+			});
+		},
+		async addGroupDataset() {
+			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					group_id: this.selectedGroup,
+					level: Number.parseInt(this.selectedLevel)
+				})
+			});
+		
+			await this.updateAvailableGroups();
+		},
+		async removeGroup(group) {
+			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group/${group.id}`, {
+				method: 'DELETE'
+			});
+
+			await this.updateAvailableGroups();
+		},
+		async updatePermissions(group) {
+			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group/${group.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					level: group.level
+				})
+			});
+
+			await this.updateAvailableGroups();
+		},
+		save() {
+			this.errors = [];
+
+			if (this.newEntry) {
+				console.log('save new entry!');
+
+				if (!this.dataset.name) {
+					this.errors.push(['name', 'missing']);
+				}
+
+				if (!this.errors.length) {
+					authFetch(`${AUTH_URL}/dataset`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							name: this.dataset.name
+						})
+					}).then((res) => {
+						console.log('updated entry!');
+						router.push('./')
+					})
+					.catch((res) => {
+						alert(res);
+					})
+				}
+			} else {
+				console.log('update entry!');
+			}
+		},
+		async addAdmin() {
+			console.log('do stuff', this.newAdmin);
+
+			const searchQuery = new URLSearchParams();
+			searchQuery.set('name', this.newAdmin);
+			const searchQueryString = searchQuery.toString();
+			
+			const users = await authFetch(`${AUTH_URL}/user?${searchQueryString}`);
+
+			if (users) {
+				const user = users[0];
+
+				await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						dataset_id: this.dataset.id,
+						user_id: user.id
+					})
+				});
+
+				this.admins = await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`);
+			} else {
+				alert('user not found!');
+			}
+		},
+		async removeAdmin(admin) {
+			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin/${admin.id}`, {
+				method: 'DELETE'
+			});
+
+			this.admins = await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`);
+		}
+	},
+	template: `
+	<div>
+	<template v-if="loading">Loading...</template>
+	<template v-else>
+		<div id="datasetData">
+			<div class="title" v-if="newEntry">Create Dataset</div>
+			<div class="title" v-else>Edit Dataset</div>
+
+			<input v-model="dataset.name" placeholder="Name" required>
+			
+			<div v-if="!loading" class="listContainer">
+				<div class="header"><span>Groups</span></div>
+				<div class="permissions list">
+					<div v-for="group in groups">
+						<router-link :to="{ name: 'groupData', params: { id: group.id }}">
+							{{ group.name }}
+						</router-link>
+						<div>
+							<select @change="updatePermissions(group)" v-model="group.level">
+								<option v-for="(item, index) in availableLevels" v-bind:value="index">{{ item }}</option>
+							</select>
+						</div>
+						<div class="deleteRow" @click="removeGroup(group)"></div>
+					</div>
+				</div>
+			</div>
+
+			<div>
+				<select v-model="selectedGroup">
+					<option disabled="disabled" value="">Select Group</option>
+					<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
+				</select>
+				<select v-model="selectedLevel">
+					<option disabled="disabled" value="">Select Level</option>
+					<option value="1">View</option>
+					<option value="2">Edit</option>
+				</select>
+				<button @click="addGroupDataset">Add Group</button>
+			</div>
+
+			<div v-if="!loading" class="listContainer">
+				<div class="header"><span>Admins</span></div>
+				<div class="admins list">
+					<div v-for="admin in admins">
+						<router-link :to="{ name: 'userData', params: { id: admin.id }}">
+							{{ admin.name }}
+						</router-link>
+						<div class="deleteRow" @click="removeAdmin(admin)"></div>
+					</div>
+				</div>
+			</div>
+
+			<div>
+				<input v-model="newAdmin" placeholder="Name">
+				<button @click="addAdmin">Add Admin</button>
+			</div>
+
+			<button @click="save" v-if="newEntry">Create</button>
+			<button @click="save" v-else>Update</button>
+		</div>
+	</template>
+	</div>
+	`
+};
+
+const groupDataApp = {
+	data: () => ({
+		loading: true,
+		newEntry: false,
+		group: null,
+		users: [],
+		datasets: [],
+		availableDatasets: [],
+		allDatasets: [],
+		selectedDataset: '',
+		selectedLevel: '',
+		availableLevels: ['none', 'view', 'edit']
+	}),
+	mounted: async function () {
+		if (this.$route.params.id === 'create') {
+			this.newEntry = true;
+			this.loading = false;
+
+			this.group = {
+				name: ''
+			};
+
+			return;
+		}
+
+		const id = Number.parseInt(this.$route.params.id);
+
+		let [group, users, datasets, availableDatasets] = await authFetch([
+			`${AUTH_URL}/group/${id}`,
+			`${AUTH_URL}/group/${id}/user`,
+			`${AUTH_URL}/group/${id}/dataset`,
+			`${AUTH_URL}/dataset`
+		]);
+	
+		this.group = group;
+	
+		this.users = users;
+		this.datasets = datasets;
+
+		this.allDatasets = availableDatasets;
+		this.updateAvailableDatasets();
+
+		this.loading = false;
+	},
+	methods: {
+		async addGroupDataset() {
+			await authFetch(`${AUTH_URL}/dataset/${this.selectedDataset}/group`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					group_id: this.group.id,
+					level: Number.parseInt(this.selectedLevel)
+				})
+			});
+		
+			this.datasets = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
+			this.updateAvailableDatasets();
+		},
+		updateAvailableDatasets() {
+			this.availableDatasets = this.allDatasets.filter((dataset) => {
+				return !this.datasets.map((d) => d.id).includes(dataset.id);
+			});
+		},
+		async updatePermissions(dataset) {
+			await authFetch(`${AUTH_URL}/dataset/${dataset.id}/group/${this.group.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					level: dataset.level
+				})
+			});
+
+			// not necessary but good to make sure that it registered
+			this.datasets = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
+			this.updateAvailableDatasets();
+		},
+		async removeDataset(dataset_id) {
+			await authFetch(`${AUTH_URL}/dataset/${dataset_id}/group/${this.group.id}`, {
+				method: 'DELETE'
+			});
+
+			this.datasets = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
+			this.updateAvailableDatasets();
+		},
+		async save() {
+			this.errors = [];
+
+			if (this.newEntry) {
+				console.log('save new entry!');
+
+				if (!this.group.name) {
+					this.errors.push(['name', 'missing']);
+				}
+
+				if (!this.errors.length) {
+					authFetch(`${AUTH_URL}/group`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							name: this.group.name
+						})
+					}).then((res) => {
+						console.log('updated entry!');
+						router.push('./')
+					})
+					.catch((res) => {
+						alert(res);
+					})
+				}
+			} else {
+				console.log('update entry!');
+			}
+		}
+	},
+	template: `
+	<div>
+	<template v-if="loading">Loading...</template>
+	<template v-else-if="newEntry">
+		<div id="userData">
+			<div class="title" v-if="newEntry">Create Group</div>
+			<div class="title" v-else>Edit Group</div>
+
+			<input v-model="group.name" placeholder="Name" required>
+
+			<button @click="save" v-if="newEntry">Create</button>
+			<button @click="save" v-else>Update</button>
+		</div>
+	</template>
+	<template v-else>
+		<div id="groupData">
+			<div class="title">Edit Group</div>
+			<div class="name">{{ group.name }}</div>
+
+			<div class="listContainer">
+				<div class="header">Users</div>
+				<div class="users list">
+					<div v-for="user in users">
+						<router-link :to="{ name: 'userData', params: { id: user.id }}">
+							{{ user.name }}
+						</router-link>
+						<div class="deleteRow" @click="removeUser(user.id)"></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="listContainer">
+				<div class="header"><span>Datasets</span></div>
+				<div class="permissions list">
+					<div v-for="dataset in datasets">
+						<router-link :to="{ name: 'datasetData', params: { id: dataset.id }}">
+							{{ dataset.name }}
+						</router-link>
+						<div>
+							<select @change="updatePermissions(dataset)" v-model="dataset.level">
+								<option v-for="(item, index) in availableLevels" v-bind:value="index">{{ item }}</option>
+							</select>
+						</div>
+						<div class="deleteRow" @click="removeDataset(dataset.id)"></div>
+					</div>
+				</div>
+			</div>
+
+			<div>
+				<select v-model="selectedDataset">
+					<option disabled="disabled" value="">Select Dataset</option>
+					<option v-for="dataset in availableDatasets" v-bind:value="dataset.id">{{ dataset.name }}</option>
+				</select>
+				<select v-model="selectedLevel">
+					<option disabled="disabled" value="">Select Level</option>
+					<option value="1">View</option>
+					<option value="2">Edit</option>
+				</select>
+				<button @click="addGroupDataset">Add Dataset</button>
+			</div>
+		</div>
+	</template>
+	</div>
+	`
+};
+
+const userDataApp = {
+	data: () => ({
+		loading: true,
+		user: null,
+		groups: [],
+		availableGroups: [],
+		allGroups: [],
+		selectedGroup: ''
+	}),
+	mounted: async function () {
+		console.log('mounted!');
+
+		const id = Number.parseInt(this.$route.params.id);
+
+		let [userInfo, usersGroups, groups] = await authFetch([
+			`${AUTH_URL}/user/${id}`,
+			`${AUTH_URL}/user/${id}/group`,
+			`${AUTH_URL}/group`]
+		);
+	
+		this.user = userInfo;
+		this.groups = usersGroups;
+		this.allGroups = groups;
+
+		this.updateAvailableGroups();
+
+		this.loading = false;
+	},
+	methods: {
+		updateAvailableGroups() {
+			this.availableGroups = this.allGroups.filter((group) => {
+				return !this.groups.map((g) => g.id).includes(group.id);
+			});
+		},
+		async update() {
+			await authFetch(`${AUTH_URL}/user/${this.user.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					admin: !this.user.admin
+				})
+			});
+
+			this.user = await authFetch(`${AUTH_URL}/user/${this.user.id}`);
+		},
+		async joinGroup() {
+			await authFetch(`${AUTH_URL}/group/${this.selectedGroup}/user`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					user_id: this.user.id
+				})
+			});
+
+			this.groups = await authFetch(`${AUTH_URL}/user/${this.user.id}/group`);
+			this.updateAvailableGroups();
+		},
+		async leaveGroup(groupId) {
+			await authFetch(`${AUTH_URL}/group/${groupId}/user/${this.user.id}`, {
+				method: 'DELETE'
+			});
+
+			this.groups = await authFetch(`${AUTH_URL}/user/${this.user.id}/group`);
+			this.updateAvailableGroups();
+		}
+	},
+	template: `
+	<div>
+	<template v-if="loading">Loading...</template>
+	<template v-else>
+		<div id="userData">
+			<div class="title">Edit User</div>
+			<div class="name">{{ user.name }}</div>
+			<div class="email">{{ user.email }}</div>
+			<div @click="update" class="admin editable">{{ user.admin }}</div>
+
+			<div class="listContainer">
+				<div class="header">Groups</div>
+				<div class="groups list">
+					<div v-for="group in groups">
+						<router-link :to="{ name: 'groupData', params: { id: group.id }}">
+							{{ group.name }}
+						</router-link>
+						<div class="deleteRow" @click="leaveGroup(group.id)"></div>
+					</div>
+				</div>
+			</div>
+
+			<div>
+				<select v-model="selectedGroup">
+					<option disabled="disabled" value="">Select Group</option>
+					<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
+				</select>
+				<button @click="joinGroup">Join Group</button>
+			</div>
+		</div>
+	</template>
+	</div>
+	`
+};
+
+const listApp = {
+	data: () => ({
+		loading: true,
+		rows: [],
+		searchInput: '',
+		url: '',
+		searchKey: '',
+		title: '',
+		displayedProps: ['id'],
+		canCreate: false
+	}),
+	methods: {
+		refresh() {
+			const searchQuery = new URLSearchParams();
+
+			if (this.searchInput.length) {
+				searchQuery.set(this.searchKey, this.searchInput);
+			}
+
+			const searchQueryString = searchQuery.toString();
+		
+			authFetch(`${AUTH_URL}${this.url}${searchQueryString ? '?' + searchQueryString : ''}`).then((rows) => {
+				this.rows = rows;
+				this.loading = false;
+			});
+		}
+	},
+	mounted: function () {
+		this.refresh();
+	},
+	template: `
+	<div id="searchUsers" class="searchAndResults">
+	<div class="searchForm right">
+		<input v-model="searchInput" @keyup.enter="refresh" type="email" :placeholder="searchKey">
+	</div>
+
+	<div id="searchUserResults" class="listContainer block">
+		<div class="header">{{ title }}</div>
+		<div class="list selectable" :style="{'grid-template-columns': 'repeat(' + displayedProps.length + ', auto)' }">
+			<div v-if="loading">
+				<div>Loading...</div>
+			</div>
+			<div v-else-if="rows.length === 0">
+				<div>No Results</div>
+			</div>
+			<template v-else>
+				<router-link v-for="data in rows" v-bind:key="data.id" :to="{ path: '' + data.id }" append>
+					<div v-for="prop in displayedProps">{{ data[prop] }}</div>
+				</router-link>
+			</template>
+		</div>
+	</div>
+
+
+	<router-link v-if="canCreate" :to="{ path: 'create' }" append>Create</router-link>
+
+	</div>
+	`
+}
+
+const userListApp = {
+	mixins: [listApp],
+	data: () => ({
+		url: '/user',
+		searchKey: 'email',
+		title: 'Users',
+		displayedProps: ['name', 'email']
+	})
+};
+
+const groupListApp = {
+	mixins: [listApp],
+	data: () => ({
+		url: '/group',
+		searchKey: 'name',
+		title: 'Groups',
+		displayedProps: ['name'],
+		canCreate: true
+	})
+};
+
+const datasetListApp = {
+	mixins: [listApp],
+	data: () => ({
+		url: '/dataset',
+		searchKey: 'name',
+		title: 'Datasets',
+		displayedProps: ['name'],
+		canCreate: true
+	})
+};
+
+const routes = [
+	{ path: '/user', name: 'userList', component: userListApp },
+	{ path: '/user/:id', name: 'userData', component: userDataApp },
+	{ path: '/group', name: 'groupList', component: groupListApp },
+	{ path: '/group/:id', name: 'groupData', component: groupDataApp },
+	{ path: '/dataset', name: 'datasetList', component: datasetListApp },
+	{ path: '/dataset/:id', name: 'datasetData', component: datasetDataApp },
+];
+
+const router = new VueRouter({
+	routes
+});
+
+const mainApp = new Vue({
+	el: "#vueApp",
+	router: router,
+	data: {
+		loggedInUser: null,
+		networkResponse: null
+	},
+	watch: {
+		networkResponse: function (newMessage) {
+			if (newMessage) {
+				setTimeout(() => {
+					this.networkResponse = null;
+				}, 400 + 500);
+			}
+		}
+	},
+	methods: {
+		login() {
+			authFetch(`${AUTH_URL}/user/me`).then((userData) => {
+				this.loggedInUser = userData;
+			});
+		},
+		logout() {
+			authFetch(`${AUTH_URL}/logout`).then(() => {
+				this.loggedInUser = null;
+				localStorage.removeItem('auth_token');
+				// window.location.reload(false);
+			});
+		}
+	}
+});
+
+
 // returns a token to be used with services that use the given auth service
 async function authorize(auth_url) {
-	const oauth_uri = await fetch(`https://${auth_url}/authorize?redirect=${encodeURI(location.href.replace(/[^/]*$/, '') + 'redirect.html')}`, {
+	const plainURL = `${location.origin}${location.pathname}`.replace(/[^/]*$/, '');
+
+	const oauth_uri = await fetch(`https://${auth_url}/authorize?redirect=${encodeURI(plainURL + 'redirect.html')}`, {
 		credentials: 'include',
 		headers: {
 			'X-Requested-With': 'Fetch'
@@ -40,7 +685,7 @@ function parseWWWAuthHeader(headerVal) {
 	return wwwAuthMap;
 }
 
-function authFetch(input, init, retry = 1) {
+async function authFetch(input, init, retry = 1) {
 	if (Array.isArray(input)) {
 		return Promise.all(input.map((url) => {
 			return authFetch(url, init, retry);
@@ -71,36 +716,49 @@ function authFetch(input, init, retry = 1) {
 		addHeader('Authorization', `Bearer ${token}`);
 	}
 
-	return fetch(input, options).then((res) => {
-		if ([400, 401].includes(res.status)) {
-			const wwwAuth = res.headers.get('WWW-Authenticate');
+	let res = await fetch(input, options);
 
-			if (wwwAuth) {
-				if (wwwAuth.startsWith('Bearer ')) {
-					const wwwAuthMap = parseWWWAuthHeader(wwwAuth);
+	if ([400, 401].includes(res.status)) {
+		const wwwAuth = res.headers.get('WWW-Authenticate');
 
-					if (!wwwAuthMap.error || wwwAuthMap.error === 'invalid_token') {
-						// missing or expired
-						if (retry > 0) {
-							return reauthenticate(wwwAuthMap.realm).then(() => {
-								return authFetch(input, init, retry - 1);
-							});
-						}
+		if (wwwAuth) {
+			if (wwwAuth.startsWith('Bearer ')) {
+				const wwwAuthMap = parseWWWAuthHeader(wwwAuth);
+
+				if (!wwwAuthMap.error || wwwAuthMap.error === 'invalid_token') {
+					// missing or expired
+					if (retry > 0) {
+						return reauthenticate(wwwAuthMap.realm).then(() => {
+							return authFetch(input, init, retry - 1);
+						});
 					}
-
-					throw new Error(`status ${res.status} auth error - ${wwwAuthMap.error} + " Reason: ${wwwAuthMap.error_description}`);
 				}
+
+				throw new Error(`status ${res.status} auth error - ${wwwAuthMap.error} + " Reason: ${wwwAuthMap.error_description}`);
 			}
 		}
+	}
 
-		const contentType = res.headers.get("content-type");
+	const httpMethod = (init && init.method) || 'GET';
 
-		if (contentType === 'application/json') {
-			return res.json();
-		} else {
-			return res;
-		}
-	});
+
+	const contentType = res.headers.get("content-type");
+
+	const message = await ((contentType === 'application/json') ? res.json() : res.text());
+
+
+	if (httpMethod !== 'GET') {
+		mainApp.networkResponse = {
+			message: message,
+			error: res.status !== 200
+		};
+	}
+
+	if (res.status === 200) {
+		return message;
+	} else {
+		throw new Error(`status: ${res.status} message: ${message}`);
+	}
 }
 
 async function reauthenticate(realm) {
@@ -108,337 +766,6 @@ async function reauthenticate(realm) {
 	localStorage.setItem('auth_token', token);
 }
 
-const loginBtn = document.getElementById('loginBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-
-// let availableGroups = null;
-
-// const refreshAvailableGroups = () => {
-// 	return new Promise((f, r) => {
-// 		authFetch(`${AUTH_URL}/group`).then((res) => {
-// 			return res.json();
-// 		}).then((res) => {
-// 			availableGroups = res;
-
-// 			addGroupSelect.innerHTML = "";
-
-// 			for (let group of res) {
-// 				const optionEl = document.createElement('option');
-// 				optionEl.value = group.id;
-// 				optionEl.innerHTML = group.name;
-
-// 				addGroupSelect.appendChild(optionEl);
-// 			}
-
-// 			f();
-// 		});
-// 	})
-// };
-
-const login = () => {
-	authFetch(`${AUTH_URL}/test`).then((userData) => {
-		document.body.classList.toggle('loggedIn', true);
-		document.body.classList.toggle('isAdmin', userData.admin);
-
-		document.getElementById('email').innerHTML = `${userData.email}`;
-
-		// refreshAvailableGroups();
-
-		refreshUsers();
-		refreshGroups();
-	});
-};
-
-loginBtn.addEventListener('click', login);
-
-logoutBtn.addEventListener('click', () => {
-	authFetch(`${AUTH_URL}/logout`).then(() => {
-		localStorage.removeItem('auth_token');
-		window.location.reload(false);
-	});
-});
-
-function renderItem(item, containerEl) {
-	for (let [key, value] of Object.entries(item)) {
-		const el = containerEl.querySelector(`.${key}`);
-
-		if (el) {
-			el.innerHTML = '';
-
-			if (el.classList.contains('list')) {
-				for (let val of value) {
-					console.log('val', val);
-
-					const valEL = document.createElement('div');
-					valEL.innerHTML = JSON.stringify(val);
-
-					const deleteRowEl = document.createElement('div');
-					deleteRowEl.className = "deleteRow";
-
-					el.appendChild(valEL);
-					el.appendChild(deleteRowEl);
-
-					if (el.dataset.link) {
-						const funcs = {
-							user: selectUser,
-							group: selectGroup
-						}
-
-						if (funcs[el.dataset.link]) {
-							valEL.addEventListener('click', () => {
-								funcs[el.dataset.link](val.id);
-							});
-						}
-					}
-
-					// deleteRowEl.addEventListener('click', () => {
-
-					// 	for (let {id, name} of availableGroups) {
-					// 		if (name === val) {
-					// 			authFetch(`${AUTH_URL}/group/${id}/user/${selectedUserId}`, {
-					// 				method: 'DELETE'
-					// 			}).then((res) => {
-					// 				refreshSelectedUser();
-					// 			});
-					// 		}
-					// 	}
-					// });
-				}
-			} else {
-				el.innerHTML = value;
-
-				if (el.classList.contains('editable')) {
-					const body = {};
-					body[key] = !value;
-
-					const newEL = () => {
-						authFetch(`${AUTH_URL}/user/${selectedUserId}`, {
-							method: 'PUT',
-							headers: {
-								'Content-Type': 'application/json'
-							},
-							body: JSON.stringify(body)
-						}).then((res) => {
-							refreshSelectedUser();
-						});
-					};
-					
-					if (el.prevEL) {
-						el.removeEventListener('click', el.prevEL);
-					}
-
-					el.prevEL = newEL;
-					el.addEventListener('click', newEL);
-				}
-			}
-		}
-	}
-}
-
-let selectedUserId = null;
-
-async function refreshSelectedUser() {
-	if (selectedUserId === null) {
-		document.body.classList.toggle('selectedUser', false);
-		return;
-	}
-
-	let [userInfo, usersGroups] = await authFetch([
-		`${AUTH_URL}/user/${selectedUserId}`,
-		`${AUTH_URL}/user/${selectedUserId}/groups`]
-	);
-
-	userInfo.groups = usersGroups;
-
-	renderItem(userInfo, document.getElementById('userData'));
-	document.body.classList.toggle('selectedGroup', false);
-	document.body.classList.toggle('selectedUser', true);
-};
-
-let selectedGroupId = null;
-
-async function refreshSelectedGroup() {
-	if (selectedGroupId === null) {
-		document.body.classList.toggle('selectedGroup', false);
-		return;
-	}
-
-	let [group, users, datasets] = await authFetch([
-		`${AUTH_URL}/group/${selectedGroupId}`,
-		`${AUTH_URL}/group/${selectedGroupId}/user`,
-		`${AUTH_URL}/group/${selectedGroupId}/dataset`
-	]);
-
-	datasets = datasets.map(([name, permissions]) => {
-		return [name, {
-			admin: !!(permissions & 4),
-			edit: !!(permissions & 2),
-			read: !!(permissions & 1)
-		}];
-	});
-
-	group.users = users;
-	group.datasets = datasets;
-
-	console.log('datasets', datasets);
-
-	renderItem(group, document.getElementById('groupData'));
-	document.body.classList.toggle('selectedUser', false);
-	document.body.classList.toggle('selectedGroup', true);
-}
-
-function searchList(searchBtn, url, filters, listEl, clickHandler) {
-	function refresh() {
-		const searchQuery = new URLSearchParams();
-
-		for (let [key, input] of Object.entries(filters)) {
-			if (input.value.length) {
-				searchQuery.set(key, input.value);
-			}
-		}
-
-		const searchQueryString = searchQuery.toString();
-	
-		authFetch(`${AUTH_URL}${url}${searchQueryString ? '?' + searchQueryString : ''}`).then((rows) => {
-			const searchResultsListEl = listEl.querySelector('.list');
-			searchResultsListEl.innerHTML = "";
-	
-			// searchResultsListEl.classList.toggle('hasResult', true);
-	
-			if (rows.length === 0) {
-				const rowEl = document.createElement('div');
-				rowEl.innerHTML = 'No Results';
-				searchResultsListEl.appendChild(rowEl);
-			}
-	
-			for (let row of rows) {
-				const rowEl = document.createElement('div');
-				rowEl.innerHTML = JSON.stringify(row);
-				searchResultsListEl.appendChild(rowEl);
-	
-				rowEl.addEventListener('click', () => {
-					clickHandler(row.id);
-				});
-			}
-		});
-	}
-
-
-	searchBtn.addEventListener('click', refresh);
-
-	return refresh;
-}
-
-document.querySelector('#userData .closeBtn').addEventListener('click', () => {
-	selectUser(null);
-});
-
-document.querySelector('#groupData .closeBtn').addEventListener('click', () => {
-	selectGroup(null);
-});
-
-function selectUser(userId) {
-	selectedUserId = userId;
-	selectedGroupId = null;
-	refreshSelectedUser();
-}
-
-function selectGroup(groupId) {
-	selectedGroupId = groupId;
-	selectedUserId = null;
-	refreshSelectedGroup();
-}
-
-const refreshUsers = searchList(
-	document.getElementById('searchUserBtn'),
-	"/user",
-	{
-		email: document.getElementById('getUserInput')
-	},
-	document.getElementById('searchUserResults'),
-	selectUser);
-
-const refreshGroups = searchList(
-	document.getElementById('searchGroupBtn'),
-	"/group",
-	{
-		name: document.getElementById('getGroupInput')
-	},
-	document.getElementById('searchGroupResults'),
-	selectGroup);
-
-const addGroupSelect = document.getElementById('addGroupSelect');
-const addGroupBtn = document.getElementById('addGroupBtn');
-const removeGroupBtn = document.getElementById('removeGroupBtn');
-
-addGroupBtn.addEventListener('click', () => {
-	if (!selectedUserId) {
-		return;
-	}
-
-	authFetch(`${AUTH_URL}/group/${addGroupSelect.value}/user`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify({
-			user_id: Number(selectedUserId)
-		})
-	}).then((res) => {
-		refreshSelectedUser();
-	});
-});
-
-const addDatasetInput = document.getElementById('addDatasetInput');
-const canViewCheckbox = document.getElementById('canViewCheckbox');
-const canEditCheckbox = document.getElementById('canEditCheckbox');
-const canAdminCheckbox = document.getElementById('canAdminCheckbox');
-const addDatasetBtn = document.getElementById('addDatasetBtn');
-
-addDatasetBtn.addEventListener('click', () => {
-	if (!selectedGroupId) {
-		return;
-	}
-
-	authFetch(`${AUTH_URL}/group/${selectedGroupId}/dataset`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify({
-			dataset_name: addDatasetInput.value,
-			can_view: canViewCheckbox.checked,
-			can_edit: canEditCheckbox.checked,
-			can_admin: canAdminCheckbox.checked
-		})
-	}).then((res) => {
-		refreshSelectedGroup();
-	});
-});
-
-const createGroupInput = document.getElementById('createGroupInput');
-const createGroupBtn = document.getElementById('createGroupBtn');
-
-createGroupBtn.addEventListener('click', () => {
-	authFetch(`${AUTH_URL}/group`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify({
-			name: createGroupInput.value
-		})
-	}).then((res) => {
-		refreshGroups();
-	});
-});
-
-// createGroupInput
-
-const myDataEl = document.getElementById('myData');
-
-const AUTH_URL = 'https://dev.dynamicannotationframework.com/auth';
-
 if (localStorage.getItem('auth_token')) {
-	login();
+	mainApp.login();
 }
