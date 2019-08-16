@@ -22,15 +22,16 @@ def setup_app():
 
     with app.app_context():
         db.init_app(app)
-        db.create_all()
-
-        existing_admin = User.get_by_email("chris@eyewire.org")
-
-        if not existing_admin:
-            User.create_account("chris@eyewire.org", "chris", admin=True, group_names=["default"])
-
-        APIKey.load_into_cache()
 
     app.register_blueprint(mod)
+
+    @app.before_first_request
+    def initialize():
+        existing_admin = User.get_by_email("chris@eyewire.org")
+        
+        if not existing_admin:
+            User.create_account("chris@eyewire.org", "chris", admin=True, group_names=["default"])
+        
+        APIKey.load_into_cache()
 
     return app
