@@ -8,5 +8,6 @@ Flask-Cors
 psycopg2
 sqlalchemy
 flask-sqlalchemy
-middle-auth-client>=0.1.12
+Flask-Migrate
+middle-auth-client==1.1.0
 furl
