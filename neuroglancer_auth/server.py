@@ -5,7 +5,7 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from .model import db, User, APIKey, Group, UserGroup, GroupDataset, insert_and_generate_unique_token, delete_token
+from .model import db, User, APIKey, Group, UserGroup, Dataset, GroupDataset, insert_and_generate_unique_token, delete_token
 from .dec import auth_required, auth_requires_admin, auth_requires_roles
 import sqlalchemy
 from furl import furl
@@ -183,6 +183,26 @@ def get_user_permissions(user_id):
     else:
         return flask.Response("User doesn't exist", 404)
 
+@mod.route('/dataset', methods=['GET'])
+@auth_requires_admin
+def get_all_datasets():    
+    datasets = Dataset.search_by_name(flask.request.args.get('name'))
+    return flask.jsonify([dataset.as_dict() for dataset in datasets])
+
+@mod.route('/dataset', methods=['POST'])
+@auth_requires_admin
+def create_dataset_route():
+    data = flask.request.json
+
+    if data and 'name' in data:
+        try:
+            dataset = Dataset.add(data['name'])
+            return flask.jsonify("success")
+        except sqlalchemy.exc.IntegrityError as err:
+            return flask.Response("Dataset already exists.", 422)
+    else:
+        return flask.Response("Missing name.", 400)
+
 @mod.route('/group', methods=['GET'])
 @auth_requires_admin
 def get_all_groups():    
@@ -226,26 +246,26 @@ def get_datasets_from_group_route(group_id):
 def add_dataset_to_group_route(group_id):
     data = flask.request.json
 
-    if data and 'dataset_name' in data:
+    if data and 'dataset_id' in data:
         try:
-            GroupDataset.add(int(group_id), data['dataset_name'], data.get('can_view', False), data.get('can_edit', False), data.get('can_admin', False))
+            GroupDataset.add(int(group_id), int(data['dataset_id']), data.get('view', False), data.get('edit', False), data.get('admin', False))
             return flask.jsonify("success")
         except sqlalchemy.exc.IntegrityError as err:
             return flask.Response("Group already contains dataset.", 422)
     else:
-        return flask.Response("Missing dataset_name.", 400)
+        return flask.Response("Missing dataset_id.", 400)
 
-@mod.route('/group/<group_id>/dataset/<dataset_name>', methods=['PUT'])
+@mod.route('/group/<group_id>/dataset/<dataset_id>', methods=['PUT'])
 @auth_requires_admin
-def update_dataset_to_group_route(group_id, dataset_name):
+def update_dataset_to_group_route(group_id, dataset_id):
     data = flask.request.json
 
     if data:
         try:
-            gd = GroupDataset.query.filter_by(group_id=group_id, dataset_name=dataset_name).first()
+            gd = GroupDataset.query.filter_by(group_id=group_id, dataset_id=int(dataset_id)).first()
 
             if gd:
-                gd.update(data.get('can_view', False), data.get('can_edit', False), data.get('can_admin', False))
+                gd.update(data.get('view', False), data.get('edit', False), data.get('admin', False))
                 return flask.jsonify("success")
             else:
                 return flask.Response("Dataset doesn't exist for this group", 404)
@@ -253,6 +273,12 @@ def update_dataset_to_group_route(group_id, dataset_name):
             return flask.Response("Group already contains dataset.", 422)
     else:
         return flask.Response("Missing data.", 400)
+
+@mod.route('/group/<group_id>/dataset/<dataset_id>', methods=['DELETE'])
+@auth_requires_admin
+def remove_dataset_to_group_route(group_id, dataset_id):
+    GroupDataset.remove(group_id=group_id, dataset_id=int(dataset_id)) # TODO return error if group doesn't exist
+    return flask.jsonify("success")
 
 @mod.route('/group/<group_id>/user', methods=['GET'])
 @auth_requires_admin
@@ -280,12 +306,6 @@ def add_user_to_group_route(group_id):
 def remove_user_from_group_route(group_id, user_id):
     UserGroup.remove(int(user_id), int(group_id)) # no error possible? if user doesn't have role, just return success? should probably fail
     return flask.jsonify("success")
-
-@mod.route('/dataset', methods=['GET'])
-@auth_requires_admin
-def get_datasets_route():
-    datasets = GroupDataset.get_all_datasets()
-    return flask.jsonify(datasets)
 
 @mod.route('/my_permissions')
 @auth_required
