@@ -113,3 +113,13 @@ def auth_requires_roles_any(*required_roles):
            
         return decorated_function
     return decorator
+
+def auth_required_table(f):
+    @wraps(f)
+    @auth_required
+    def decorated_function(table_id, *args, **kwargs):
+        flask.g.test_table = table_id
+
+        return f(*([table_id] + args), **kwargs)
+
+    return decorated_function
