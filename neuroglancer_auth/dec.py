@@ -76,40 +76,68 @@ def auth_requires_admin(f):
 
     return decorated_function
 
-def auth_requires_roles(*required_roles):
-    def decorator(f):
-        @wraps(f)
-        @auth_required
-        def decorated_function(*args, **kwargs):
-            users_roles = flask.g.auth_user['roles']
-            missing_roles = []
+# def auth_requires_roles(*required_roles):
+#     def decorator(f):
+#         @wraps(f)
+#         @auth_required
+#         def decorated_function(*args, **kwargs):
+#             users_roles = flask.g.auth_user['roles']
+#             missing_roles = []
 
-            for role in required_roles:
-                if not role in users_roles:
-                    missing_roles += [role]
+#             for role in required_roles:
+#                 if not role in users_roles:
+#                     missing_roles += [role]
 
-            if missing_roles:
-                resp = flask.Response("Missing role(s): {0}".format(missing_roles), 403)
-                return resp
-            else:
-                return f(*args, **kwargs)
+#             if missing_roles:
+#                 resp = flask.Response("Missing role(s): {0}".format(missing_roles), 403)
+#                 return resp
+#             else:
+#                 return f(*args, **kwargs)
 
-        return decorated_function
-    return decorator
+#         return decorated_function
+#     return decorator
 
-def auth_requires_roles_any(*required_roles):
-    def decorator(f):
-        @wraps(f)
-        @auth_required
-        def decorated_function(*args, **kwargs):
-            users_roles = flask.g.auth_user['roles']
+# def auth_requires_roles_any(*required_roles):
+#     def decorator(f):
+#         @wraps(f)
+#         @auth_required
+#         def decorated_function(*args, **kwargs):
+#             users_roles = flask.g.auth_user['roles']
 
-            for role in required_roles:
-                if role in users_roles:
-                    return f(*args, **kwargs)
+#             for role in required_roles:
+#                 if role in users_roles:
+#                     return f(*args, **kwargs)
 
-            resp = flask.Response("Requires one of the following roles: {0}".format(list(required_roles)), 403)
-            return resp
+#             resp = flask.Response("Requires one of the following roles: {0}".format(list(required_roles)), 403)
+#             return resp
            
-        return decorated_function
-    return decorator
+#         return decorated_function
+#     return decorator
+
+def auth_requires_roles(required_permission):
+    def decorator(f):
+        @wraps(f)
+        @auth_required
+        def decorated_function(table_id, *args, **kwargs):
+            table_id_to_dataset = {
+                "pinky100_sv16": "pink100",
+                "pinky100_neo1": "pink100",
+                "pinky100_rv5": "pink100",
+                "fly_v26": "fafb",
+                "fly_v31": "fafb",
+            }
+
+            dataset = table_id_to_dataset.get(table_id)
+
+            if dataset is not None:
+                permissions_for_dataset = flask.g.auth_user['permissions'].get(dataset, {'admin': False, 'edit': False, 'view': False})
+                has_permission = permissions_for_dataset.get(required_permission)
+
+                if has_permission:
+                    return f(*((table_id,) + args), **kwargs)
+                else:
+                    resp = flask.Response("Missing permission: {0} for dataset {0}".format(required_permission, dataset), 403)
+                    return resp
+            else:
+                resp = flask.Response("Internal Error", 500) # or just return 403 because the dataset doesn't exist
+                return resp
