@@ -27,6 +27,32 @@ body {
     margin: 0px;
 }
 
+#networkMessage {
+    position: absolute;
+    z-index: 9999;
+    width: 100%;
+    height: 50px;
+    display: grid;
+    justify-content: center;
+    align-content: center;
+
+    background-color: hsla(120, 53%, 77%, 1);
+    border-bottom: 1px solid black;
+}
+
+#networkMessage.error {
+    background-color: hsl(6, 100%, 72%);
+}
+
+.networkMessage-enter, .networkMessage-leave-to {
+    opacity: 0;
+    margin-top: -10px;
+}
+
+.networkMessage-enter-active, .networkMessage-leave-active {
+    transition: all 0.4s;
+}
+
 #main, #menuBar {
     padding: 10px;
 }
@@ -46,31 +72,6 @@ body {
     height: 45px;
     z-index: 100;
     background-color: white;
-}
-
-.sideBar, .right {
-    transition: margin-right 200ms;
-}
-
-.sideBar {
-    display: grid;
-    grid-auto-rows: min-content;
-    grid-row-gap: 5px;
-    box-sizing: border-box;
-    position: fixed;
-    top: 0px;
-    right: 0;
-    height: 100vh;
-    width: 350px;
-    margin-right: -350px;
-    background-color: white;
-    padding: 10px;
-    padding-top: 60px;
-}
-
-body.selectedUser #userData.sideBar, body.selectedGroup #groupData.sideBar {
-    margin-right: 0;
-    box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.5);
 }
 
 .closeBtn {
@@ -136,20 +137,11 @@ body:not(.isAdmin) .requiresAdmin {
     content: "Admin: "
 }
 
-.sideBar .list {
-    display: grid;
-    grid-template-columns: 1fr min-content;
-}
-
-.sideBar .list[data-link] {
+.deleteRow {
     cursor: pointer;
 }
 
-.sideBar .list > .deleteRow {
-    cursor: pointer;
-}
-
-.sideBar .list > .deleteRow::before {
+.deleteRow::before {
     content: '×';
     line-height: 15px;
 }
@@ -173,11 +165,13 @@ body:not(.isAdmin) .requiresAdmin {
     display: grid;
 }
 
-.list.selectable > div {
-    cursor: pointer;
+.list > * {
+    display: contents;
+    color: inherit;
+    text-decoration: inherit;
 }
 
-.list > div {
+.list > * > * {
     padding: 5px;
     border-bottom: 1px solid #e4e4e4;
 }
@@ -186,16 +180,46 @@ body:not(.isAdmin) .requiresAdmin {
     border-bottom: none;
 }
 
-.sideBar .list > div:nth-last-child(-n+2) {
-    border-bottom: none;
-}
-
 #searchResults .list > div:nth-child(2n), .groups > div:nth-child(4n+3), .groups > div:nth-child(4n+4) {
     background-color: #d3d3d333;
 }
 
+.listItem {
+    display: grid;
+    align-items: center;
+}
+
+.permissions.list {
+    grid-template-columns: auto min-content min-content;
+}
+
+.permissions.list select {
+    text-transform: capitalize;
+}
+
+.users.list .listItem {
+    grid-template-columns: auto min-content;
+}
+
+.listItem > div {
+    grid-row: 1;
+}
+
+.listItem .name {
+    grid-column: 1;
+}
+
 input {
     padding: 5px;
+}
+
+input:invalid {
+    box-shadow: 0 0 5px 1px red;
+}
+
+input[type="checkbox"] {
+    margin: 0;
+    padding: 0;
 }
 
 div.requiresLoggedIn {
@@ -213,11 +237,24 @@ div.requiresLoggedIn {
     align-self: start;
 }
 
-.searchForm {
-    justify-self: end;
-}
-
 .searchAndResults {
     display: grid;
     grid-row-gap: 10px;
+}
+
+
+
+#userData .groups.list {
+    grid-template-columns: auto min-content;
+}
+
+#groupData .users.list {
+    grid-template-columns: auto min-content;
+}
+
+.datasetPermissionToggle {
+    display: grid;
+    grid-template-columns: min-content min-content;
+    grid-column-gap: 10px;
+    align-items: center;
 }
