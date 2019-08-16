@@ -5,7 +5,7 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from .model import db, User, APIKey, Group, UserGroup, GroupDataset, insert_and_generate_unique_token, delete_token
+from .model import db, User, APIKey, Group, UserGroup, Dataset, GroupDataset, insert_and_generate_unique_token, delete_token
 from .dec import auth_required, auth_requires_admin, auth_requires_roles
 import sqlalchemy
 from furl import furl
@@ -183,6 +183,26 @@ def get_user_permissions(user_id):
     else:
         return flask.Response("User doesn't exist", 404)
 
+@mod.route('/dataset', methods=['GET'])
+@auth_requires_admin
+def get_all_groups():    
+    datasets = Dataset.search_by_name(flask.request.args.get('name'))
+    return flask.jsonify([dataset.as_dict() for dataset in datasets])
+
+@mod.route('/dataset', methods=['POST'])
+@auth_requires_admin9sdf
+def create_dataset_route():
+    data = flask.request.json
+
+    if data and 'name' in data:
+        try:
+            dataset = Dataset.add(data['name'])
+            return flask.jsonify("success")
+        except sqlalchemy.exc.IntegrityError as err:
+            return flask.Response("Dataset already exists.", 422)
+    else:
+        return flask.Response("Missing name.", 400)
+
 @mod.route('/group', methods=['GET'])
 @auth_requires_admin
 def get_all_groups():    
@@ -280,12 +300,6 @@ def add_user_to_group_route(group_id):
 def remove_user_from_group_route(group_id, user_id):
     UserGroup.remove(int(user_id), int(group_id)) # no error possible? if user doesn't have role, just return success? should probably fail
     return flask.jsonify("success")
-
-@mod.route('/dataset', methods=['GET'])
-@auth_requires_admin
-def get_datasets_route():
-    datasets = GroupDataset.get_all_datasets()
-    return flask.jsonify(datasets)
 
 @mod.route('/my_permissions')
 @auth_required
