@@ -10,6 +10,8 @@ from .model import User, APIKey
 from werkzeug.contrib.fixers import ProxyFix
 import redis # used in the envvar config
 
+from flask_migrate import Migrate, upgrade
+
 __version__ = '0.0.30'
 
 
@@ -22,15 +24,18 @@ def setup_app():
 
     with app.app_context():
         db.init_app(app)
-        db.create_all()
-
-        existing_admin = User.get_by_email("chris@eyewire.org")
-
-        if not existing_admin:
-            User.create_account("chris@eyewire.org", "chris", admin=True, group_names=["default"])
-
-        APIKey.load_into_cache()
+        migrate = Migrate(app, db)
+        upgrade()
 
     app.register_blueprint(mod)
+
+    @app.before_first_request
+    def initialize():
+        existing_admin = User.get_by_email("chris@eyewire.org")
+        
+        if not existing_admin:
+            User.create_account("chris@eyewire.org", "chris", admin=True, group_names=["default"])
+        
+        APIKey.load_into_cache()
 
     return app
