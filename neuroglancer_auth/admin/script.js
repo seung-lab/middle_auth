@@ -1,4 +1,4 @@
-const AUTH_URL = 'https://fafbm.dynamicannotationframework.com/auth';
+const AUTH_URL = '..';
 
 const datasetDataApp = {
 	data: () => ({
