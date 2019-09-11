@@ -12,7 +12,7 @@ from furl import furl
 
 from functools import wraps
 
-__version__ = '0.0.30'
+__version__ = '0.1.0'
 import os
 
 mod = flask.Blueprint('auth', __name__, url_prefix='/auth')
