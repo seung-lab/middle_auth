@@ -290,7 +290,7 @@ def add_dataset_to_group_route(dataset_id):
             return flask.make_response(flask.jsonify("Invalid level: {0}".format(level)), 400)
 
         try:
-            GroupDataset.add(dataset_id, int(data['group_id']), level)
+            GroupDataset.add(dataset_id=dataset_id, group_id=int(data['group_id']), level=level)
             return flask.jsonify("success")
         except sqlalchemy.exc.IntegrityError as err:
             return flask.make_response(flask.jsonify("Dataset already includes group."), 422)
