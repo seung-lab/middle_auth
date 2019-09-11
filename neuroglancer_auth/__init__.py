@@ -10,7 +10,7 @@ from .model import User, APIKey
 from werkzeug.contrib.fixers import ProxyFix
 import redis # used in the envvar config
 
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
 
 def setup_app():
