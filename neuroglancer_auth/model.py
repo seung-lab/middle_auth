@@ -284,7 +284,7 @@ class Dataset(db.Model):
         
         permissions = query.all()
 
-        return [{'id': dataset_id, 'name': dataset_name, 'level': level} for group, dataset_name, level in permissions]
+        return [{'id': group_id, 'name': dataset_name, 'level': level} for group, dataset_name, level in permissions]
 
 class GroupDataset(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
