@@ -22,6 +22,7 @@ def setup_app():
 
     with app.app_context():
         db.init_app(app)
+        db.create_all()
 
     app.register_blueprint(mod)
 
