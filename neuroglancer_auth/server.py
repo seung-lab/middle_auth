@@ -5,10 +5,19 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from .model import db, User, APIKey, Group, UserGroup, Dataset, DatasetAdmin, GroupDataset, insert_and_generate_unique_token, delete_token
 from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
+
+from .model.user import User
+from .model.api_key import APIKey, insert_and_generate_unique_token, delete_token
+from .model.dataset_admin import DatasetAdmin
+from .model.group import Group
+from .model.user_group import UserGroup
+from .model.dataset import Dataset
+from .model.group_dataset import GroupDataset
+
+import os
 
 from functools import wraps
 
