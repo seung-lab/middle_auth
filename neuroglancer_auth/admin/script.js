@@ -1,4 +1,4 @@
-const AUTH_URL = '..';
+const AUTH_URL = 'https://fafbm.dynamicannotationframework.com/auth';
 
 const datasetDataApp = {
 	data: () => ({
@@ -222,9 +222,12 @@ const groupDataApp = {
 		newEntry: false,
 		group: null,
 		users: [],
+		admins: [],
+		nonAdmins: [],
 		datasets: [],
 		availableDatasets: [],
 		allDatasets: [],
+		selectedUser: '',
 		selectedDataset: '',
 		selectedLevel: '',
 		availableLevels: ['none', 'view', 'edit']
@@ -253,6 +256,8 @@ const groupDataApp = {
 		this.group = group;
 	
 		this.users = users;
+		this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
+		this.updateNonAdmins();
 		this.datasets = datasets;
 
 		this.allDatasets = availableDatasets;
@@ -261,6 +266,33 @@ const groupDataApp = {
 		this.loading = false;
 	},
 	methods: {
+		async removeUser(userId) {
+			await authFetch(`${AUTH_URL}/group/${this.group.id}/user/${userId}`, {
+				method: 'DELETE'
+			});
+
+			this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
+			this.admins = await authFetch(`${AUTH_URL}/group/${this.group.id}/admin`);
+			this.updateNonAdmins();
+		},
+		async makeAdmin() {
+			this.setAdmin(parseInt(this.selectedUser), true);
+		},
+		async setAdmin(userId, admin) {
+			await authFetch(`${AUTH_URL}/group/${this.group.id}/user/${userId}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					admin: admin
+				})
+			});
+
+			this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
+			this.admins = await authFetch(`${AUTH_URL}/group/${this.group.id}/admin`);
+			this.updateNonAdmins();
+		},
 		async addGroupDataset() {
 			await authFetch(`${AUTH_URL}/dataset/${this.selectedDataset}/group`, {
 				method: 'POST',
@@ -279,6 +311,11 @@ const groupDataApp = {
 		updateAvailableDatasets() {
 			this.availableDatasets = this.allDatasets.filter((dataset) => {
 				return !this.datasets.map((d) => d.id).includes(dataset.id);
+			});
+		},
+		updateNonAdmins() {
+			this.nonAdmins = this.users.filter((user) => {
+				return !this.admins.map((u) => u.id).includes(user.id);
 			});
 		},
 		async updatePermissions(dataset) {
@@ -346,8 +383,7 @@ const groupDataApp = {
 
 			<input v-model="group.name" placeholder="Name" required>
 
-			<button @click="save" v-if="newEntry">Create</button>
-			<button @click="save" v-else>Update</button>
+			<button @click="save">Create</button>
 		</div>
 	</template>
 	<template v-else>
@@ -356,16 +392,15 @@ const groupDataApp = {
 			<div class="name">{{ group.name }}</div>
 
 			<div class="listContainer">
-				<div class="header">Users</div>
-				<div class="users list">
-					<div v-for="user in users">
+				<div class="header">Admins</div>
+				<div class="admins list">
+					<div v-for="user in admins">
 						<div>
 							<router-link :to="{ name: 'userData', params: { id: user.id }}">
 								{{ user.name }}
 							</router-link>
-							<span class="is_admin" v-if="user.admin">Admin</span>
 						</div>
-						<div class="deleteRow" @click="removeUser(user.id)"></div>
+						<div class="deleteRow" @click="setAdmin(user.id, false)"></div>
 					</div>
 				</div>
 			</div>
@@ -388,6 +423,14 @@ const groupDataApp = {
 			</div>
 
 			<div>
+				<select v-model="selectedUser">
+					<option disabled="disabled" value="">Select User</option>
+					<option v-for="user in nonAdmins" v-bind:value="user.id">{{ user.name }} ({{ user.email }})</option>
+				</select>
+				<button @click="makeAdmin">Make Admin</button>
+			</div>
+
+			<div>
 				<select v-model="selectedDataset">
 					<option disabled="disabled" value="">Select Dataset</option>
 					<option v-for="dataset in availableDatasets" v-bind:value="dataset.id">{{ dataset.name }}</option>
@@ -398,6 +441,21 @@ const groupDataApp = {
 					<option value="2">Edit</option>
 				</select>
 				<button @click="addGroupDataset">Add Dataset</button>
+			</div>
+
+			<div class="listContainer">
+				<div class="header">Users</div>
+				<div class="users list">
+					<div v-for="user in users">
+						<div>
+							<router-link :to="{ name: 'userData', params: { id: user.id }}">
+								{{ user.name }}
+							</router-link>
+							<span class="is_admin" v-if="user.admin">Admin</span>
+						</div>
+						<div class="deleteRow" @click="removeUser(user.id)"></div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</template>
@@ -756,7 +814,7 @@ async function authFetch(input, init, retry = 1) {
 
 	if (httpMethod !== 'GET') {
 		mainApp.networkResponse = {
-			message: res.status === 200 ? 'Success!' : res.message,
+			message: res.status === 200 ? 'Success!' : message,
 			error: res.status !== 200
 		};
 	}
