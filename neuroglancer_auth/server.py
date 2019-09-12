@@ -5,10 +5,19 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from .model import db, User, APIKey, Group, UserGroup, Dataset, DatasetAdmin, GroupDataset, insert_and_generate_unique_token, delete_token
 from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
+
+from .model.user import User
+from .model.api_key import APIKey, insert_and_generate_unique_token, delete_token
+from .model.dataset_admin import DatasetAdmin
+from .model.group import Group
+from .model.user_group import UserGroup
+from .model.dataset import Dataset
+from .model.group_dataset import GroupDataset
+
+import os
 
 from functools import wraps
 
@@ -314,8 +323,7 @@ def remove_admin_from_dataset(dataset_id, user_id):
 @mod.route('/dataset/<int:dataset_id>/group', methods=['GET'])
 @requires_dataset_admin
 def get_all_groups_for_dataset(dataset_id): # nearly identical to get_datasets_from_group_route
-    dataset = Dataset.get_by_id(dataset_id)
-    permissions = dataset.get_permissions()
+    permissions = GroupDataset.get_all_group_permissions(dataset_id)
     return flask.jsonify(permissions)
 
 @mod.route('/dataset/<int:dataset_id>/group', methods=['POST'])
@@ -395,15 +403,14 @@ def get_group(group_id):
 @mod.route('/group/<int:group_id>/dataset', methods=['GET'])
 @requires_group_admin
 def get_datasets_from_group_route(group_id):
-    group = Group.get_by_id(group_id)
-    permissions = group.get_permissions()
+    permissions = GroupDataset.get_permissions_for_group(group_id)
     return flask.jsonify(permissions)
 
 @mod.route('/group/<int:group_id>/user', methods=['GET'])
 @requires_group_admin
 def get_users_from_group_route(group_id):
-    group = Group.get_by_id(group_id)
-    users = group.get_users()
+    # todo, we should check to see if the group is valid before checking for users
+    users = UserGroup.get(group_id)
     return flask.jsonify(users)
 
 @mod.route('/group/<int:group_id>/user', methods=['POST'])
