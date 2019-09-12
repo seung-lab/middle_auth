@@ -5,8 +5,12 @@ app = Flask(__name__)
 from flask_session import Session
 from flask_cors import CORS
 
-from .server import mod, db
-from .model import User, APIKey
+from .server import mod
+from .model.base import db
+from .model.user import User
+from .model.api_key import APIKey
+
+
 from werkzeug.contrib.fixers import ProxyFix
 import redis # used in the envvar config
 
