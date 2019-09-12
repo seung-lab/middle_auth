@@ -238,6 +238,20 @@ def get_all_datasets():
     datasets = Dataset.get_all_by_admin(flask.g.auth_user['id'])
     return flask.jsonify([dataset.as_dict() for dataset in datasets])
 
+@mod.route('/dataset', methods=['POST'])
+@auth_requires_admin
+def create_dataset_route():
+    data = flask.request.json
+
+    if data and 'name' in data:
+        try:
+            dataset = Dataset.add(data['name'])
+            return flask.jsonify("success")
+        except sqlalchemy.exc.IntegrityError as err:
+            return flask.make_response(flask.jsonify("Dataset already exists."), 422)
+    else:
+        return flask.Response("Missing name.", 400)
+
 @mod.route('/dataset/<int:dataset_id>', methods=['GET'])
 @requires_dataset_admin
 def get_dataset(dataset_id):
@@ -321,20 +335,6 @@ def update_dataset_to_group_route(dataset_id, group_id):
 def remove_dataset_to_group_route(dataset_id, group_id):
     GroupDataset.remove(group_id=group_id, dataset_id=int(dataset_id)) # TODO return error if group doesn't exist
     return flask.jsonify("success")
-
-@mod.route('/dataset', methods=['POST'])
-@auth_requires_admin
-def create_dataset_route():
-    data = flask.request.json
-
-    if data and 'name' in data:
-        try:
-            dataset = Dataset.add(data['name'])
-            return flask.jsonify("success")
-        except sqlalchemy.exc.IntegrityError as err:
-            return flask.make_response(flask.jsonify("Dataset already exists."), 422)
-    else:
-        return flask.Response("Missing name.", 400)
 
 @mod.route('/group', methods=['GET'])
 @auth_required
