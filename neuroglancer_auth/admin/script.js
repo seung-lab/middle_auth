@@ -1,4 +1,4 @@
-const AUTH_URL = '..';
+const AUTH_URL = 'https://fafbm.dynamicannotationframework.com/auth';
 
 const datasetDataApp = {
 	data: () => ({
@@ -756,7 +756,7 @@ async function authFetch(input, init, retry = 1) {
 
 	if (httpMethod !== 'GET') {
 		mainApp.networkResponse = {
-			message: res.status === 200 ? 'Success!' : res.message,
+			message: res.status === 200 ? 'Success!' : message,
 			error: res.status !== 200
 		};
 	}
