@@ -1,4 +1,4 @@
-const AUTH_URL = '..';
+const AUTH_URL = 'https://fafbm.dynamicannotationframework.com/auth';
 
 const datasetDataApp = {
 	data: () => ({
@@ -222,6 +222,7 @@ const groupDataApp = {
 		newEntry: false,
 		group: null,
 		users: [],
+		admins: [],
 		datasets: [],
 		availableDatasets: [],
 		allDatasets: [],
@@ -346,8 +347,7 @@ const groupDataApp = {
 
 			<input v-model="group.name" placeholder="Name" required>
 
-			<button @click="save" v-if="newEntry">Create</button>
-			<button @click="save" v-else>Update</button>
+			<button @click="save">Create</button>
 		</div>
 	</template>
 	<template v-else>
@@ -356,16 +356,15 @@ const groupDataApp = {
 			<div class="name">{{ group.name }}</div>
 
 			<div class="listContainer">
-				<div class="header">Users</div>
-				<div class="users list">
-					<div v-for="user in users">
+				<div class="header">Admins</div>
+				<div class="admins list">
+					<div v-for="user in admins">
 						<div>
 							<router-link :to="{ name: 'userData', params: { id: user.id }}">
 								{{ user.name }}
 							</router-link>
-							<span class="is_admin" v-if="user.admin">Admin</span>
 						</div>
-						<div class="deleteRow" @click="removeUser(user.id)"></div>
+						<div class="deleteRow" @click="removeAdmin(user.id)"></div>
 					</div>
 				</div>
 			</div>
@@ -398,6 +397,21 @@ const groupDataApp = {
 					<option value="2">Edit</option>
 				</select>
 				<button @click="addGroupDataset">Add Dataset</button>
+			</div>
+
+			<div class="listContainer">
+				<div class="header">Users</div>
+				<div class="users list">
+					<div v-for="user in users">
+						<div>
+							<router-link :to="{ name: 'userData', params: { id: user.id }}">
+								{{ user.name }}
+							</router-link>
+							<span class="is_admin" v-if="user.admin">Admin</span>
+						</div>
+						<div class="deleteRow" @click="removeUser(user.id)"></div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</template>
@@ -756,7 +770,7 @@ async function authFetch(input, init, retry = 1) {
 
 	if (httpMethod !== 'GET') {
 		mainApp.networkResponse = {
-			message: res.status === 200 ? 'Success!' : res.message,
+			message: res.status === 200 ? 'Success!' : message,
 			error: res.status !== 200
 		};
 	}
