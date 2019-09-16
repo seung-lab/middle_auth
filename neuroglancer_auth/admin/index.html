@@ -15,7 +15,9 @@
                     <button @click="login" id="loginBtn">Login</button>
                 </div>
                 <div v-if="loggedInUser" id="loggedInUserBar">
-                    <div id="email"></div>
+                    <router-link :to="{ name: 'userData', params: { id: loggedInUser.id }}">
+                        {{ loggedInUser.name }} ({{ loggedInUser.email }})
+                    </router-link>
                     <button @click="logout">Logout</button>
                 </div>
             </div>
