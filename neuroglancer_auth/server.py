@@ -268,7 +268,7 @@ def create_dataset_route():
     if data and 'name' in data:
         try:
             dataset = Dataset.add(data['name'])
-            return flask.jsonify("success")
+            return flask.jsonify(dataset.as_dict())
         except sqlalchemy.exc.IntegrityError as err:
             return flask.make_response(flask.jsonify("Dataset already exists."), 422)
     else:
