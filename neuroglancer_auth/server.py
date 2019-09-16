@@ -251,7 +251,13 @@ def get_user_permissions(user_id):
 @mod.route('/dataset', methods=['GET'])
 @auth_required
 def get_all_datasets():
-    datasets = Dataset.get_all_by_admin(flask.g.auth_user['id'])
+    datasets = []
+
+    if flask.g.auth_user['admin']:
+        datasets = Dataset.query.all()
+    else:
+        datasets = Dataset.get_all_by_admin(flask.g.auth_user['id'])
+
     return flask.jsonify([dataset.as_dict() for dataset in datasets])
 
 @mod.route('/dataset', methods=['POST'])
