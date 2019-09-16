@@ -15,30 +15,38 @@ const datasetDataApp = {
 		availableLevels: ['none', 'view', 'edit'],
 		newAdmin: ''
 	}),
+	async beforeRouteUpdate (to, from, next) {
+		await this.load(to.params.id);
+		next();
+	},
 	mounted: async function () {
-		if (this.$route.params.id === 'create') {
-			this.newEntry = true;
-			this.loading = false;
-
-			this.dataset = {
-				name: ''
-			};
-
-			return;
-		}
-
-		const id = Number.parseInt(this.$route.params.id);
-
-		this.dataset = await authFetch(`${AUTH_URL}/dataset/${id}`);
-		this.allGroups = await authFetch(`${AUTH_URL}/group`);
-
-		this.admins = await authFetch(`${AUTH_URL}/dataset/${id}/admin`);
-
-		this.updateAvailableGroups();
-
-		this.loading = false;
+		await this.load(this.$route.params.id);
 	},
 	methods: {
+		async load(param_id) {
+			this.loading = true;
+
+			this.newEntry = param_id === 'create';
+
+			if (this.newEntry) {
+				this.loading = false;
+
+				this.dataset = {
+					name: ''
+				};
+
+				return;
+			}
+
+			const id = Number.parseInt(param_id);
+
+			this.dataset = await authFetch(`${AUTH_URL}/dataset/${id}`);
+			this.allGroups = await authFetch(`${AUTH_URL}/group`);
+			this.admins = await authFetch(`${AUTH_URL}/dataset/${id}/admin`);
+			await this.updateAvailableGroups();
+
+			this.loading = false;
+		},
 		async updateAvailableGroups() {
 			this.groups = await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group`);
 
@@ -83,37 +91,28 @@ const datasetDataApp = {
 		save() {
 			this.errors = [];
 
-			if (this.newEntry) {
-				console.log('save new entry!');
+			if (!this.dataset.name) {
+				this.errors.push(['name', 'missing']);
+			}
 
-				if (!this.dataset.name) {
-					this.errors.push(['name', 'missing']);
-				}
-
-				if (!this.errors.length) {
-					authFetch(`${AUTH_URL}/dataset`, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({
-							name: this.dataset.name
-						})
-					}).then((res) => {
-						console.log('updated entry!');
-						router.push('./')
+			if (!this.errors.length) {
+				authFetch(`${AUTH_URL}/dataset`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						name: this.dataset.name
 					})
-					.catch((res) => {
-						alert(res);
-					})
-				}
-			} else {
-				console.log('update entry!');
+				}).then((res) => {
+					router.push({ name: 'datasetData', params: { id: res.id }});
+				})
+				.catch((res) => {
+					alert(res);
+				});
 			}
 		},
 		async addAdmin() {
-			console.log('do stuff', this.newAdmin);
-
 			const searchQuery = new URLSearchParams();
 			searchQuery.set('name', this.newAdmin);
 			const searchQueryString = searchQuery.toString();
@@ -155,57 +154,62 @@ const datasetDataApp = {
 			<div class="title" v-if="newEntry">Create Dataset</div>
 			<div class="title" v-else>Edit Dataset</div>
 
-			<input v-model="dataset.name" placeholder="Name" required>
-			
-			<div v-if="!loading" class="listContainer">
-				<div class="header"><span>Groups</span></div>
-				<div class="permissions list">
-					<div v-for="group in groups">
-						<router-link :to="{ name: 'groupData', params: { id: group.id }}">
-							{{ group.name }}
-						</router-link>
-						<div>
-							<select @change="updatePermissions(group)" v-model="group.level">
-								<option v-for="(item, index) in availableLevels" v-bind:value="index">{{ item }}</option>
-							</select>
+			<template v-if="newEntry">
+				<input v-model="dataset.name" placeholder="Name" required>
+			</template>
+			<template v-else>
+				<div>{{ dataset.name }}</div>
+			</template>
+
+			<template v-if="!newEntry">
+				<div class="listContainer">
+					<div class="header"><span>Groups</span></div>
+					<div class="permissions list">
+						<div v-for="group in groups">
+							<router-link :to="{ name: 'groupData', params: { id: group.id }}">
+								{{ group.name }}
+							</router-link>
+							<div>
+								<select @change="updatePermissions(group)" v-model="group.level">
+									<option v-for="(item, index) in availableLevels" v-bind:value="index">{{ item }}</option>
+								</select>
+							</div>
+							<div class="deleteRow" @click="removeGroup(group)"></div>
 						</div>
-						<div class="deleteRow" @click="removeGroup(group)"></div>
 					</div>
 				</div>
-			</div>
 
-			<div>
-				<select v-model="selectedGroup">
-					<option disabled="disabled" value="">Select Group</option>
-					<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
-				</select>
-				<select v-model="selectedLevel">
-					<option disabled="disabled" value="">Select Level</option>
-					<option value="1">View</option>
-					<option value="2">Edit</option>
-				</select>
-				<button @click="addGroupDataset">Add Group</button>
-			</div>
+				<div>
+					<select v-model="selectedGroup">
+						<option disabled="disabled" value="">Select Group</option>
+						<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
+					</select>
+					<select v-model="selectedLevel">
+						<option disabled="disabled" value="">Select Level</option>
+						<option value="1">View</option>
+						<option value="2">Edit</option>
+					</select>
+					<button @click="addGroupDataset">Add Group</button>
+				</div>
 
-			<div v-if="!loading" class="listContainer">
-				<div class="header"><span>Admins</span></div>
-				<div class="admins list">
-					<div v-for="admin in admins">
-						<router-link :to="{ name: 'userData', params: { id: admin.id }}">
-							{{ admin.name }}
-						</router-link>
-						<div class="deleteRow" @click="removeAdmin(admin)"></div>
+				<div v-if="!loading" class="listContainer">
+					<div class="header"><span>Admins</span></div>
+					<div class="admins list">
+						<div v-for="admin in admins">
+							<router-link :to="{ name: 'userData', params: { id: admin.id }}">
+								{{ admin.name }}
+							</router-link>
+							<div class="deleteRow" @click="removeAdmin(admin)"></div>
+						</div>
 					</div>
 				</div>
-			</div>
 
-			<div>
-				<input v-model="newAdmin" placeholder="Name">
-				<button @click="addAdmin">Add Admin</button>
-			</div>
-
+				<div>
+					<input v-model="newAdmin" placeholder="Name">
+					<button @click="addAdmin">Add Admin</button>
+				</div>
+			</template>
 			<button @click="save" v-if="newEntry">Create</button>
-			<button @click="save" v-else>Update</button>
 		</div>
 	</template>
 	</div>
@@ -752,7 +756,7 @@ async function authFetch(input, init, retry = 1) {
 
 	if (httpMethod !== 'GET') {
 		mainApp.networkResponse = {
-			message: message,
+			message: res.status === 200 ? 'Success!' : res.message,
 			error: res.status !== 200
 		};
 	}
