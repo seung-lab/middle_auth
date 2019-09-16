@@ -227,7 +227,7 @@ def modify_user_route(user_id):
         return flask.Response("Missing name.", 400)
 
 @mod.route('/user/<int:user_id>/group')
-@auth_requires_admin
+@requires_some_admin
 def get_user_groups(user_id):
     user = User.get_by_id(user_id)
 
