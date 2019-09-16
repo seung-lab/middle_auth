@@ -24,7 +24,7 @@ def requires_dataset_admin(f):
     @wraps(f)
     @auth_required
     def decorated_function(dataset_id, *args, **kwargs):
-        is_dataset_admin = flask.g.auth_user['admin'] or DatasetAdmin.exists(flask.g.auth_user['id'], dataset_id)
+        is_dataset_admin = flask.g.auth_user['admin'] or DatasetAdmin.is_dataset_admin(flask.g.auth_user['id'], dataset_id)
         
         if is_dataset_admin:
             return f(*args, **{**kwargs, **{'dataset_id': dataset_id}})
@@ -39,11 +39,27 @@ def requires_group_admin(f):
     @auth_required
     def decorated_function(group_id, *args, **kwargs):
         is_group_admin = flask.g.auth_user['admin'] or UserGroup.is_group_admin(flask.g.auth_user['id'], group_id)
-        
+
         if is_group_admin:
             return f(*args, **{**kwargs, **{'group_id': group_id}})
         else:
             resp = flask.Response("Requires group admin privilege.", 403)
+            return resp
+
+    return decorated_function
+
+def requires_some_admin(f):
+    @wraps(f)
+    @auth_required
+    def decorated_function(*args, **kwargs):
+        is_an_admin = (flask.g.auth_user['admin']
+            or DatasetAdmin.is_dataset_admin_any(flask.g.auth_user['id'])
+            or UserGroup.is_group_admin_any(flask.g.auth_user['id']))
+
+        if is_an_admin:
+            return f(*args, **kwargs)
+        else:
+            resp = flask.Response("Requires admin privilege.", 403)
             return resp
 
     return decorated_function
@@ -151,7 +167,7 @@ def logout():
     return flask.jsonify("success")
 
 @mod.route('/user')
-@auth_required
+@requires_some_admin
 def get_users_by_filter():
     users = None
 
@@ -176,7 +192,7 @@ def get_self():
         return flask.Response("Error finding user", 500)
 
 @mod.route('/user/<int:user_id>')
-@auth_required
+@requires_some_admin
 def get_user(user_id):
     user = User.get_by_id(user_id)
 

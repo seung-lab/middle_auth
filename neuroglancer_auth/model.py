@@ -18,8 +18,13 @@ class DatasetAdmin(db.Model):
     __table_args__ = (db.UniqueConstraint("user_id", "dataset_id"),)
 
     @staticmethod
-    def exists(user_id, dataset_id):
+    def is_dataset_admin(user_id, dataset_id):
         query = DatasetAdmin.query.filter_by(user_id=user_id, dataset_id=dataset_id).exists()
+        return db.session.query(query).scalar()
+
+    @staticmethod
+    def is_dataset_admin_any(user_id):
+        query = DatasetAdmin.query.filter_by(user_id=user_id).exists()
         return db.session.query(query).scalar()
 
     @staticmethod
@@ -32,12 +37,6 @@ class DatasetAdmin(db.Model):
     def remove(user_id, dataset_id):
         DatasetAdmin.query.filter_by(user_id=user_id, dataset_id=dataset_id).delete()
         db.session.commit()
-
-# class UserGroupAdmin(db.Model): # TODO, should this be in User GROUP?
-#     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-#     user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
-#     group_id = db.Column('group_id', db.Integer, db.ForeignKey("dataset.id"), nullable=False)
-#     __table_args__ = (db.UniqueConstraint("user_id", "dataset_id"),)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -212,6 +211,11 @@ class UserGroup(db.Model):
     @staticmethod
     def is_group_admin(user_id, group_id):
         query = UserGroup.query.filter_by(user_id=user_id, group_id=group_id, admin=True).exists()
+        return db.session.query(query).scalar()
+
+    @staticmethod
+    def is_group_admin_any(user_id):
+        query = UserGroup.query.filter_by(user_id=user_id, admin=True).exists()
         return db.session.query(query).scalar()
 
     @staticmethod
