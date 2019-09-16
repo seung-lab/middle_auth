@@ -278,7 +278,11 @@ def create_dataset_route():
 @requires_dataset_admin
 def get_dataset(dataset_id):
     dataset = Dataset.get_by_id(dataset_id)
-    return flask.jsonify(dataset.as_dict())
+
+    if dataset:
+        return flask.jsonify(dataset.as_dict())
+    else:
+        return flask.Response("Dataset doesn't exist", 404)
 
 @mod.route('/dataset/<int:dataset_id>/admin', methods=['GET'])
 @requires_dataset_admin
@@ -382,7 +386,7 @@ def create_group_route():
 @requires_group_admin
 def get_group(group_id):
     group = Group.get_by_id(group_id)
-    
+
     if group:
         return flask.jsonify(group.as_dict())
     else:
