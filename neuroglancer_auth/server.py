@@ -151,7 +151,7 @@ def logout():
     return flask.jsonify("success")
 
 @mod.route('/user')
-@auth_requires_admin
+@auth_required
 def get_users_by_filter():
     users = None
 
@@ -176,7 +176,7 @@ def get_self():
         return flask.Response("Error finding user", 500)
 
 @mod.route('/user/<int:user_id>')
-@auth_requires_admin
+@auth_required
 def get_user(user_id):
     user = User.get_by_id(user_id)
 
