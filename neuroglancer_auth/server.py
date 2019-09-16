@@ -162,7 +162,7 @@ def get_users_by_filter():
     elif flask.request.args.get('name'):
         users = User.search_by_name(flask.request.args.get('name'))
     else:
-        users = User.query.limit(20)
+        users = User.query.all()
     return flask.jsonify([user.as_dict() for user in users])
 
 @mod.route('/user/me')

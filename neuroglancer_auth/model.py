@@ -170,7 +170,7 @@ class Group(db.Model):
         if name:
             return Group.query.filter(Group.name.ilike(f'%{name}%')).all()
         else:
-            return Group.query.limit(20)
+            return Group.query.all()
 
     @staticmethod
     def add(name):
@@ -253,7 +253,7 @@ class Dataset(db.Model):
         if name:
             return Dataset.query.filter(Dataset.name.ilike(f'%{name}%')).all()
         else:
-            return Dataset.query.limit(20)
+            return Dataset.query.all()
 
     @staticmethod
     def get_all_by_admin(user_id):
