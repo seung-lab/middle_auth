@@ -1,4 +1,4 @@
-const AUTH_URL = '..';
+const AUTH_URL = 'https://fafbm.dynamicannotationframework.com/auth';
 
 const datasetDataApp = {
 	data: () => ({
@@ -100,8 +100,8 @@ const datasetDataApp = {
 							name: this.dataset.name
 						})
 					}).then((res) => {
-						console.log('updated entry!');
-						router.push('./')
+						console.log('res', res);
+						// router.go();
 					})
 					.catch((res) => {
 						alert(res);
@@ -155,55 +155,61 @@ const datasetDataApp = {
 			<div class="title" v-if="newEntry">Create Dataset</div>
 			<div class="title" v-else>Edit Dataset</div>
 
-			<input v-model="dataset.name" placeholder="Name" required>
-			
-			<div v-if="!loading" class="listContainer">
-				<div class="header"><span>Groups</span></div>
-				<div class="permissions list">
-					<div v-for="group in groups">
-						<router-link :to="{ name: 'groupData', params: { id: group.id }}">
-							{{ group.name }}
-						</router-link>
-						<div>
-							<select @change="updatePermissions(group)" v-model="group.level">
-								<option v-for="(item, index) in availableLevels" v-bind:value="index">{{ item }}</option>
-							</select>
+			<template v-if="newEntry">
+				<input v-model="dataset.name" placeholder="Name" required>
+			</template>
+			<template v-else>
+				<div>{{ dataset.name }}</div>
+			</template>
+
+			<template v-if="!newEntry">
+				<div class="listContainer">
+					<div class="header"><span>Groups</span></div>
+					<div class="permissions list">
+						<div v-for="group in groups">
+							<router-link :to="{ name: 'groupData', params: { id: group.id }}">
+								{{ group.name }}
+							</router-link>
+							<div>
+								<select @change="updatePermissions(group)" v-model="group.level">
+									<option v-for="(item, index) in availableLevels" v-bind:value="index">{{ item }}</option>
+								</select>
+							</div>
+							<div class="deleteRow" @click="removeGroup(group)"></div>
 						</div>
-						<div class="deleteRow" @click="removeGroup(group)"></div>
 					</div>
 				</div>
-			</div>
 
-			<div>
-				<select v-model="selectedGroup">
-					<option disabled="disabled" value="">Select Group</option>
-					<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
-				</select>
-				<select v-model="selectedLevel">
-					<option disabled="disabled" value="">Select Level</option>
-					<option value="1">View</option>
-					<option value="2">Edit</option>
-				</select>
-				<button @click="addGroupDataset">Add Group</button>
-			</div>
+				<div>
+					<select v-model="selectedGroup">
+						<option disabled="disabled" value="">Select Group</option>
+						<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
+					</select>
+					<select v-model="selectedLevel">
+						<option disabled="disabled" value="">Select Level</option>
+						<option value="1">View</option>
+						<option value="2">Edit</option>
+					</select>
+					<button @click="addGroupDataset">Add Group</button>
+				</div>
 
-			<div v-if="!loading" class="listContainer">
-				<div class="header"><span>Admins</span></div>
-				<div class="admins list">
-					<div v-for="admin in admins">
-						<router-link :to="{ name: 'userData', params: { id: admin.id }}">
-							{{ admin.name }}
-						</router-link>
-						<div class="deleteRow" @click="removeAdmin(admin)"></div>
+				<div v-if="!loading" class="listContainer">
+					<div class="header"><span>Admins</span></div>
+					<div class="admins list">
+						<div v-for="admin in admins">
+							<router-link :to="{ name: 'userData', params: { id: admin.id }}">
+								{{ admin.name }}
+							</router-link>
+							<div class="deleteRow" @click="removeAdmin(admin)"></div>
+						</div>
 					</div>
 				</div>
-			</div>
 
-			<div>
-				<input v-model="newAdmin" placeholder="Name">
-				<button @click="addAdmin">Add Admin</button>
-			</div>
-
+				<div>
+					<input v-model="newAdmin" placeholder="Name">
+					<button @click="addAdmin">Add Admin</button>
+				</div>
+			</template>
 			<button @click="save" v-if="newEntry">Create</button>
 			<button @click="save" v-else>Update</button>
 		</div>
