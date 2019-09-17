@@ -232,40 +232,49 @@ const groupDataApp = {
 		selectedLevel: '',
 		availableLevels: ['none', 'view', 'edit']
 	}),
+	async beforeRouteUpdate (to, from, next) {
+		await this.load(to.params.id);
+		next();
+	},
 	mounted: async function () {
-		if (this.$route.params.id === 'create') {
-			this.newEntry = true;
-			this.loading = false;
-
-			this.group = {
-				name: ''
-			};
-
-			return;
-		}
-
-		const id = Number.parseInt(this.$route.params.id);
-
-		let [group, users, datasets, availableDatasets] = await authFetch([
-			`${AUTH_URL}/group/${id}`,
-			`${AUTH_URL}/group/${id}/user`,
-			`${AUTH_URL}/group/${id}/dataset`,
-			`${AUTH_URL}/dataset`
-		]);
-	
-		this.group = group;
-	
-		this.users = users;
-		this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
-		this.updateNonAdmins();
-		this.datasets = datasets;
-
-		this.allDatasets = availableDatasets;
-		this.updateAvailableDatasets();
-
-		this.loading = false;
+		await this.load(this.$route.params.id);
 	},
 	methods: {
+		async load(param_id) {
+			this.loading = true;
+			this.newEntry = param_id === 'create';
+
+			if (param_id === 'create') {
+				this.loading = false;
+
+				this.group = {
+					name: ''
+				};
+
+				return;
+			}
+
+			const id = Number.parseInt(param_id);
+
+			let [group, users, datasets, availableDatasets] = await authFetch([
+				`${AUTH_URL}/group/${id}`,
+				`${AUTH_URL}/group/${id}/user`,
+				`${AUTH_URL}/group/${id}/dataset`,
+				`${AUTH_URL}/dataset`
+			]);
+
+			this.group = group;
+
+			this.users = users;
+			this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
+			this.updateNonAdmins();
+			this.datasets = datasets;
+
+			this.allDatasets = availableDatasets;
+			this.updateAvailableDatasets();
+
+			this.loading = false;
+		},
 		async removeUser(userId) {
 			await authFetch(`${AUTH_URL}/group/${this.group.id}/user/${userId}`, {
 				method: 'DELETE'
@@ -474,26 +483,33 @@ const userDataApp = {
 		allGroups: [],
 		selectedGroup: ''
 	}),
+	async beforeRouteUpdate (to, from, next) {
+		await this.load(to.params.id);
+		next();
+	},
 	mounted: async function () {
-		console.log('mounted!');
-
-		const id = Number.parseInt(this.$route.params.id);
-
-		let [userInfo, usersGroups, groups] = await authFetch([
-			`${AUTH_URL}/user/${id}`,
-			`${AUTH_URL}/user/${id}/group`,
-			`${AUTH_URL}/group`]
-		);
-	
-		this.user = userInfo;
-		this.groups = usersGroups;
-		this.allGroups = groups;
-
-		this.updateAvailableGroups();
-
-		this.loading = false;
+		await this.load(this.$route.params.id);
 	},
 	methods: {
+		async load(param_id) {
+			this.loading = true;
+
+			const id = Number.parseInt(param_id);
+
+			let [userInfo, usersGroups, groups] = await authFetch([
+				`${AUTH_URL}/user/${id}`,
+				`${AUTH_URL}/user/${id}/group`,
+				`${AUTH_URL}/group`]
+			);
+
+			this.user = userInfo;
+			this.groups = usersGroups;
+			this.allGroups = groups;
+
+			this.updateAvailableGroups();
+
+			this.loading = false;
+		},
 		updateAvailableGroups() {
 			this.availableGroups = this.allGroups.filter((group) => {
 				return !this.groups.map((g) => g.id).includes(group.id);
