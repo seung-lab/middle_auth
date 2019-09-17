@@ -14,7 +14,7 @@ from .model.api_key import APIKey
 from werkzeug.contrib.fixers import ProxyFix
 import redis # used in the envvar config
 
-__version__ = '0.4.1'
+__version__ = '0.5.0'
 
 
 def setup_app():
