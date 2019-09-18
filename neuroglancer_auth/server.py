@@ -38,8 +38,7 @@ def requires_dataset_admin(f):
         if is_dataset_admin:
             return f(*args, **{**kwargs, **{'dataset_id': dataset_id}})
         else:
-            resp = flask.Response("Requires dataset admin privilege.", 403)
-            return resp
+            return flask.Response("Requires dataset admin privilege.", 403)
 
     return decorated_function
 
@@ -52,8 +51,7 @@ def requires_group_admin(f):
         if is_group_admin:
             return f(*args, **{**kwargs, **{'group_id': group_id}})
         else:
-            resp = flask.Response("Requires group admin privilege.", 403)
-            return resp
+            return flask.Response("Requires group admin privilege.", 403)
 
     return decorated_function
 
@@ -447,9 +445,17 @@ def modify_user_in_group_route(group_id, user_id):
         return flask.Response("User doesn't belong to group", 404)
 
 @mod.route('/group/<int:group_id>/user/<int:user_id>', methods=['DELETE'])
-@auth_requires_admin
+@requires_group_admin
 def remove_user_from_group_route(group_id, user_id):
-    UserGroup.remove(user_id, group_id) # no error possible? if user doesn't have role, just return success? should probably fail
+    ug = UserGroup.get(group_id, user_id)
+
+    if not ug:
+        return flask.Response("User doesn't belong to group", 404)
+
+    if ug.admin and not flask.g.auth_user['admin']:
+        return flask.Response("Only superadmins can remove group admins.", 403)
+
+    ug.remove()
     return flask.jsonify("success")
 
 @mod.route('/my_permissions')
