@@ -32,13 +32,7 @@ class UserGroup(db.Model):
         db.session.commit()
         user = User.get_by_id(user_id)
         user.update_cache()
-    
-    @staticmethod
-    def remove(user_id, group_id):
-        UserGroup.query.filter_by(user_id=user_id, group_id=group_id).delete()
-        db.session.commit()
-        user = User.get_by_id(user_id).update_cache()
-    
+
     @staticmethod
     def get_users(group_id):
         users = db.session.query(UserGroup.user_id, User.name, UserGroup.admin)\
@@ -55,6 +49,11 @@ class UserGroup(db.Model):
             .filter(UserGroup.group_id == group_id).all()
 
         return [{'id': user_id, 'name': name} for user_id, name in users]
+
+    def delete(self):
+        db.session.delete(self)
+        print("self.user_id=" + str(self.user_id))
+        user = User.get_by_id(self.user_id).update_cache()
 
     def update(self, data):
         if 'admin' in data:
