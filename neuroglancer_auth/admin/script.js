@@ -13,7 +13,7 @@ const datasetDataApp = {
 		selectedGroup: '',
 		selectedLevel: '',
 		availableLevels: ['none', 'view', 'edit'],
-		newAdmin: ''
+		chosen: ''
 	}),
 	async beforeRouteUpdate (to, from, next) {
 		await this.load(to.params.id);
@@ -112,31 +112,33 @@ const datasetDataApp = {
 				});
 			}
 		},
-		async addAdmin() {
-			const searchQuery = new URLSearchParams();
-			searchQuery.set('name', this.newAdmin);
-			const searchQueryString = searchQuery.toString();
-			
-			const users = await authFetch(`${AUTH_URL}/user?${searchQueryString}`);
+		async simpleSuggestionList(email) {
+			const users =  await authFetch(`${AUTH_URL}/user?email=${email}`);
 
-			if (users) {
-				const user = users[0];
-
-				await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						dataset_id: this.dataset.id,
-						user_id: user.id
-					})
-				});
-
-				this.admins = await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`);
-			} else {
-				alert('user not found!');
+			return users.map((user) => {
+				return {
+					id: user.id,
+					name: `${user.name} (${user.email})`
+				}
+			})
+		},
+		async addAdmin(user) {
+			if (!user) {
+				return;
 			}
+
+			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					dataset_id: this.dataset.id,
+					user_id: user.id
+				})
+			});
+
+			this.admins = await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`);
 		},
 		async removeAdmin(admin) {
 			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin/${admin.id}`, {
@@ -147,13 +149,13 @@ const datasetDataApp = {
 		}
 	},
 	template: `
-	<div>
-	<template v-if="loading">Loading...</template>
-	<template v-else>
-		<div id="datasetData">
-			<div class="title" v-if="newEntry">Create Dataset</div>
-			<div class="title" v-else>Edit Dataset</div>
-
+	<div id="datasetData">
+		<div class="title" v-if="newEntry">Create Dataset</div>
+		<div class="title" v-else>Edit Dataset</div>
+		<template v-if="loading">
+			<div>Loading...</div>
+		</template>
+		<template v-else>
 			<template v-if="newEntry">
 				<input v-model="dataset.name" placeholder="Name" required>
 			</template>
@@ -164,7 +166,7 @@ const datasetDataApp = {
 			<template v-if="!newEntry">
 				<div class="listContainer">
 					<div class="header"><span>Groups</span></div>
-					<div class="permissions list">
+					<div class="permissions list threeColumn">
 						<div v-for="group in groups">
 							<router-link :to="{ name: 'groupData', params: { id: group.id }}">
 								{{ group.name }}
@@ -194,24 +196,29 @@ const datasetDataApp = {
 
 				<div v-if="!loading" class="listContainer">
 					<div class="header"><span>Admins</span></div>
-					<div class="admins list">
+					<div class="admins list twoColumn">
 						<div v-for="admin in admins">
 							<router-link :to="{ name: 'userData', params: { id: admin.id }}">
 								{{ admin.name }}
 							</router-link>
-							<div class="deleteRow" @click="removeAdmin(admin)"></div>
+							<div v-if="$parent.loggedInUser.admin" class="deleteRow" @click="removeAdmin(admin)"></div>
+							<div v-else></div>
 						</div>
 					</div>
 				</div>
 
-				<div>
-					<input v-model="newAdmin" placeholder="Name">
-					<button @click="addAdmin">Add Admin</button>
-				</div>
+				<vue-simple-suggest
+					placeholder="Add Admin (by email)"
+					v-model="chosen"
+					v-on:suggestion-click="addAdmin"
+					:list="simpleSuggestionList"
+					:filter-by-query="false"
+					display-attribute="name"
+					value-attribute="id">
+				</vue-simple-suggest>
 			</template>
 			<button @click="save" v-if="newEntry">Create</button>
-		</div>
-	</template>
+		</template>
 	</div>
 	`
 };
@@ -230,7 +237,8 @@ const groupDataApp = {
 		selectedUser: '',
 		selectedDataset: '',
 		selectedLevel: '',
-		availableLevels: ['none', 'view', 'edit']
+		availableLevels: ['none', 'view', 'edit'],
+		chosen: ''
 	}),
 	async beforeRouteUpdate (to, from, next) {
 		await this.load(to.params.id);
@@ -274,6 +282,35 @@ const groupDataApp = {
 			this.updateAvailableDatasets();
 
 			this.loading = false;
+		},
+		async simpleSuggestionList(email) {
+			const users =  await authFetch(`${AUTH_URL}/user?email=${email}`);
+
+			return users.map((user) => {
+				user.member = this.users.map((other) => other.id).includes(user.id);
+
+				return user;
+			}).sort((a, b) => {
+				return a.member - b.member;
+			});
+		},
+		async addUser(user) {
+			if (!user) {
+				return;
+			}
+
+			await authFetch(`${AUTH_URL}/group/${this.group.id}/user`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					user_id: user.id
+				})
+			});
+
+			this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
+			this.updateNonAdmins();
 		},
 		async removeUser(userId) {
 			await authFetch(`${AUTH_URL}/group/${this.group.id}/user/${userId}`, {
@@ -383,60 +420,53 @@ const groupDataApp = {
 		}
 	},
 	template: `
-	<div>
-	<template v-if="loading">Loading...</template>
-	<template v-else-if="newEntry">
-		<div id="userData">
-			<div class="title" v-if="newEntry">Create Group</div>
-			<div class="title" v-else>Edit Group</div>
+	<div id="groupData">
+		<div class="title" v-if="newEntry">Create Group</div>
+		<div class="title" v-else>Edit Group</div>
+		<template v-if="loading">
+			<div>Loading...</div>
+		</template>
+		<template v-else-if="newEntry">
+			<div class="title">Edit Group</div>
 
 			<input v-model="group.name" placeholder="Name" required>
 
 			<button @click="save">Create</button>
-		</div>
-	</template>
-	<template v-else>
-		<div id="groupData">
-			<div class="title">Edit Group</div>
+		</template>
+		<template v-else>
 			<div class="name">{{ group.name }}</div>
 
-			<template v-if="$parent.loggedInUser.admin">
-				<div class="listContainer">
-					<div class="header">Admins</div>
-					<div class="admins list">
-						<div v-for="user in admins">
-							<div>
-								<router-link :to="{ name: 'userData', params: { id: user.id }}">
-									{{ user.name }}
-								</router-link>
-							</div>
-							<div class="deleteRow" @click="setAdmin(user.id, false)"></div>
+			<div class="listContainer">
+				<div class="header">Admins</div>
+				<div class="admins list twoColumn">
+					<div v-for="user in admins">
+						<div>
+							<router-link :to="{ name: 'userData', params: { id: user.id }}">
+								{{ user.name }}
+							</router-link>
 						</div>
+						<div v-if="$parent.loggedInUser.admin" class="deleteRow" @click="setAdmin(user.id, false)"></div>
+						<div v-else></div>
 					</div>
 				</div>
+			</div>
 
-				<div>
-					<select v-model="selectedUser">
-						<option disabled="disabled" value="">Select User</option>
-						<option v-for="user in nonAdmins" v-bind:value="user.id">{{ user.name }}</option>
-					</select>
-					<button @click="makeAdmin">Make Admin</button>
-				</div>
-			</template>
+			<div v-if="$parent.loggedInUser.admin">
+				<select v-model="selectedUser">
+					<option disabled="disabled" value="">Select User</option>
+					<option v-for="user in nonAdmins" v-bind:value="user.id">{{ user.name }}</option>
+				</select>
+				<button @click="makeAdmin">Make Admin</button>
+			</div>
 
 			<div class="listContainer">
 				<div class="header"><span>Datasets</span></div>
-				<div class="permissions list">
+				<div class="datasets list twoColumn">
 					<div v-for="dataset in datasets">
 						<router-link :to="{ name: 'datasetData', params: { id: dataset.id }}">
 							{{ dataset.name }}
 						</router-link>
-						<div>
-							<select @change="updatePermissions(dataset)" v-model="dataset.level">
-								<option v-for="(item, index) in availableLevels" v-bind:value="index">{{ item }}</option>
-							</select>
-						</div>
-						<div class="deleteRow" @click="removeDataset(dataset.id)"></div>
+						<div class="datasetLevel">{{ availableLevels[dataset.level] }}</div>
 					</div>
 				</div>
 			</div>
@@ -456,7 +486,7 @@ const groupDataApp = {
 
 			<div class="listContainer">
 				<div class="header">Users</div>
-				<div class="users list">
+				<div class="users list twoColumn">
 					<div v-for="user in users">
 						<div>
 							<router-link :to="{ name: 'userData', params: { id: user.id }}">
@@ -464,12 +494,29 @@ const groupDataApp = {
 							</router-link>
 							<span class="is_admin" v-if="user.admin">Admin</span>
 						</div>
-						<div class="deleteRow" @click="removeUser(user.id)"></div>
+						<div v-if="$parent.loggedInUser.admin || !user.admin" class="deleteRow" @click="removeUser(user.id)"></div>
+						<div v-else></div>
 					</div>
 				</div>
 			</div>
-		</div>
-	</template>
+
+			<vue-simple-suggest
+				placeholder="Add User (by email)"
+				v-model="chosen"
+				v-on:select="addUser"
+				:list="simpleSuggestionList"
+				:filter-by-query="false"
+				display-attribute="name"
+				value-attribute="id">
+
+				<div :class="{ member: scope.suggestion.member }" class="suggestion-item-data" slot="suggestion-item" slot-scope="scope">
+					<div class="text">{{ scope.suggestion.name }}</div>
+					<div class="text">({{ scope.suggestion.email }})</div>
+					<div class="text" v-if="scope.suggestion.member">Member</div>
+				</div>
+
+			</vue-simple-suggest>
+		</template>
 	</div>
 	`
 };
@@ -552,34 +599,36 @@ const userDataApp = {
 		}
 	},
 	template: `
-	<div>
-	<template v-if="loading">Loading...</template>
+	<div id="userData">
+	<div class="title">Edit User</div>
+	<template v-if="loading">
+		<div>Loading...</div>
+	</template>
 	<template v-else>
-		<div id="userData">
-			<div class="title">Edit User</div>
+		<div>
 			<div class="name">{{ user.name }}</div>
 			<div class="email">{{ user.email }}</div>
 			<div @click="update" class="admin editable">{{ user.admin }}</div>
+		</div>
 
-			<div class="listContainer">
-				<div class="header">Groups</div>
-				<div class="groups list">
-					<div v-for="group in groups">
-						<router-link :to="{ name: 'groupData', params: { id: group.id }}">
-							{{ group.name }}
-						</router-link>
-						<div class="deleteRow" @click="leaveGroup(group.id)"></div>
-					</div>
+		<div class="listContainer">
+			<div class="header">Groups</div>
+			<div class="groups list twoColumn">
+				<div v-for="group in groups">
+					<router-link :to="{ name: 'groupData', params: { id: group.id }}">
+						{{ group.name }}
+					</router-link>
+					<div class="deleteRow" @click="leaveGroup(group.id)"></div>
 				</div>
 			</div>
+		</div>
 
-			<div>
-				<select v-model="selectedGroup">
-					<option disabled="disabled" value="">Select Group</option>
-					<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
-				</select>
-				<button @click="joinGroup">Join Group</button>
-			</div>
+		<div>
+			<select v-model="selectedGroup">
+				<option disabled="disabled" value="">Select Group</option>
+				<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
+			</select>
+			<button @click="joinGroup">Join Group</button>
 		</div>
 	</template>
 	</div>
@@ -690,6 +739,12 @@ const routes = [
 const router = new VueRouter({
 	routes
 });
+
+function wait(time) {
+	return new Promise((f, r) => {
+		setTimeout(f, time);
+	});
+}
 
 const mainApp = new Vue({
 	el: "#vueApp",

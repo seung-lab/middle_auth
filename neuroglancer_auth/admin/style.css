@@ -27,6 +27,34 @@ body {
     margin: 0px;
 }
 
+#main, #menuBar {
+    padding: 10px;
+}
+
+#main {
+    padding-top: 60px;
+    display: grid;
+    grid-row-gap: 10px;
+}
+
+#menuBar {
+    position: absolute;
+    display: grid;
+    grid-template-columns: min-content auto;
+    border-bottom: 1px solid #e4e4e4;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    height: 45px;
+    z-index: 100;
+    background-color: white;
+}
+
+#mainContent > div {
+    display: grid;
+    grid-row-gap: 10px;
+}
+
 #networkMessage {
     position: absolute;
     z-index: 9999;
@@ -51,27 +79,6 @@ body {
 
 .networkMessage-enter-active, .networkMessage-leave-active {
     transition: all 0.4s;
-}
-
-#main, #menuBar {
-    padding: 10px;
-}
-
-#main {
-    padding-top: 60px;
-}
-
-#menuBar {
-    position: absolute;
-    display: grid;
-    grid-template-columns: min-content auto;
-    border-bottom: 1px solid #e4e4e4;
-    align-items: center;
-    box-sizing: border-box;
-    width: 100%;
-    height: 45px;
-    z-index: 100;
-    background-color: white;
 }
 
 .closeBtn {
@@ -146,10 +153,6 @@ body:not(.isAdmin) .requiresAdmin {
     line-height: 15px;
 }
 
-/* #searchResults:not(.hasResult) {
-    display: none;
-} */
-
 .listContainer {
     padding: 0px;
 }
@@ -187,18 +190,6 @@ body:not(.isAdmin) .requiresAdmin {
 .listItem {
     display: grid;
     align-items: center;
-}
-
-.permissions.list {
-    grid-template-columns: auto min-content min-content;
-}
-
-.permissions.list select {
-    text-transform: capitalize;
-}
-
-.users.list .listItem, .admins.list {
-    grid-template-columns: auto min-content;
 }
 
 .listItem > div {
@@ -242,14 +233,17 @@ div.requiresLoggedIn {
     grid-row-gap: 10px;
 }
 
-
-
-#userData .groups.list {
+.twoColumn {
     grid-template-columns: auto min-content;
 }
 
-#groupData .users.list {
-    grid-template-columns: auto min-content;
+.threeColumn {
+    grid-template-columns: auto min-content min-content;
+}
+
+.datasetLevel {
+    text-transform: capitalize;
+    text-align: right;
 }
 
 .datasetPermissionToggle {
@@ -261,4 +255,56 @@ div.requiresLoggedIn {
 
 .is_admin {
     font-style: italic;
+}
+
+.vue-simple-suggest {
+    border: 1px solid #e4e4e4;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.vue-simple-suggest:hover, .vue-simple-suggest:focus {
+    box-shadow: 0px 1px 6px 0px rgba(0, 0, 0, 0.2);
+}
+
+.vue-simple-suggest > .input-wrapper > input {
+    background: none;
+    outline: none;
+    border: none;
+    padding: 10px 0;
+    width: 100%;
+}
+
+.vue-simple-suggest > .input-wrapper {
+    margin: 0 16px;
+}
+
+.vue-simple-suggest > .input-wrapper[aria-expanded="true"] > input {
+    border-bottom: 1px solid #e4e4e4;
+}
+
+.vue-simple-suggest .suggestions {
+    margin: 0;
+    padding: 2px 0;
+    list-style: none;
+}
+
+.vue-simple-suggest .suggestions .suggest-item {
+    padding: 10px 16px;
+}
+
+.vue-simple-suggest .suggestions .suggest-item.hover {
+    background-color: #e4e4e4;
+    user-select: none;
+}
+
+.suggestion-item-data {
+    display: grid;
+    grid-template-columns: min-content min-content min-content;
+    column-gap: 10px;
+    white-space: nowrap;
+}
+
+.suggestion-item-data.member {
+    opacity: 0.5;
 }
