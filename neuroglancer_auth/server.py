@@ -10,7 +10,7 @@ import sqlalchemy
 from furl import furl
 
 from .model.user import User
-from .model.api_key import APIKey, insert_and_generate_unique_token, delete_token
+from .model.api_key import APIKey, insert_and_generate_unique_token, delete_token, delete_all_tokens_for_user
 from .model.dataset_admin import DatasetAdmin
 from .model.group import Group
 from .model.user_group import UserGroup
@@ -171,6 +171,12 @@ def refresh_token():
 @auth_required
 def logout():
     delete_token(flask.g.auth_user['id'], flask.g.auth_token)
+    return flask.jsonify("success")
+
+@mod.route('/logout_all')
+@auth_required
+def logout():
+    delete_all_tokens_for_user(flask.g.auth_user['id'])
     return flask.jsonify("success")
 
 @mod.route('/user')
