@@ -65,3 +65,10 @@ def delete_token(user_id, token):
     p.delete("token_" + token)
     p.srem("userid_" + str(user_id), token)
     p.execute()
+
+def delete_all_tokens_for_user(user_id):
+    tokens = r.smembers("userid_" + str(user_id))
+
+    for token_bytes in tokens:
+        token = token_bytes.decode('utf-8')
+        delete_token(user_id, token)
