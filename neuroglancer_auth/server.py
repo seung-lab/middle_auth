@@ -21,7 +21,7 @@ import os
 
 from functools import wraps
 
-__version__ = '0.6.0'
+__version__ = '0.7.0'
 import os
 
 mod = flask.Blueprint('auth', __name__, url_prefix='/auth')
