@@ -26,8 +26,8 @@ class UserGroup(db.Model):
         return db.session.query(query).scalar()
 
     @staticmethod
-    def add(user_id, group_id):
-        ug = UserGroup(user_id=user_id, group_id=group_id)
+    def add(user_id, group_id, admin=False):
+        ug = UserGroup(user_id=user_id, group_id=group_id, admin=admin)
         db.session.add(ug)
         db.session.commit()
         user = User.get_by_id(user_id)
