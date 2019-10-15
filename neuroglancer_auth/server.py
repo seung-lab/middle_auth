@@ -399,13 +399,14 @@ def get_all_groups():
     return flask.jsonify([group.as_dict() for group in groups])
 
 @mod.route('/group', methods=['POST'])
-@auth_requires_admin
+@requires_some_admin
 def create_group_route():
     data = flask.request.json
 
     if data and 'name' in data:
         try:
             group = Group.add(data['name'])
+            UserGroup.add(flask.g.auth_user['id'], group.id, True)
             return flask.jsonify("success")
         except sqlalchemy.exc.IntegrityError as err:
             return flask.Response("Group already exists.", 422)
