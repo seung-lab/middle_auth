@@ -194,6 +194,21 @@ def get_users_by_filter():
         users = User.query.all()
     return flask.jsonify([user.as_dict() for user in users])
 
+@mod.route('/user', methods=['POST'])
+@auth_requires_admin
+def create_user_route():
+    data = flask.request.json
+
+    if not (data and 'name' in data):
+        return flask.Response("Missing name.", 400)
+    
+    if not (data and 'email' in data):
+        return flask.Response("Missing email.", 400)
+
+    user = User.create_account(data['email'], data['name'], False, group_names=["default"])
+
+    return flask.jsonify("success")
+
 @mod.route('/user/me')
 @auth_required
 def get_self():

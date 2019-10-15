@@ -1,4 +1,4 @@
-const AUTH_URL = '..';
+const AUTH_URL = 'https://fafbm.dynamicannotationframework.com/auth';
 
 const datasetDataApp = {
 	data: () => ({
@@ -421,19 +421,18 @@ const groupDataApp = {
 	},
 	template: `
 	<div id="groupData">
-		<div class="title" v-if="newEntry">Create Group</div>
-		<div class="title" v-else>Edit Group</div>
 		<template v-if="loading">
 			<div>Loading...</div>
 		</template>
 		<template v-else-if="newEntry">
-			<div class="title">Edit Group</div>
+			<div class="title">Create Group</div>
 
 			<input v-model="group.name" placeholder="Name" required>
 
 			<button @click="save">Create</button>
 		</template>
 		<template v-else>
+			<div class="title">Edit Group</div>
 			<div class="name">{{ group.name }}</div>
 
 			<div class="listContainer">
@@ -524,6 +523,7 @@ const groupDataApp = {
 const userDataApp = {
 	data: () => ({
 		loading: true,
+		newEntry: false,
 		user: null,
 		groups: [],
 		availableGroups: [],
@@ -540,6 +540,17 @@ const userDataApp = {
 	methods: {
 		async load(param_id) {
 			this.loading = true;
+			this.newEntry = param_id === 'create';
+
+			if (param_id === 'create') {
+				this.loading = false;
+
+				this.user = {
+					name: ''
+				};
+
+				return;
+			}
 
 			const id = Number.parseInt(param_id);
 
@@ -561,6 +572,20 @@ const userDataApp = {
 			this.availableGroups = this.allGroups.filter((group) => {
 				return !this.groups.map((g) => g.id).includes(group.id);
 			});
+		},
+		async save() {
+			await authFetch(`${AUTH_URL}/user`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					name: this.user.name,
+					email: this.user.email
+				})
+			});
+
+			this.user = await authFetch(`${AUTH_URL}/user/${this.user.id}`);
 		},
 		async update() {
 			await authFetch(`${AUTH_URL}/user/${this.user.id}`, {
@@ -600,11 +625,17 @@ const userDataApp = {
 	},
 	template: `
 	<div id="userData">
-	<div class="title">Edit User</div>
 	<template v-if="loading">
 		<div>Loading...</div>
 	</template>
+	<template v-else-if="newEntry">
+		<div class="title">Create User</div>
+		<input v-model="user.name" placeholder="Name" required>
+		<input v-model="user.email" placeholder="Email" required>
+		<button @click="save">Create</button>
+	</template>
 	<template v-else>
+		<div class="title">Edit User</div>
 		<div>
 			<div class="name">{{ user.name }}</div>
 			<div class="email">{{ user.email }}</div>
@@ -701,7 +732,8 @@ const userListApp = {
 		url: '/user',
 		searchKey: 'email',
 		title: 'Users',
-		displayedProps: ['name', 'email']
+		displayedProps: ['name', 'email'],
+		canCreate: true
 	})
 };
 
