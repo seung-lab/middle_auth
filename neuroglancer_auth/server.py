@@ -117,6 +117,8 @@ def authorize():
 def oauth2callback():
     if not 'session' in flask.request.cookies:
         return flask.Response("Invalid Request, are third-party cookies enabled?", 400)
+    
+    return flask.jsonify(flask.session.sid)
 
     if not 'state' in flask.session:
         return flask.Response("Invalid Request", 400)
