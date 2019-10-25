@@ -89,6 +89,10 @@ def authorize():
         prompt='consent')
 
     flask.session['state'] = state
+
+    print("flask.session sid: {0}".format(flask.session.sid))
+    print("flask.session state: {0}".format(flask.session['state']))
+
     flask.session['redirect'] = flask.request.args.get('redirect')
 
     if not 'redirect' in flask.session:
@@ -125,9 +129,20 @@ def oauth2callback():
         return flask.Response("Invalid Request", 400)
 
     state = flask.session['state']
+    query_state = flask.request.args.get('state')
 
-    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
+    print("flask.session state: {0}".format(state))
+    print("query state: {0}".format(query_state))
+
+    flow = None
+
+    try:
+        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+            CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
+    except oauth2.rfc6749.errors.MismatchingStateError as err:
+        print("OAuth Error: {0}".format(err))
+        return flask.jsonify("invalid state")
+
     flow.redirect_uri = flask.url_for('auth.oauth2callback', _external=True)
 
     authorization_response = flask.request.url
