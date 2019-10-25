@@ -89,6 +89,10 @@ def authorize():
         prompt='consent')
 
     flask.session['state'] = state
+
+    print("flask.session sid: {0}".format(flask.session.sid))
+    print("flask.session state: {0}".format(flask.session['state']))
+
     flask.session['redirect'] = flask.request.args.get('redirect')
 
     if not 'redirect' in flask.session:
@@ -117,6 +121,8 @@ def authorize():
 def oauth2callback():
     if not 'session' in flask.request.cookies:
         return flask.Response("Invalid Request, are third-party cookies enabled?", 400)
+    
+    return flask.jsonify(flask.session.sid)
 
     if not 'state' in flask.session:
         return flask.Response("Invalid Request", 400)
