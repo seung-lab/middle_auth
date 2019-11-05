@@ -20,7 +20,7 @@ class Group(db.Model):
         if name:
             return Group.query.filter(Group.name.ilike(f'%{name}%')).all()
         else:
-            return Group.query.all()
+            return Group.query.order_by(Group.id.asc()).all()
 
     @staticmethod
     def add(name):

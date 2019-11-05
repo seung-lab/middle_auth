@@ -193,7 +193,7 @@ def get_users_by_filter():
     elif flask.request.args.get('name'):
         users = User.search_by_name(flask.request.args.get('name'))
     else:
-        users = User.query.all()
+        users = User.query.order_by(User.id.asc()).all()
     return flask.jsonify([user.as_dict() for user in users])
 
 @mod.route('/user', methods=['POST'])
@@ -286,7 +286,7 @@ def get_all_datasets():
     datasets = []
 
     if flask.g.auth_user['admin']:
-        datasets = Dataset.query.all()
+        datasets = Dataset.query.order_by(Dataset.id.asc()).all()
     else:
         datasets = DatasetAdmin.get_all_by_admin(flask.g.auth_user['id'])
 
