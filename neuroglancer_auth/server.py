@@ -5,7 +5,8 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+# from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from ./mac_local import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
 
@@ -222,6 +223,11 @@ def get_self():
         return flask.jsonify(user.as_dict())
     else:
         return flask.Response("Error finding user", 500)
+
+@mod.route('/user/cache')
+@auth_required
+def get_user_cache():
+    return flask.g.auth_user
 
 @mod.route('/user/<int:user_id>')
 @requires_some_admin
