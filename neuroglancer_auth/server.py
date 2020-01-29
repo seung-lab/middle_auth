@@ -158,11 +158,6 @@ def oauth2callback():
 
     return flask.redirect(furl(flask.session['redirect']).add({'token': token}).url, code=302)
 
-@mod.route('/test')
-@auth_required
-def test_api_request():
-    return flask.jsonify(flask.g.auth_user)
-
 @mod.route('/refresh_token')
 @auth_required
 def refresh_token():
@@ -222,6 +217,11 @@ def get_self():
         return flask.jsonify(user.as_dict())
     else:
         return flask.Response("Error finding user", 500)
+
+@mod.route('/user/cache')
+@auth_required
+def get_user_cache():
+    return flask.jsonify(flask.g.auth_user)
 
 @mod.route('/user/<int:user_id>')
 @requires_some_admin
