@@ -1,4 +1,4 @@
-const AUTH_URL = '..';
+const AUTH_URL = '../api/v1';
 
 const datasetDataApp = {
 	data: () => ({
