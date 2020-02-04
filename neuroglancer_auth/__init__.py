@@ -5,7 +5,7 @@ app = Flask(__name__)
 from flask_session import Session
 from flask_cors import CORS
 
-from .server import mod
+from .server import api_v1, admin_site
 from .model.base import db
 from .model.user import User
 from .model.api_key import APIKey
