@@ -24,7 +24,14 @@ from functools import wraps
 __version__ = '0.8.2'
 import os
 
-mod = flask.Blueprint('auth', __name__, url_prefix='/auth')
+version_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/auth')
+
+@version_bp.route("/version")
+def version():
+    return "neuroglance_auth -- version " + __version__
+
+api_v1_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/auth/api/v1')
+admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/auth/admin')
 
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
@@ -71,11 +78,7 @@ def requires_some_admin(f):
 
     return decorated_function
 
-@mod.route("/version")
-def version():
-    return "neuroglance_auth -- version fff origin: " + flask.request.environ.get('HTTP_ORIGIN', "no origin")
-
-@mod.route("/authorize")
+@api_v1_bp.route("/authorize")
 def authorize():
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES)
@@ -113,7 +116,7 @@ def authorize():
     else:
         return flask.redirect(authorization_url, code=302)
 
-@mod.route("/oauth2callback")
+@api_v1_bp.route("/oauth2callback")
 def oauth2callback():
     if not 'session' in flask.request.cookies:
         return flask.Response("Invalid Request, are third-party cookies enabled?", 400)
@@ -158,25 +161,25 @@ def oauth2callback():
 
     return flask.redirect(furl(flask.session['redirect']).add({'token': token}).url, code=302)
 
-@mod.route('/refresh_token')
+@api_v1_bp.route('/refresh_token')
 @auth_required
 def refresh_token():
     key = APIKey.generate(flask.g.auth_user['id'])
     return flask.jsonify(key)
 
-@mod.route('/logout')
+@api_v1_bp.route('/logout')
 @auth_required
 def logout():
     delete_token(flask.g.auth_user['id'], flask.g.auth_token)
     return flask.jsonify("success")
 
-@mod.route('/logout_all')
+@api_v1_bp.route('/logout_all')
 @auth_required
 def logout_all():
     delete_all_tokens_for_user(flask.g.auth_user['id'])
     return flask.jsonify("success")
 
-@mod.route('/user')
+@api_v1_bp.route('/user')
 @requires_some_admin
 def get_users_by_filter():
     users = None
@@ -191,7 +194,7 @@ def get_users_by_filter():
         users = User.query.order_by(User.id.asc()).all()
     return flask.jsonify([user.as_dict() for user in users])
 
-@mod.route('/user', methods=['POST'])
+@api_v1_bp.route('/user', methods=['POST'])
 @requires_some_admin
 def create_user_route():
     data = flask.request.json
@@ -208,7 +211,7 @@ def create_user_route():
     except sqlalchemy.exc.IntegrityError as err:
         return flask.Response("User with email already exists.", 422)
 
-@mod.route('/user/me')
+@api_v1_bp.route('/user/me')
 @auth_required
 def get_self():
     user = User.get_by_id(flask.g.auth_user['id'])
@@ -218,12 +221,12 @@ def get_self():
     else:
         return flask.Response("Error finding user", 500)
 
-@mod.route('/user/cache')
+@api_v1_bp.route('/user/cache')
 @auth_required
 def get_user_cache():
     return flask.jsonify(flask.g.auth_user)
 
-@mod.route('/user/<int:user_id>')
+@api_v1_bp.route('/user/<int:user_id>')
 @requires_some_admin
 def get_user(user_id):
     user = User.get_by_id(user_id)
@@ -233,7 +236,7 @@ def get_user(user_id):
     else:
         return flask.Response("User doesn't exist", 404)
 
-@mod.route('/user/<int:user_id>', methods=['PUT'])
+@api_v1_bp.route('/user/<int:user_id>', methods=['PUT'])
 @auth_requires_admin
 def modify_user_route(user_id):
     data = flask.request.json
@@ -258,7 +261,7 @@ def modify_user_route(user_id):
     else:
         return flask.Response("Missing name.", 400)
 
-@mod.route('/user/<int:user_id>/group')
+@api_v1_bp.route('/user/<int:user_id>/group')
 @requires_some_admin
 def get_user_groups(user_id):
     user = User.get_by_id(user_id)
@@ -269,7 +272,7 @@ def get_user_groups(user_id):
     else:
         return flask.Response("User doesn't exist", 404)
 
-@mod.route('/user/<int:user_id>/permissions')
+@api_v1_bp.route('/user/<int:user_id>/permissions')
 @auth_requires_admin
 def get_user_permissions(user_id):
     user = User.get_by_id(user_id)
@@ -280,7 +283,7 @@ def get_user_permissions(user_id):
     else:
         return flask.Response("User doesn't exist", 404)
 
-@mod.route('/dataset', methods=['GET'])
+@api_v1_bp.route('/dataset', methods=['GET'])
 @auth_required
 def get_all_datasets():
     datasets = []
@@ -292,7 +295,7 @@ def get_all_datasets():
 
     return flask.jsonify([dataset.as_dict() for dataset in datasets])
 
-@mod.route('/dataset', methods=['POST'])
+@api_v1_bp.route('/dataset', methods=['POST'])
 @auth_requires_admin
 def create_dataset_route():
     data = flask.request.json
@@ -306,7 +309,7 @@ def create_dataset_route():
     else:
         return flask.Response("Missing name.", 400)
 
-@mod.route('/dataset/<int:dataset_id>', methods=['GET'])
+@api_v1_bp.route('/dataset/<int:dataset_id>', methods=['GET'])
 @requires_dataset_admin
 def get_dataset(dataset_id):
     dataset = Dataset.get_by_id(dataset_id)
@@ -316,13 +319,13 @@ def get_dataset(dataset_id):
     else:
         return flask.Response("Dataset doesn't exist", 404)
 
-@mod.route('/dataset/<int:dataset_id>/admin', methods=['GET'])
+@api_v1_bp.route('/dataset/<int:dataset_id>/admin', methods=['GET'])
 @requires_dataset_admin
 def get_dataset_admins(dataset_id):
     admins = DatasetAdmin.get_all_by_dataset(dataset_id)
     return flask.jsonify(admins)
 
-@mod.route('/dataset/<int:dataset_id>/admin', methods=['POST'])
+@api_v1_bp.route('/dataset/<int:dataset_id>/admin', methods=['POST'])
 @requires_dataset_admin
 def add_admin_to_dataset(dataset_id):
     data = flask.request.json
@@ -336,19 +339,19 @@ def add_admin_to_dataset(dataset_id):
     else:
         return flask.Response("Missing user_id.", 400)
 
-@mod.route('/dataset/<int:dataset_id>/admin/<int:user_id>', methods=['DELETE'])
+@api_v1_bp.route('/dataset/<int:dataset_id>/admin/<int:user_id>', methods=['DELETE'])
 @auth_requires_admin
 def remove_admin_from_dataset(dataset_id, user_id):
     DatasetAdmin.remove(user_id=user_id, dataset_id=dataset_id)
     return flask.jsonify("success")
 
-@mod.route('/dataset/<int:dataset_id>/group', methods=['GET'])
+@api_v1_bp.route('/dataset/<int:dataset_id>/group', methods=['GET'])
 @requires_dataset_admin
 def get_all_groups_for_dataset(dataset_id): # nearly identical to get_datasets_from_group_route
     permissions = GroupDataset.get_all_group_permissions(dataset_id)
     return flask.jsonify(permissions)
 
-@mod.route('/dataset/<int:dataset_id>/group', methods=['POST'])
+@api_v1_bp.route('/dataset/<int:dataset_id>/group', methods=['POST'])
 @requires_dataset_admin
 def add_dataset_to_group_route(dataset_id):
     data = flask.request.json
@@ -367,7 +370,7 @@ def add_dataset_to_group_route(dataset_id):
     else:
         return flask.make_response(flask.jsonify("Missing group_id."), 400)
 
-@mod.route('/dataset/<int:dataset_id>/group/<int:group_id>', methods=['PUT'])
+@api_v1_bp.route('/dataset/<int:dataset_id>/group/<int:group_id>', methods=['PUT'])
 @requires_dataset_admin
 def update_dataset_to_group_route(dataset_id, group_id):
     data = flask.request.json
@@ -386,19 +389,19 @@ def update_dataset_to_group_route(dataset_id, group_id):
     else:
         return flask.Response("Missing data.", 400)
 
-@mod.route('/dataset/<int:dataset_id>/group/<int:group_id>', methods=['DELETE'])
+@api_v1_bp.route('/dataset/<int:dataset_id>/group/<int:group_id>', methods=['DELETE'])
 @requires_dataset_admin
 def remove_dataset_to_group_route(dataset_id, group_id):
     GroupDataset.remove(group_id=group_id, dataset_id=int(dataset_id)) # TODO return error if group doesn't exist
     return flask.jsonify("success")
 
-@mod.route('/group', methods=['GET'])
+@api_v1_bp.route('/group', methods=['GET'])
 @auth_required
 def get_all_groups():    
     groups = Group.search_by_name(flask.request.args.get('name'))
     return flask.jsonify([group.as_dict() for group in groups])
 
-@mod.route('/group', methods=['POST'])
+@api_v1_bp.route('/group', methods=['POST'])
 @requires_some_admin
 def create_group_route():
     data = flask.request.json
@@ -413,7 +416,7 @@ def create_group_route():
     else:
         return flask.Response("Missing name.", 400)
 
-@mod.route('/group/<int:group_id>', methods=['GET'])
+@api_v1_bp.route('/group/<int:group_id>', methods=['GET'])
 @requires_some_admin
 def get_group(group_id):
     group = Group.get_by_id(group_id)
@@ -423,27 +426,27 @@ def get_group(group_id):
     else:
         return flask.Response("Group doesn't exist", 404)
 
-@mod.route('/group/<int:group_id>/dataset', methods=['GET'])
+@api_v1_bp.route('/group/<int:group_id>/dataset', methods=['GET'])
 @requires_some_admin
 def get_datasets_from_group_route(group_id):
     permissions = GroupDataset.get_permissions_for_group(group_id)
     return flask.jsonify(permissions)
 
-@mod.route('/group/<int:group_id>/user', methods=['GET'])
+@api_v1_bp.route('/group/<int:group_id>/user', methods=['GET'])
 @requires_some_admin
 def get_users_for_group_route(group_id):
     # todo, we should check to see if the group is valid before checking for users
     users = UserGroup.get_users(group_id)
     return flask.jsonify(users)
 
-@mod.route('/group/<int:group_id>/admin', methods=['GET'])
+@api_v1_bp.route('/group/<int:group_id>/admin', methods=['GET'])
 @requires_some_admin
 def get_admins_for_group_route(group_id):
     # todo, we should check to see if the group is valid before checking for users
     users = UserGroup.get_admins(group_id)
     return flask.jsonify(users)
 
-@mod.route('/group/<int:group_id>/user', methods=['POST'])
+@api_v1_bp.route('/group/<int:group_id>/user', methods=['POST'])
 @requires_group_admin
 def add_user_to_group_route(group_id):
     data = flask.request.json
@@ -457,7 +460,7 @@ def add_user_to_group_route(group_id):
     else:
         return flask.Response("Missing user_id.", 400)
 
-@mod.route('/group/<int:group_id>/user/<int:user_id>', methods=['PUT'])
+@api_v1_bp.route('/group/<int:group_id>/user/<int:user_id>', methods=['PUT'])
 @auth_requires_admin
 def modify_user_in_group_route(group_id, user_id):
     data = flask.request.json
@@ -470,7 +473,7 @@ def modify_user_in_group_route(group_id, user_id):
     else:
         return flask.Response("User doesn't belong to group", 404)
 
-@mod.route('/group/<int:group_id>/user/<int:user_id>', methods=['DELETE'])
+@api_v1_bp.route('/group/<int:group_id>/user/<int:user_id>', methods=['DELETE'])
 @requires_group_admin
 def remove_user_from_group_route(group_id, user_id):
     ug = UserGroup.get(group_id, user_id)
@@ -484,11 +487,11 @@ def remove_user_from_group_route(group_id, user_id):
     ug.delete()
     return flask.jsonify("success")
 
-@mod.route('/my_permissions')
+@api_v1_bp.route('/my_permissions')
 @auth_required
 def get_permissions():
     return flask.jsonify(User.get_by_id(flask.g.auth_user['id']).get_permissions())
 
-@mod.route('/admin/<path:path>')
+@admin_site_bp.route('/<path:path>', defaults={'path': 'index.html'})
 def send_admin_files(path):
     return flask.send_from_directory('admin', path)
