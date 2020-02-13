@@ -151,7 +151,11 @@ def oauth2callback():
     # TODO - detect if there are any differences (username) update the database
 
     if user is None:
-        user = User.create_account(info['email'], info['name'], False, group_names=["default"])
+        # TODO - prompt user for GDPR
+        # return flask.send_from_directory('admin', path)
+        flas.session['user_info'] = info
+        return flask.send_from_directory('gdrp', 'consent.html')
+        # user = User.create_account(info['email'], info['name'], False, group_names=["default"])
     else:
         user.update({'name': info['name']})
 
