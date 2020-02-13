@@ -634,6 +634,7 @@ const userDataApp = {
 		<div class="title">Create User</div>
 		<input v-model="user.name" placeholder="Name" required>
 		<input v-model="user.email" placeholder="Email" required>
+		<input v-model="user.pi" placeholder="PI/Lab Head" required>
 		<button @click="save">Create</button>
 	</template>
 	<template v-else>
@@ -641,6 +642,7 @@ const userDataApp = {
 		<div>
 			<div class="name">{{ user.name }}</div>
 			<div class="email">{{ user.email }}</div>
+			<div class="pi">{{ user.pi }}</div>
 			<div @click="update" class="admin editable">{{ user.admin }}</div>
 		</div>
 

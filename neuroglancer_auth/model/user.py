@@ -7,6 +7,7 @@ class User(db.Model):
     name = db.Column(db.String(80), unique=False, nullable=False) # public
     email = db.Column(db.String(120), unique=True, nullable=False) # public + affiliation
     admin = db.Column('admin', db.Boolean, server_default="0", nullable=False)
+    pi = db.Column('pi', db.String, server_default="", nullable=False)
 
     def as_dict(self):
         return {
@@ -14,6 +15,7 @@ class User(db.Model):
             "name": self.name,
             "email": self.email,
             "admin": self.admin,
+            "pi": self.pi,
             "admin_datasets": self.get_datasets_adminning()
         }
 
