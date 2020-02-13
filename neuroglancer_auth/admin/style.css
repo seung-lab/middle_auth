@@ -144,6 +144,14 @@ body:not(.isAdmin) .requiresAdmin {
     content: "Admin: "
 }
 
+.pi:before {
+    content: "PI/Lab Head: "
+}
+
+.gdpr_consent:before {
+    content: "GDPR Consent: "
+}
+
 .deleteRow {
     cursor: pointer;
 }
