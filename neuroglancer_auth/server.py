@@ -116,6 +116,14 @@ def authorize():
     else:
         return flask.redirect(authorization_url, code=302)
 
+@api_v1_bp.route("/register", methods=['POST'])
+def register():
+    pi = flask.request.form['pi']
+    print("pi", pi)
+    info = flask.session['user_info']
+    # user = User.create_account(info['email'], info['name'], False, group_names=["default"])
+    return flask.jsonify("registration disabled: " + info['email'] + " pi: " + pi)
+
 @api_v1_bp.route("/oauth2callback")
 def oauth2callback():
     if not 'session' in flask.request.cookies:
@@ -151,7 +159,11 @@ def oauth2callback():
     # TODO - detect if there are any differences (username) update the database
 
     if user is None:
-        user = User.create_account(info['email'], info['name'], False, group_names=["default"])
+        # TODO - prompt user for GDPR
+        # return flask.send_from_directory('admin', path)
+        print("giving them gdpr consent")
+        flask.session['user_info'] = info
+        return flask.send_from_directory('gdpr', 'consent.html')
     else:
         user.update({'name': info['name']})
 
@@ -160,6 +172,14 @@ def oauth2callback():
     token = insert_and_generate_unique_token(user.id, user_json, ex=7 * 24 * 60 * 60) # 7 days
 
     return flask.redirect(furl(flask.session['redirect']).add({'token': token}).url, code=302)
+
+@api_v1_bp.route('/test_consent')
+def test_consent():
+    return flask.send_from_directory('gdpr', 'consent.html')
+
+@api_v1_bp.route('/test_consent2')
+def test_consent_2():
+    return flask.send_from_directory('gdpr', '/consent.html')
 
 @api_v1_bp.route('/refresh_token')
 @auth_required
