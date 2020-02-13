@@ -144,6 +144,10 @@ body:not(.isAdmin) .requiresAdmin {
     content: "Admin: "
 }
 
+.pi:before {
+    content: "PI/Lab Head: "
+}
+
 .deleteRow {
     cursor: pointer;
 }

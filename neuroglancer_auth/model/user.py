@@ -6,7 +6,9 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(80), unique=False, nullable=False) # public
     email = db.Column(db.String(120), unique=True, nullable=False) # public + affiliation
-    admin = db.Column('admin', db.Boolean, server_default="0", nullable=False)
+    admin = db.Column(db.Boolean, server_default="0", nullable=False)
+    gdpr_consent = db.Column(db.Boolean, server_default="0", nullable=False)
+    pi = db.Column(db.String(80), server_default="", nullable=False)
 
     def as_dict(self):
         return {
@@ -14,15 +16,17 @@ class User(db.Model):
             "name": self.name,
             "email": self.email,
             "admin": self.admin,
+            "pi": self.pi,
+            "gdpr_consent": self.gdpr_consent,
             "admin_datasets": self.get_datasets_adminning()
         }
 
     @staticmethod
-    def create_account(email, name, admin=False, group_names=[]):
+    def create_account(email, name, pi, admin=False, group_names=[]):
         from .user_group import UserGroup
         from .group import Group
 
-        user = User(name=name, email=email, admin=admin)
+        user = User(name=name, email=email, admin=admin, pi=pi)
         db.session.add(user)
         db.session.flush() # get inserted id
 
