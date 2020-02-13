@@ -150,8 +150,12 @@ def oauth2callback():
 
     # TODO - detect if there are any differences (username) update the database
 
-    if user is None:
-        user = User.create_account(info['email'], info['name'], False, group_names=["default"])
+    if user is None or not user.gdpr_consent:
+        # TODO - prompt user for GDPR
+        # return flask.send_from_directory('admin', path)
+        print("giving them gdpr consent")
+        flask.session['user_info'] = info
+        return flask.send_from_directory('gdpr', 'consent.html')
     else:
         user.update({'name': info['name']})
 
@@ -160,6 +164,32 @@ def oauth2callback():
     token = insert_and_generate_unique_token(user.id, user_json, ex=7 * 24 * 60 * 60) # 7 days
 
     return flask.redirect(furl(flask.session['redirect']).add({'token': token}).url, code=302)
+
+@api_v1_bp.route("/register", methods=['POST'])
+def register():
+    info = flask.session.pop('user_info', None)
+
+    if info:
+        user = User.get_by_email(info['email'])
+
+        pi = flask.request.form['pi']
+
+        if user is None:
+            # user = User.create_account(info['email'], info['name'], False, group_names=["default"])
+            return flask.jsonify("registration disabled: " + info['email'] + " pi: " + pi)
+        else:
+            user.update({
+                'name': info['name'],
+                'gdpr_consent': True,
+            })
+            return flask.jsonify("update enabled: " + info['email'] + " pi: " + pi)
+    else:
+        resp = flask.Response("Unauthorized", 401)
+        return resp
+
+@api_v1_bp.route('/test_consent')
+def test_consent():
+    return flask.send_from_directory('gdpr', 'consent.html')
 
 @api_v1_bp.route('/refresh_token')
 @auth_required
@@ -201,12 +231,15 @@ def create_user_route():
 
     if not (data and 'name' in data):
         return flask.Response("Missing name.", 400)
-    
+
     if not (data and 'email' in data):
         return flask.Response("Missing email.", 400)
 
+    if not (data and 'pi' in data):
+        return flask.Response("Missing pi.", 400)
+
     try:
-        user = User.create_account(data['email'], data['name'], False, group_names=["default"])
+        user = User.create_account(data['email'], data['name'], data['pi'], False, group_names=["default"])
         return flask.jsonify(user.as_dict())
     except sqlalchemy.exc.IntegrityError as err:
         return flask.Response("User with email already exists.", 422)
