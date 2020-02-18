@@ -65,18 +65,6 @@ class User(db.Model):
             if field in data:
                 setattr(self, field, data[field])
 
-        # if 'admin' in data:
-        #     self.admin = data['admin']
-        
-        # if 'name' in data:
-        #     self.name = data['name']
-        
-        # if 'pi' in data:
-        #     self.pi = data['pi']
-        
-        # if 'gdpr_consent' in data:
-        #     self.gdpr_consent = data['gdpr_consent']
-
         db.session.commit()
         self.update_cache()
 
@@ -88,7 +76,7 @@ class User(db.Model):
         query = db.session.query(Group.id, Group.name)\
             .join(UserGroup, UserGroup.group_id == Group.id)\
             .filter(UserGroup.user_id == self.id)
-        
+
         groups = query.all()
 
         return [{'id': id, 'name': name} for id, name in groups]
