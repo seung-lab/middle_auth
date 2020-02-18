@@ -181,7 +181,10 @@ class User(db.Model):
 
     @staticmethod
     def filter_by_ids(ids):
-        return User.query.filter(User.id.in_(ids)).all()
+        if len(ids):
+            return User.query.filter(User.id.in_(ids)).all()
+        else:
+            return [] # otherwise returns all users
 
     @staticmethod
     def search_by_email(email):
