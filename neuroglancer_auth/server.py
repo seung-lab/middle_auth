@@ -177,8 +177,7 @@ def register():
                 'pi': pi,
                 'gdpr_consent': True,
             })
-            return flask.jsonify("update enabled: " + info['email'] + " pi: " + pi)
-        
+
         user_json = json.dumps(user.create_cache())
         token = insert_and_generate_unique_token(user.id, user_json, ex=7 * 24 * 60 * 60) # 7 days
 
