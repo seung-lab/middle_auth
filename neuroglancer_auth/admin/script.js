@@ -821,7 +821,7 @@ const mainApp = new Vue({
 async function authorize(auth_url) {
 	const plainURL = `${location.origin}${location.pathname}`.replace(/[^/]*$/, '');
 
-	const oauth_uri = await fetch(`https://${auth_url}/authorize?redirect=${encodeURI(plainURL + 'redirect.html')}`, {
+	const oauth_uri = await fetch(`https://${auth_url}/api/v1/authorize?redirect=${encodeURI(plainURL + 'redirect.html')}`, {
 		credentials: 'include',
 		headers: {
 			'X-Requested-With': 'Fetch'
