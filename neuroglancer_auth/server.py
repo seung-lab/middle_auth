@@ -528,3 +528,14 @@ def send_admin_index():
 @admin_site_bp.route('/<path:path>')
 def send_admin_files(path):
     return flask.send_from_directory('admin', path)
+
+
+@api_v1_bp.before_request
+@auth_required
+def my_before_request():
+    print("hello! tbr")
+
+
+@api_v1_bp.route('/testbr')
+def tbr():
+    return flask.jsonify("tbr!") 
