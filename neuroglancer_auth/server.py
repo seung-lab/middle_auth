@@ -33,6 +33,9 @@ def version():
 api_v1_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/auth/api/v1')
 admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/auth/admin')
 
+
+br_bp = flask.Blueprint('br_bp', __name__, url_prefix='/auth/br')
+
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
 
@@ -528,3 +531,14 @@ def send_admin_index():
 @admin_site_bp.route('/<path:path>')
 def send_admin_files(path):
     return flask.send_from_directory('admin', path)
+
+
+@br_bp.before_request
+@auth_required
+def my_before_request():
+    print("hello! tbr")
+
+
+@br_bp.route('/testbr')
+def tbr():
+    return flask.jsonify("tbr!") 
