@@ -14,7 +14,7 @@ from .model.api_key import APIKey
 from werkzeug.contrib.fixers import ProxyFix
 import redis # used in the envvar config
 
-__version__ = '1.2.1'
+__version__ = '1.2.2'
 
 
 DEFAULT_ADMINS = [
