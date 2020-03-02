@@ -573,7 +573,7 @@ const userDataApp = {
 				return !this.groups.map((g) => g.id).includes(group.id);
 			});
 		},
-		async save() {
+		async create() {
 			const user = await authFetch(`${AUTH_URL}/user`, {
 				method: 'POST',
 				headers: {
@@ -597,7 +597,8 @@ const userDataApp = {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					admin: !this.user.admin
+					admin: this.user.admin,
+					pi: this.user.pi,
 				})
 			});
 
@@ -636,16 +637,17 @@ const userDataApp = {
 		<input v-model="user.name" placeholder="Name" required>
 		<input v-model="user.email" placeholder="Email" required>
 		<input v-model="user.pi" placeholder="PI/Lab Head" required>
-		<button @click="save">Create</button>
+		<button @click="create">Create</button>
 	</template>
 	<template v-else>
 		<div class="title">Edit User</div>
 		<div>
 			<div class="name">{{ user.name }}</div>
 			<div class="email">{{ user.email }}</div>
-			<div class="pi">{{ user.pi }}</div>
-			<div @click="update" class="admin editable">{{ user.admin }}</div>
+			<div class="pi"><input v-model="user.pi" type="text"></input></div>
+			<div class="admin"><input v-model="user.admin" type="checkbox"></div>
 			<div class="gdpr_consent">{{ user.gdpr_consent }}</div>
+			<button @click="update">Save</button>
 		</div>
 
 		<div class="listContainer">
