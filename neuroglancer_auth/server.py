@@ -270,7 +270,7 @@ def get_user(user_id):
 def modify_user_route(user_id):
     data = flask.request.json
 
-    if data and 'admin' in data and flask.g.auth_user['id'] == user_id:
+    if data and 'admin' in data and not data['admin'] and flask.g.auth_user['id'] == user_id:
         return flask.Response("Cannot remove admin permissions from yourself.", 403)
 
     user = User.get_by_id(user_id)
