@@ -1,4 +1,4 @@
-const AUTH_URL = '../api/v1';
+const AUTH_URL = 'https://test1.flywire-daf.com/auth/api/v1';
 
 const datasetDataApp = {
 	data: () => ({
@@ -537,6 +537,11 @@ const userDataApp = {
 	mounted: async function () {
 		await this.load(this.$route.params.id);
 	},
+	watch: {
+		user(val) {
+			console.log('user changed');
+		}
+	},
 	methods: {
 		async load(param_id) {
 			this.loading = true;
@@ -573,7 +578,7 @@ const userDataApp = {
 				return !this.groups.map((g) => g.id).includes(group.id);
 			});
 		},
-		async save() {
+		async create() {
 			const user = await authFetch(`${AUTH_URL}/user`, {
 				method: 'POST',
 				headers: {
@@ -597,7 +602,8 @@ const userDataApp = {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					admin: !this.user.admin
+					admin: this.user.admin,
+					pi: this.user.pi,
 				})
 			});
 
@@ -636,16 +642,17 @@ const userDataApp = {
 		<input v-model="user.name" placeholder="Name" required>
 		<input v-model="user.email" placeholder="Email" required>
 		<input v-model="user.pi" placeholder="PI/Lab Head" required>
-		<button @click="save">Create</button>
+		<button @click="create">Create</button>
 	</template>
 	<template v-else>
 		<div class="title">Edit User</div>
 		<div>
 			<div class="name">{{ user.name }}</div>
 			<div class="email">{{ user.email }}</div>
-			<div class="pi">{{ user.pi }}</div>
-			<div @click="update" class="admin editable">{{ user.admin }}</div>
+			<div class="pi"><input v-model="user.pi" type="text" id="pi" name="pi"></input></div>
+			<div class="admin editable">{{ user.admin }}</div>
 			<div class="gdpr_consent">{{ user.gdpr_consent }}</div>
+			<button @click="update">Save</button>
 		</div>
 
 		<div class="listContainer">
