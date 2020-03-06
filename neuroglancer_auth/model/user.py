@@ -115,7 +115,7 @@ class User(db.Model):
             'name': self.name,
             'email': self.email,
             'admin': self.admin,
-            'groups': self.get_groups(),
+            'groups': [x['name'] for x in self.get_groups()],
             'permissions': {x['name']: x['level'] for x in self.get_permissions()},
         }
 

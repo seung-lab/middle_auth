@@ -5,7 +5,8 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+# from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from .dec import auth_required, auth_requires_admin, auth_requires_permission, auth_requires_group
 import sqlalchemy
 from furl import furl
 
@@ -528,3 +529,9 @@ def send_admin_index():
 @admin_site_bp.route('/<path:path>')
 def send_admin_files(path):
     return flask.send_from_directory('admin', path)
+
+
+@api_v1_bp.route('/boop')
+@auth_requires_group('boops')
+def test_boop():
+    return flask.jsonify("hello booper!")
