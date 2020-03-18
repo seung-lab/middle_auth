@@ -89,21 +89,12 @@ def authorize():
         access_type='offline',
         # Enable incremental authorization. Recommended as a best practice.
         include_granted_scopes='true',
-        prompt='consent')
-
-    flask.session['state'] = state
-    flask.session['redirect'] = flask.request.args.get('redirect')
-
-    if not 'redirect' in flask.session:
-        return flask.Response("Invalid Request", 400)
+        prompt='consent',
+        state=flask.request.args.get('redirect')
+        )
     
     cors_origin = flask.request.environ.get('HTTP_ORIGIN', None)
     programmatic_access = flask.request.headers.get('X-Requested-With') or cors_origin
-
-    if cors_origin:
-        print("has cors_origin")
-    else:
-        print("no cors_origin")
 
     if programmatic_access:
         resp = flask.Response(authorization_url)
@@ -118,19 +109,13 @@ def authorize():
 
 @api_v1_bp.route("/oauth2callback")
 def oauth2callback():
-    if not 'session' in flask.request.cookies:
-        return flask.Response("Invalid Request, are third-party cookies enabled?", 400)
+    redirect_uri = flask.request.args.get('state')
 
-    if not 'state' in flask.session:
-        return flask.Response("Invalid Request", 400)
-
-    if not 'redirect' in flask.session:
-        return flask.Response("Invalid Request", 400)
-
-    state = flask.session['state']
+    if not redirect_uri:
+        return flask.Response("Invalid Request - missing redirect", 400)
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
+        CLIENT_SECRETS_FILE, scopes=SCOPES)
     flow.redirect_uri = flask.url_for('api_v1_bp.oauth2callback', _external=True)
 
     authorization_response = flask.request.url
@@ -149,8 +134,8 @@ def oauth2callback():
     user = User.get_by_email(info['email'])
 
     if user is None or not user.gdpr_consent:
-        print("giving them gdpr consent")
         flask.session['user_info'] = info
+        flask.session['redirect'] = redirect_uri
         return flask.send_from_directory('gdpr', 'consent.html')
     else:
         user.update({'name': info['name']})
@@ -158,7 +143,7 @@ def oauth2callback():
     user_json = json.dumps(user.create_cache())
     token = insert_and_generate_unique_token(user.id, user_json, ex=7 * 24 * 60 * 60) # 7 days
 
-    return flask.redirect(furl(flask.session['redirect']).add({'token': token}).url, code=302)
+    return flask.redirect(furl(redirect_uri).add({'token': token}).url, code=302)
 
 @api_v1_bp.route("/register", methods=['POST'])
 def register():
