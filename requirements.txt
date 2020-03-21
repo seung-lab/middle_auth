@@ -1,8 +1,8 @@
 redis
-google_auth
+google_auth==1.11.3
+google_auth_oauthlib==0.4.1
+google-api-python-client==1.8.0
 Flask
-google_auth_oauthlib==0.3.0
-google-api-python-client
 Flask-Session
 Flask-Cors
 psycopg2
