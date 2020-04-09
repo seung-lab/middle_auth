@@ -32,28 +32,10 @@
         <h2>FlyWire Registration</h1>
         <span>Before you can continue to FlyWire, we need some additional information.</span>
         <form id="form" action="register" method="POST" class="formGroup">
-            <div style="display: grid;">
-                <label class="mdc-text-field mdc-text-field--outlined">
-                    <input name="pi" type="text" class="mdc-text-field__input"
-                        aria-labelledby="my-label-id"
-                        aria-controls="my-helper-id"
-                        aria-describedby="my-helper-id">
-                    <span class="mdc-notched-outline">
-                        <span class="mdc-notched-outline__leading"></span>
-                        <span class="mdc-notched-outline__notch">
-                        <span class="mdc-floating-label" id="my-label-id">Lab Head (Last name, First name)</span>
-                        </span>
-                        <span class="mdc-notched-outline__trailing"></span>
-                    </span>
-                </label>
-                <div class="mdc-text-field-helper-line">
-                    <div class="mdc-text-field-helper-text mdc-text-field-helper-text--persistent" id="my-helper-id" aria-hidden="true">*Required (Type N/A if it doesn't apply)</div>
-                </div>
-            </div>
-
             <div class="mdc-form-field">
                 <div class="mdc-checkbox">
                   <input type="checkbox"
+                         name="tos_agree" value="true"
                          class="mdc-checkbox__native-control"
                          id="checkbox-1"/>
                   <div class="mdc-checkbox__background">
