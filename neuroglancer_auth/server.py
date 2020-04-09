@@ -5,7 +5,7 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from .dec import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
 
@@ -35,6 +35,8 @@ admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/auth/adm
 
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
+
+AUTH_URI = os.environ['AUTH_URI']
 
 def requires_dataset_admin(f):
     @wraps(f)
@@ -78,7 +80,7 @@ def requires_some_admin(f):
 
     return decorated_function
 
-@api_v1_bp.route("/authorize")
+@api_v1_bp.route("/authorize", methods=['GET', 'POST'])
 def authorize():
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES)
@@ -94,16 +96,18 @@ def authorize():
     flask.session['state'] = state
     flask.session['redirect'] = flask.request.args.get('redirect')
 
+    if flask.request.method == 'POST':
+        flask.session['tos_agree'] = flask.request.form.get('tos_agree') == 'true'
+
     if not 'redirect' in flask.session:
         return flask.Response("Invalid Request", 400)
-    
-    cors_origin = flask.request.environ.get('HTTP_ORIGIN', None)
-    programmatic_access = flask.request.headers.get('X-Requested-With') or cors_origin
 
-    if cors_origin:
-        print("has cors_origin")
-    else:
-        print("no cors_origin")
+    cors_origin = flask.request.environ.get('HTTP_ORIGIN')
+    programmatic_access = flask.request.headers.get('X-Requested-With')# or cors_origin
+
+    referer = flask.request.headers.get("Referer", "no referrer")
+
+    print("referer: " + referer)
 
     if programmatic_access:
         resp = flask.Response(authorization_url)
@@ -115,6 +119,16 @@ def authorize():
         return resp
     else:
         return flask.redirect(authorization_url, code=302)
+
+def finish_auth_flow(user):
+    def create_auth_flow_end_redirect(token):
+        return flask.redirect(furl(flask.session['redirect']) # assert redirect exists?
+            .add({'middle_auth_token': token, 'middle_auth_url': AUTH_URI})
+            .url, code=302)
+
+    user_json = json.dumps(user.create_cache())
+    token = insert_and_generate_unique_token(user.id, user_json, ex=7 * 24 * 60 * 60) # 7 days
+    return create_auth_flow_end_redirect(token)
 
 @api_v1_bp.route("/oauth2callback")
 def oauth2callback():
@@ -149,16 +163,15 @@ def oauth2callback():
     user = User.get_by_email(info['email'])
 
     if user is None or not user.gdpr_consent:
-        print("giving them gdpr consent")
-        flask.session['user_info'] = info
-        return flask.send_from_directory('gdpr', 'consent.html')
+        if flask.session['tos_agree']:
+            user = User.create_account(info['email'], info['name'], None, False, True, group_names=["default"])
+        else:
+            flask.session['user_info'] = info
+            return flask.send_from_directory('gdpr', 'consent.html')
     else:
         user.update({'name': info['name']})
 
-    user_json = json.dumps(user.create_cache())
-    token = insert_and_generate_unique_token(user.id, user_json, ex=7 * 24 * 60 * 60) # 7 days
-
-    return flask.redirect(furl(flask.session['redirect']).add({'token': token}).url, code=302)
+    return finish_auth_flow(user)
 
 @api_v1_bp.route("/register", methods=['POST'])
 def register():
@@ -167,21 +180,15 @@ def register():
     if info:
         user = User.get_by_email(info['email'])
 
-        pi = flask.request.form['pi']
-
         if user is None:
-            user = User.create_account(info['email'], info['name'], pi, False, True, group_names=["default"])
+            user = User.create_account(info['email'], info['name'], None, False, True, group_names=["default"])
         else:
             user.update({
                 'name': info['name'],
-                'pi': pi,
                 'gdpr_consent': True,
             })
 
-        user_json = json.dumps(user.create_cache())
-        token = insert_and_generate_unique_token(user.id, user_json, ex=7 * 24 * 60 * 60) # 7 days
-
-        return flask.redirect(furl(flask.session['redirect']).add({'token': token}).url, code=302)
+        return finish_auth_flow(user)
     else:
         resp = flask.Response("Unauthorized", 401)
         return resp
