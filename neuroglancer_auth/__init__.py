@@ -11,7 +11,7 @@ from .model.user import User
 from .model.api_key import APIKey
 
 
-from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 import redis # used in the envvar config
 
 __version__ = '1.3.1'
@@ -24,6 +24,7 @@ DEFAULT_ADMINS = [
 
 def setup_app():
     app.config.from_envvar('AUTH_CONFIG_SETTINGS')
+    print("TEST_VAL: " + str(app.config.get('TEST_VAL')))
     Session(app)
     CORS(app, expose_headers=['WWW-Authenticate', 'X-Requested-With'])
 
