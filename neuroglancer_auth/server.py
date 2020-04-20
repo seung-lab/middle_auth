@@ -21,7 +21,7 @@ import os
 
 from functools import wraps
 
-__version__ = '1.3.1'
+__version__ = '1.4.0'
 
 TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
 
