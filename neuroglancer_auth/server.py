@@ -125,6 +125,7 @@ def finish_auth_flow(user):
     def create_auth_flow_end_redirect(token):
         return flask.redirect(furl(flask.session['redirect']) # assert redirect exists?
             .add({TOKEN_NAME: token, 'middle_auth_url': AUTH_URI})
+            .add({'token': token}) # deprecated
             .url, code=302)
 
     user_json = json.dumps(user.create_cache())
