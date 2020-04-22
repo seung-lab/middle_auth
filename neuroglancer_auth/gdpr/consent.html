@@ -62,11 +62,6 @@
         const MDCRipple = mdc.ripple.MDCRipple;
         const MDCCheckbox = mdc.checkbox.MDCCheckbox;
         const MDCFormField = mdc.formField.MDCFormField;
-        const MDCTextField = mdc.textField.MDCTextField;
-        const MDCTextFieldHelperText = mdc.textField.MDCTextFieldHelperText;
-
-        const textField = new MDCTextField(document.querySelector('.mdc-text-field'));
-        const helperText = new MDCTextFieldHelperText(document.querySelector('.mdc-text-field-helper-text'));
 
         const button = new MDCRipple(document.querySelector('.mdc-button'));
 
@@ -74,11 +69,10 @@
         const formField = new MDCFormField(document.querySelector('.mdc-form-field'));
         formField.input = checkbox;
 
-        textField.listen('input', checkFormValidity);
         checkbox.listen('change', checkFormValidity);
 
         function checkFormValidity() {
-            const validForm = textField.value.length && checkbox.checked;
+            const validForm = checkbox.checked;
             button.root_.disabled = !validForm;
         }
     </script>
