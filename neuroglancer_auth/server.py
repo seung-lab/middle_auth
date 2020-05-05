@@ -24,20 +24,22 @@ from functools import wraps
 __version__ = '1.4.3'
 
 TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
+URL_PREFIX = os.environ.get('URL_PREFIX', 'auth')
+AUTH_URI = os.environ.get('AUTH_URI', 'localhost:5000/auth') #deprecated
+AUTH_URL = os.environ.get('AUTH_URL', AUTH_URI)
+STICKY_AUTH_URL = os.environ.get('STICKY_AUTH_URL', AUTH_URL)
 
-version_bp = flask.Blueprint('version_bp', __name__, url_prefix='/auth')
+version_bp = flask.Blueprint('version_bp', __name__, url_prefix='/' + URL_PREFIX)
 
 @version_bp.route("/version")
 def version():
     return "neuroglance_auth -- version " + __version__
 
-api_v1_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/auth/api/v1')
-admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/auth/admin')
+api_v1_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/v1')
+admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/' + URL_PREFIX + '/admin')
 
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
-
-AUTH_URI = os.environ['AUTH_URI']
 
 def requires_dataset_admin(f):
     @wraps(f)
@@ -124,7 +126,7 @@ def authorize():
 def finish_auth_flow(user):
     def create_auth_flow_end_redirect(token):
         return flask.redirect(furl(flask.session['redirect']) # assert redirect exists?
-            .add({TOKEN_NAME: token, 'middle_auth_url': AUTH_URI})
+            .add({TOKEN_NAME: token, 'middle_auth_url': STICKY_AUTH_URL})
             .add({'token': token}) # deprecated
             .url, code=302)
 
