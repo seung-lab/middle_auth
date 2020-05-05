@@ -25,14 +25,16 @@ __version__ = '1.4.3'
 
 TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
 
-version_bp = flask.Blueprint('version_bp', __name__, url_prefix='/auth')
+URL_PREFIX = os.environ.get('URL_PREFIX', 'auth')
+
+version_bp = flask.Blueprint('version_bp', __name__, url_prefix='/' + URL_PREFIX)
 
 @version_bp.route("/version")
 def version():
     return "neuroglance_auth -- version " + __version__
 
-api_v1_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/auth/api/v1')
-admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/auth/admin')
+api_v1_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/v1')
+admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/' + URL_PREFIX + '/admin')
 
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
