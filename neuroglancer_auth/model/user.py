@@ -1,6 +1,7 @@
 from .base import db, r
 
 import json
+from sqlalchemy.sql import func
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -87,10 +88,11 @@ class User(db.Model):
         from .dataset import Dataset
         from .user_group import UserGroup
 
-        query = db.session.query(GroupDataset.dataset_id, Dataset.name, GroupDataset.level)\
+        query = db.session.query(GroupDataset.dataset_id, Dataset.name, func.max(GroupDataset.level))\
             .join(UserGroup, UserGroup.group_id == GroupDataset.group_id)\
             .join(Dataset, Dataset.id == GroupDataset.dataset_id)\
-            .filter(UserGroup.user_id == self.id)
+            .filter(UserGroup.user_id == self.id)\
+            .group_by(UserGroup.user_id, GroupDataset.dataset_id, Dataset.name)
         
         permissions = query.all()
         
