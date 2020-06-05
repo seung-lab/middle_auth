@@ -10,6 +10,8 @@ from .model.base import db
 from .model.user import User
 from .model.api_key import APIKey
 
+from .model.service_account import ServiceAccount
+from .model.service_account_group import ServiceAccountGroup
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 import redis # used in the envvar config
