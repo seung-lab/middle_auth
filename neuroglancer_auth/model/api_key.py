@@ -1,4 +1,3 @@
-from .user import User
 from .base import db, r
 
 import json
@@ -13,14 +12,16 @@ class APIKey(db.Model):
     # i.e. new deployment or some redis failure
     @staticmethod
     def load_into_cache():
+        from .user import User
         api_keys = APIKey().query.all()
 
         for api_key in api_keys:
-            user = User.get_by_id(api_key.user_id)
+            user = User.user_get_by_id(api_key.user_id)
             r.set("token_" + api_key.key, json.dumps(user.create_cache()), nx=True)
     
     @staticmethod
     def generate(user_id):
+        from .user import User
         entry = APIKey.query.filter_by(user_id=user_id).first()
 
         new_entry = not entry
@@ -28,9 +29,9 @@ class APIKey(db.Model):
         if new_entry:
             entry = APIKey(user_id=user_id, key="")
 
-        user = User.get_by_id(user_id)
+        user = User.user_get_by_id(user_id)
         user_json = json.dumps(user.create_cache())
-        token = insert_and_generate_unique_token(user_id, user_json)
+        token = insert_and_generate_unique_token("userid_" + str(user_id), user_json)
 
         if not new_entry:
             delete_token(user_id, entry.key)
@@ -44,7 +45,7 @@ class APIKey(db.Model):
 
         return token
 
-def insert_and_generate_unique_token(user_id, value, ex=None):
+def insert_and_generate_unique_token(tokens_key, value, ex=None):
     token = None
 
     # keep trying to insert a random token into redis until it finds one that is not already in use
@@ -56,7 +57,7 @@ def insert_and_generate_unique_token(user_id, value, ex=None):
         if not_dupe:
             break
 
-    r.sadd("userid_" + str(user_id), token)
+    r.sadd(tokens_key, token)
 
     return token
 
