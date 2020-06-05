@@ -10,10 +10,16 @@ class User(db.Model):
     admin = db.Column(db.Boolean, server_default="0", nullable=False)
     gdpr_consent = db.Column(db.Boolean, server_default="0", nullable=False)
     pi = db.Column(db.String(80), server_default="", nullable=False)
+    created = db.Column(db.DateTime, server_default=func.now())
+    parent_id = db.Column('parent_id', db.Integer, db.ForeignKey("user.id"), nullable=True)
+    read_only = db.Column(db.Boolean, server_default="0", nullable=False)
 
     def as_dict(self):
         return {
             "id": self.id,
+            "service_account": self.parent_id is not None,
+            "parent_id": self.parent_id,
+            "read_only": self.read_only,
             "name": self.name,
             "email": self.email,
             "admin": self.admin,
@@ -23,11 +29,11 @@ class User(db.Model):
         }
 
     @staticmethod
-    def create_account(email, name, pi, admin=False, gdpr_consent=False, group_names=[]):
+    def create_account(email, name, pi, admin=False, gdpr_consent=False, group_names=[], parent_id=None):
         from .user_group import UserGroup
         from .group import Group
 
-        user = User(name=name, email=email, admin=admin, pi=pi, gdpr_consent=gdpr_consent)
+        user = User(name=name, email=email, admin=admin, pi=pi, gdpr_consent=gdpr_consent, parent_id=parent_id)
         db.session.add(user)
         db.session.flush() # get inserted id
 
@@ -44,6 +50,18 @@ class User(db.Model):
         return User.query.filter_by(id=id).first()
     
     @staticmethod
+    def get_by_parent(id):
+        return User.query.filter_by(parent_id=id).first()
+    
+    @staticmethod
+    def get_normal_accounts():
+        return User.query.filter(User.parent_id.is_(None)).order_by(User.id.asc()).all()
+
+    @staticmethod
+    def get_service_accounts():
+        return User.query.filter(User.parent_id.isnot(None)).order_by(User.id.asc()).all()
+    
+    @staticmethod
     def get_by_email(email):
         return User.query.filter_by(email=email).first()
 
@@ -57,10 +75,14 @@ class User(db.Model):
 
     @staticmethod
     def search_by_name(name):
-        return User.query.filter(User.name.ilike(f'%{name}%')).all()
+        return User.query.filter(User.parent_id.is_(None)).filter(User.name.ilike(f'%{name}%')).all()
+    
+    @staticmethod
+    def sa_search_by_name(name):
+        return User.query.filter(User.parent_id.isnot(None)).filter(User.name.ilike(f'%{name}%')).all()
 
     def update(self, data):
-        user_fields = ['admin', 'name', 'pi', 'gdpr_consent']
+        user_fields = ['admin', 'name', 'pi', 'gdpr_consent', 'read_only']
 
         for field in user_fields:
             if field in data:
@@ -114,6 +136,8 @@ class User(db.Model):
     def create_cache(self):
         return {
             'id': self.id,
+            "service_account": self.parent_id is not None,
+            "parent_id": self.parent_id,
             'name': self.name,
             'email': self.email,
             'admin': self.admin,
