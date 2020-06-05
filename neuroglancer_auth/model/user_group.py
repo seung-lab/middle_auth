@@ -2,8 +2,6 @@ from .base import db
 from .user import User
 from .group import Group
 
-from flask_sqlalchemy import event
-
 class UserGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -60,9 +58,3 @@ class UserGroup(db.Model):
             self.admin = data['admin']
 
         db.session.commit()
-
-def insert_default_groups(target, connection, **kw):
-    db.session.add(Group(name="default"))
-    db.session.commit()
-
-event.listen(Group.__table__, 'after_create', insert_default_groups)
