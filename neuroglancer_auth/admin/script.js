@@ -229,6 +229,7 @@ const groupDataApp = {
 		newEntry: false,
 		group: null,
 		users: [],
+		serviceAccounts: [],
 		admins: [],
 		nonAdmins: [],
 		datasets: [],
@@ -264,9 +265,10 @@ const groupDataApp = {
 
 			const id = Number.parseInt(param_id);
 
-			let [group, users, datasets, availableDatasets] = await authFetch([
+			let [group, users, serviceAccounts, datasets, availableDatasets] = await authFetch([
 				`${AUTH_URL}/group/${id}`,
 				`${AUTH_URL}/group/${id}/user`,
+				`${AUTH_URL}/group/${id}/service_account`,
 				`${AUTH_URL}/group/${id}/dataset`,
 				`${AUTH_URL}/dataset`
 			]);
@@ -274,6 +276,7 @@ const groupDataApp = {
 			this.group = group;
 
 			this.users = users;
+			this.serviceAccounts = serviceAccounts;
 			this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
 			this.updateNonAdmins();
 			this.datasets = datasets;
@@ -310,6 +313,7 @@ const groupDataApp = {
 			});
 
 			this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
+			this.serviceAccounts = await authFetch(`${AUTH_URL}/group/${this.group.id}/service_account`);
 			this.updateNonAdmins();
 		},
 		async removeUser(userId) {
@@ -318,6 +322,7 @@ const groupDataApp = {
 			});
 
 			this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
+			this.serviceAccounts = await authFetch(`${AUTH_URL}/group/${this.group.id}/service_account`);
 			this.admins = await authFetch(`${AUTH_URL}/group/${this.group.id}/admin`);
 			this.updateNonAdmins();
 		},
@@ -499,6 +504,20 @@ const groupDataApp = {
 				</div>
 			</div>
 
+			<div class="listContainer">
+				<div class="header">Service Accounts</div>
+				<div class="users list twoColumn">
+					<div v-for="user in serviceAccounts">
+						<div>
+							<router-link :to="{ name: 'serviceAccountData', params: { id: user.id }}">
+								{{ user.name }}
+							</router-link>
+						</div>
+						<div class="deleteRow" @click="removeUser(user.id)"></div>
+					</div>
+				</div>
+			</div>
+
 			<vue-simple-suggest
 				placeholder="Add User (by email)"
 				v-model="chosen"
@@ -674,6 +693,165 @@ const userDataApp = {
 	`
 };
 
+const serviceAccountDataApp = {
+	data: () => ({
+		loading: true,
+		newEntry: false,
+		serviceAccount: null,
+		groups: [],
+		availableGroups: [],
+		allGroups: [],
+		selectedGroup: ''
+	}),
+	async beforeRouteUpdate (to, from, next) {
+		await this.load(to.params.id);
+		next();
+	},
+	mounted: async function () {
+		await this.load(this.$route.params.id);
+	},
+	methods: {
+		async load(param_id) {
+			this.loading = true;
+			this.newEntry = param_id === 'create';
+
+			if (param_id === 'create') {
+				this.loading = false;
+
+				this.serviceAccount = {
+					name: ''
+				};
+
+				return;
+			}
+
+			const id = Number.parseInt(param_id);
+
+			let [serviceAccountInfo, serviceAccountGroups, groups] = await authFetch([
+				`${AUTH_URL}/service_account/${id}`,
+				`${AUTH_URL}/service_account/${id}/group`,
+				`${AUTH_URL}/group`]
+			);
+
+			this.serviceAccount = serviceAccountInfo;
+			this.groups = serviceAccountGroups;
+			this.allGroups = groups;
+
+			this.updateAvailableGroups();
+
+			this.loading = false;
+		},
+		updateAvailableGroups() {
+			this.availableGroups = this.allGroups.filter((group) => {
+				return !this.groups.map((g) => g.id).includes(group.id);
+			});
+		},
+		async create() {
+			const serviceAccount = await authFetch(`${AUTH_URL}/service_account`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					name: this.serviceAccount.name,
+				})
+			});
+
+			router.push({ name: 'serviceAccountData', params: { id: serviceAccount.id }});
+
+			if (serviceAccount) {
+				router.push({ name: 'serviceAccountData', params: { id: serviceAccount.id }});
+			}
+		},
+		async update() {
+			await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					read_only: this.serviceAccount.read_only,
+				})
+			});
+
+			this.serviceAccount = await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}`);
+		},
+		async deleteSA() { // cant use delete because it conflicts with javascript keyword
+			await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}`, {
+				method: 'DELETE'
+			});
+
+			router.push({ name: 'serviceAccountList' });
+		},
+		async joinGroup() {
+			await authFetch(`${AUTH_URL}/group/${this.selectedGroup}/service_account`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					sa_id: this.serviceAccount.id
+				})
+			});
+
+			this.groups = await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}/group`);
+			this.updateAvailableGroups();
+		},
+		async leaveGroup(groupId) {
+			await authFetch(`${AUTH_URL}/group/${groupId}/service_account/${this.serviceAccount.id}`, {
+				method: 'DELETE'
+			});
+
+			this.groups = await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}/group`);
+			this.updateAvailableGroups();
+		}
+	},
+	template: `
+	<div id="serviceAccountData">
+	<template v-if="loading">
+		<div>Loading...</div>
+	</template>
+	<template v-else-if="newEntry">
+		<div class="title">Create Service Account</div>
+		<input v-model="serviceAccount.name" placeholder="Name" required>
+		<button @click="create">Create</button>
+	</template>
+	<template v-else>
+		<div class="title">Edit Service Account</div>
+		<div>
+			<div class="name">{{ serviceAccount.name }}</div>
+			<div class="token">{{ serviceAccount.token }}</div>
+			<div class="read_only"><input v-model="serviceAccount.read_only" type="checkbox"></div>
+			<button @click="update">Save</button>
+		</div>
+
+		<div class="listContainer">
+			<div class="header">Groups</div>
+			<div class="groups list twoColumn">
+				<div v-for="group in groups">
+					<router-link :to="{ name: 'groupData', params: { id: group.id }}">
+						{{ group.name }}
+					</router-link>
+					<div class="deleteRow" @click="leaveGroup(group.id)"></div>
+				</div>
+			</div>
+		</div>
+
+		<div>
+			<select v-model="selectedGroup">
+				<option disabled="disabled" value="">Select Group</option>
+				<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
+			</select>
+			<button @click="joinGroup">Join Group</button>
+		</div>
+		<div>
+			<button @click="deleteSA">Delete Service Account</button>
+		</div>
+	</template>
+	</div>
+	`
+};
+
 const listApp = {
 	data: () => ({
 		loading: true,
@@ -687,6 +865,7 @@ const listApp = {
 	}),
 	methods: {
 		refresh() {
+			console.log('refresh!');
 			const searchQuery = new URLSearchParams();
 
 			if (this.searchInput.length) {
@@ -745,6 +924,17 @@ const userListApp = {
 	})
 };
 
+const serviceAccountListApp = {
+	mixins: [listApp],
+	data: () => ({
+		url: '/service_account',
+		searchKey: 'name',
+		title: 'Service Accounts',
+		displayedProps: ['name'],
+		canCreate: true
+	})
+};
+
 const groupListApp = {
 	mixins: [listApp],
 	data: () => ({
@@ -770,6 +960,8 @@ const datasetListApp = {
 const routes = [
 	{ path: '/user', name: 'userList', component: userListApp },
 	{ path: '/user/:id', name: 'userData', component: userDataApp },
+	{ path: '/service_account', name: 'serviceAccountList', component: serviceAccountListApp },
+	{ path: '/service_account/:id', name: 'serviceAccountData', component: serviceAccountDataApp },
 	{ path: '/group', name: 'groupList', component: groupListApp },
 	{ path: '/group/:id', name: 'groupData', component: groupDataApp },
 	{ path: '/dataset', name: 'datasetList', component: datasetListApp },
