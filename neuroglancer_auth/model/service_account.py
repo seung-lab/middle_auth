@@ -3,18 +3,17 @@ from .base import db, r
 import json
 from sqlalchemy.sql import func
 
-class User(db.Model):
+class ServiceAccount(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
     name = db.Column(db.String(80), unique=False, nullable=False) # public
-    email = db.Column(db.String(120), unique=True, nullable=False) # public + affiliation
-    admin = db.Column(db.Boolean, server_default="0", nullable=False)
-    gdpr_consent = db.Column(db.Boolean, server_default="0", nullable=False)
-    pi = db.Column(db.String(80), server_default="", nullable=False)
+    read_only = db.Column(db.Boolean, server_default="0", nullable=False)
     created = db.Column(db.DateTime, server_default=func.now())
 
     def as_dict(self):
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "name": self.name,
             "email": self.email,
             "admin": self.admin,
@@ -24,41 +23,33 @@ class User(db.Model):
         }
 
     @staticmethod
-    def create_account(email, name, pi, admin=False, gdpr_consent=False, group_names=[]):
-        from .user_group import UserGroup
+    def create_account(user_id, name, group_names=[]):
+        from .service_account_group import ServiceAccountGroup
         from .group import Group
 
-        user = User(name=name, email=email, admin=admin, pi=pi, gdpr_consent=gdpr_consent)
-        db.session.add(user)
+        sa = ServiceAccount(user_id=user_id, name=name)
+        db.session.add(sa)
         db.session.flush() # get inserted id
 
         groups = Group.query.filter(Group.name.in_(group_names)).all()
 
         for group in groups:
-            db.session.add(UserGroup(user_id=user.id, group_id=group.id))
+            db.session.add(ServiceAccountGroup(sa_id=sa.id, group_id=group.id))
 
         db.session.commit()
-        return user
+        return sa
 
     @staticmethod
     def get_by_id(id):
-        return User.query.filter_by(id=id).first()
+        return ServiceAccount.query.filter_by(id=id).first()
     
     @staticmethod
-    def get_by_email(email):
-        return User.query.filter_by(email=email).first()
-
-    @staticmethod
     def filter_by_ids(ids):
-        return User.query.filter(User.id.in_(ids)).all()
-
-    @staticmethod
-    def search_by_email(email):
-        return User.query.filter(User.email.ilike(f'%{email}%')).all()
+        return ServiceAccount.query.filter(ServiceAccount.id.in_(ids)).all()
 
     @staticmethod
     def search_by_name(name):
-        return User.query.filter(User.name.ilike(f'%{name}%')).all()
+        return ServiceAccount.query.filter(ServiceAccount.name.ilike(f'%{name}%')).all()
 
     def update(self, data):
         user_fields = ['admin', 'name', 'pi', 'gdpr_consent']
@@ -71,13 +62,13 @@ class User(db.Model):
         self.update_cache()
 
     def get_groups(self):
-        # move to UserGroup
+        # move to ServiceAccountGroup
         from .group import Group
-        from .user_group import UserGroup
+        from .service_account_group import ServiceAccountGroup
 
         query = db.session.query(Group.id, Group.name)\
-            .join(UserGroup, UserGroup.group_id == Group.id)\
-            .filter(UserGroup.user_id == self.id)
+            .join(ServiceAccountGroup, ServiceAccountGroup.group_id == Group.id)\
+            .filter(ServiceAccountGroup.sa_id == self.id)
 
         groups = query.all()
 
@@ -87,13 +78,13 @@ class User(db.Model):
         # messy dependencies, not sure if it should be moved
         from .group_dataset import GroupDataset
         from .dataset import Dataset
-        from .user_group import UserGroup
+        from .service_account_group import ServiceAccountGroup
 
         query = db.session.query(GroupDataset.dataset_id, Dataset.name, func.max(GroupDataset.level))\
-            .join(UserGroup, UserGroup.group_id == GroupDataset.group_id)\
+            .join(ServiceAccountGroup, ServiceAccountGroup.group_id == GroupDataset.group_id)\
             .join(Dataset, Dataset.id == GroupDataset.dataset_id)\
-            .filter(UserGroup.user_id == self.id)\
-            .group_by(UserGroup.user_id, GroupDataset.dataset_id, Dataset.name)
+            .filter(ServiceAccountGroup.sa_id == self.id)\
+            .group_by(ServiceAccountGroup.sa_id, GroupDataset.dataset_id, Dataset.name)
         
         permissions = query.all()
         
