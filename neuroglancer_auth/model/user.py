@@ -1,4 +1,5 @@
 from .base import db, r
+from .api_key import insert_and_generate_unique_token
 
 import json
 from sqlalchemy.sql import func
@@ -10,10 +11,16 @@ class User(db.Model):
     admin = db.Column(db.Boolean, server_default="0", nullable=False)
     gdpr_consent = db.Column(db.Boolean, server_default="0", nullable=False)
     pi = db.Column(db.String(80), server_default="", nullable=False)
+    created = db.Column(db.DateTime, server_default=func.now())
+    parent_id = db.Column('parent_id', db.Integer, db.ForeignKey("user.id"), nullable=True)
+    read_only = db.Column(db.Boolean, server_default="0", nullable=False)
 
     def as_dict(self):
-        return {
+        res = {
             "id": self.id,
+            "service_account": self.is_service_account(),
+            "parent_id": self.parent_id,
+            "read_only": self.read_only,
             "name": self.name,
             "email": self.email,
             "admin": self.admin,
@@ -22,12 +29,20 @@ class User(db.Model):
             "admin_datasets": self.get_datasets_adminning()
         }
 
+        if self.is_service_account():
+            res["token"] = self.get_service_account_token()
+
+        return res
+
+    def is_service_account(self):
+        return self.parent_id is not None
+
     @staticmethod
-    def create_account(email, name, pi, admin=False, gdpr_consent=False, group_names=[]):
+    def create_account(email, name, pi, admin=False, gdpr_consent=False, group_names=[], parent_id=None):
         from .user_group import UserGroup
         from .group import Group
 
-        user = User(name=name, email=email, admin=admin, pi=pi, gdpr_consent=gdpr_consent)
+        user = User(name=name, email=email, admin=admin, pi=pi, gdpr_consent=gdpr_consent, parent_id=parent_id)
         db.session.add(user)
         db.session.flush() # get inserted id
 
@@ -37,11 +52,40 @@ class User(db.Model):
             db.session.add(UserGroup(user_id=user.id, group_id=group.id))
 
         db.session.commit()
+
+        if user.is_service_account():
+            user.generate_token()
+
         return user
 
     @staticmethod
     def get_by_id(id):
         return User.query.filter_by(id=id).first()
+    
+    @staticmethod
+    def get_by_parent(id):
+        return User.query.filter_by(parent_id=id).first()
+
+    def tokens_key(self):
+        return "userid_" + str(self.id)
+
+    def generate_token(self, ex=None):
+        user_json = json.dumps(self.create_cache())
+        return insert_and_generate_unique_token(self.tokens_key(), user_json, ex=ex) # 7 days
+
+    def get_service_account_token(self):
+        tokens = r.smembers(self.tokens_key())
+
+        for token_bytes in tokens: # should only be one
+            return token_bytes.decode('utf-8')
+
+    @staticmethod
+    def get_normal_accounts():
+        return User.query.filter(User.parent_id.is_(None)).order_by(User.id.asc()).all()
+
+    @staticmethod
+    def get_service_accounts():
+        return User.query.filter(User.parent_id.isnot(None)).order_by(User.id.asc()).all()
     
     @staticmethod
     def get_by_email(email):
@@ -57,10 +101,14 @@ class User(db.Model):
 
     @staticmethod
     def search_by_name(name):
-        return User.query.filter(User.name.ilike(f'%{name}%')).all()
+        return User.query.filter(User.parent_id.is_(None)).filter(User.name.ilike(f'%{name}%')).all()
+    
+    @staticmethod
+    def sa_search_by_name(name):
+        return User.query.filter(User.parent_id.isnot(None)).filter(User.name.ilike(f'%{name}%')).all()
 
     def update(self, data):
-        user_fields = ['admin', 'name', 'pi', 'gdpr_consent']
+        user_fields = ['admin', 'name', 'pi', 'gdpr_consent', 'read_only']
 
         for field in user_fields:
             if field in data:
@@ -114,6 +162,8 @@ class User(db.Model):
     def create_cache(self):
         return {
             'id': self.id,
+            "service_account": self.parent_id is not None,
+            "parent_id": self.parent_id,
             'name': self.name,
             'email': self.email,
             'admin': self.admin,

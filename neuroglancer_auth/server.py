@@ -10,12 +10,14 @@ import sqlalchemy
 from furl import furl
 
 from .model.user import User
-from .model.api_key import APIKey, insert_and_generate_unique_token, delete_token, delete_all_tokens_for_user
+from .model.api_key import APIKey, delete_token, delete_all_tokens_for_user
 from .model.dataset_admin import DatasetAdmin
 from .model.group import Group
 from .model.user_group import UserGroup
 from .model.dataset import Dataset
 from .model.group_dataset import GroupDataset
+from .model.service_account import ServiceAccount
+from .model.service_account_group import ServiceAccountGroup
 
 import os
 
@@ -130,8 +132,7 @@ def finish_auth_flow(user):
             .add({'token': token}) # deprecated
             .url, code=302)
 
-    user_json = json.dumps(user.create_cache())
-    token = insert_and_generate_unique_token(user.id, user_json, ex=7 * 24 * 60 * 60) # 7 days
+    token = user.generate_token(ex=7 * 24 * 60 * 60) # 7 days
     return create_auth_flow_end_redirect(token)
 
 @api_v1_bp.route("/oauth2callback")
@@ -479,6 +480,51 @@ def get_users_for_group_route(group_id):
     users = UserGroup.get_users(group_id)
     return flask.jsonify(users)
 
+@api_v1_bp.route('/group/<int:group_id>/service_account', methods=['GET'])
+@requires_some_admin
+def get_sas_for_group_route(group_id):
+    # todo, we should check to see if the group is valid before checking for users
+    sas = ServiceAccountGroup.get_users(group_id)
+    return flask.jsonify(sas)
+
+@api_v1_bp.route('/group/<int:group_id>/service_account/<int:sa_id>', methods=['PUT'])
+@auth_requires_admin
+def modify_sa_in_group_route(group_id, sa_id):
+    data = flask.request.json
+
+    sag = ServiceAccountGroup.get(group_id, sa_id)
+
+    if sag:
+        sag.update(data)
+        return flask.jsonify("success")
+    else:
+        return flask.Response("Service account doesn't belong to group", 404)
+
+@api_v1_bp.route('/group/<int:group_id>/service_account/<int:sa_id>', methods=['DELETE'])
+@requires_group_admin
+def remove_sa_from_group_route(group_id, sa_id):
+    sag = ServiceAccountGroup.get(group_id, sa_id)
+
+    if not sag:
+        return flask.Response("Service account doesn't belong to group", 404)
+    sag.delete()
+    return flask.jsonify("success")
+
+@api_v1_bp.route('/group/<int:group_id>/service_account', methods=['POST'])
+@requires_group_admin
+def add_sa_to_group_route(group_id):
+    data = flask.request.json
+
+    if data and 'sa_id' in data:
+        try:
+            ServiceAccountGroup.add(data['sa_id'], group_id)
+            return flask.jsonify("success")
+        except sqlalchemy.exc.IntegrityError as err:
+            return flask.Response("Service account already belongs to group.", 422)
+    else:
+        return flask.Response("Missing sa_id.", 400)
+
+
 @api_v1_bp.route('/group/<int:group_id>/admin', methods=['GET'])
 @requires_some_admin
 def get_admins_for_group_route(group_id):
@@ -539,3 +585,101 @@ def send_admin_index():
 @admin_site_bp.route('/<path:path>')
 def send_admin_files(path):
     return flask.send_from_directory('admin', path)
+
+# @api_v1_bp.route('/user/cache')
+# @auth_required
+# def get_user_cache():
+#     return flask.jsonify(flask.g.auth_user)
+
+@api_v1_bp.route('/service_account')
+@requires_some_admin
+def get_service_accounts_by_filter():
+    service_accounts = None
+
+    if flask.request.args.get('id'):
+        service_accounts = User.filter_by_ids([int(x) for x in flask.request.args.get('id').split(',') if x])
+    elif flask.request.args.get('name'):
+        service_accounts = User.sa_search_by_name(flask.request.args.get('name'))
+    else:
+        service_accounts = User.get_service_accounts()
+    return flask.jsonify([sa.as_dict() for sa in service_accounts])
+
+@api_v1_bp.route('/service_account/<int:sa_id>')
+@requires_some_admin
+def get_sa(sa_id):
+    sa = ServiceAccount.get_by_id(sa_id)
+
+    if sa:
+        return flask.jsonify(sa.as_dict())
+    else:
+        return flask.Response("Service account doesn't exist", 404)
+
+@api_v1_bp.route('/service_account', methods=['POST'])
+@requires_some_admin
+def create_service_account_route():
+    data = flask.request.json
+
+    required_fields = ['name']
+
+    for field in required_fields:
+        if not (data and field in data):
+            return flask.Response("Missing " + field + " .", 400) 
+
+    try:
+        sa = User.create_account("boop", data['name'], "boop", False, False, group_names=["default"], parent_id=flask.g.auth_user['id'])
+        return flask.jsonify(sa.as_dict())
+    except sqlalchemy.exc.IntegrityError as err:
+        return flask.Response("Service Account with name already exists.", 422)
+
+@api_v1_bp.route('/service_account/<int:sa_id>', methods=['DELETE'])
+@auth_requires_admin
+def delete_service_account_route(sa_id):
+    ServiceAccount.remove(sa_id)
+    return flask.jsonify("success")
+
+# @api_v1_bp.route('/user/<int:user_id>', methods=['PUT'])
+# @auth_requires_admin
+# def modify_user_route(user_id):
+#     data = flask.request.json
+
+#     if data and 'admin' in data and not data['admin'] and flask.g.auth_user['id'] == user_id:
+#         return flask.Response("Cannot remove admin permissions from yourself.", 403)
+
+#     user = User.get_by_id(user_id)
+
+#     if user:
+#         user.update(data)
+#         return flask.jsonify("success")
+#     else:
+#         return flask.Response("User doesn't exist", 404)
+
+#     if data and 'admin' in data:
+#         try:
+#             group = Group.add(data['name'])
+#             return flask.jsonify("success")
+#         except sqlalchemy.exc.IntegrityError as err:
+#             return flask.Response("Group already exists.", 422)
+#     else:
+#         return flask.Response("Missing name.", 400)
+
+@api_v1_bp.route('/service_account/<int:sa_id>/group')
+@requires_some_admin
+def get_sa_groups(sa_id):
+    sa = ServiceAccount.get_by_id(sa_id)
+
+    if sa:
+        groups = sa.get_groups()
+        return flask.jsonify(groups)
+    else:
+        return flask.Response("Service account doesn't exist", 404)
+
+@api_v1_bp.route('/service_account/<int:sa_id>/permissions')
+@auth_requires_admin
+def get_sa_permissions(sa_id):
+    sa = ServiceAccount.get_by_id(sa_id)
+
+    if sa:
+        permissions = sa.get_permissions()
+        return flask.jsonify(permissions)
+    else:
+        return flask.Response("Service account doesn't exist", 404)
