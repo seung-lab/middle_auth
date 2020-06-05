@@ -10,6 +10,7 @@ class User(db.Model):
     admin = db.Column(db.Boolean, server_default="0", nullable=False)
     gdpr_consent = db.Column(db.Boolean, server_default="0", nullable=False)
     pi = db.Column(db.String(80), server_default="", nullable=False)
+    created = db.Column(db.DateTime, server_default=func.now())
 
     def as_dict(self):
         return {
