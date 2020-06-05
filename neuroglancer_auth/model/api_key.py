@@ -30,7 +30,7 @@ class APIKey(db.Model):
 
         user = User.get_by_id(user_id)
         user_json = json.dumps(user.create_cache())
-        token = insert_and_generate_unique_token(user_id, user_json)
+        token = insert_and_generate_unique_token("userid_" + str(user_id), user_json)
 
         if not new_entry:
             delete_token(user_id, entry.key)
@@ -44,7 +44,7 @@ class APIKey(db.Model):
 
         return token
 
-def insert_and_generate_unique_token(user_id, value, ex=None):
+def insert_and_generate_unique_token(tokens_key, value, ex=None):
     token = None
 
     # keep trying to insert a random token into redis until it finds one that is not already in use
@@ -56,7 +56,7 @@ def insert_and_generate_unique_token(user_id, value, ex=None):
         if not_dupe:
             break
 
-    r.sadd("userid_" + str(user_id), token)
+    r.sadd(tokens_key, token)
 
     return token
 
