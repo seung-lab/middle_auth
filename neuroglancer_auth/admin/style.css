@@ -144,6 +144,14 @@ body:not(.isAdmin) .requiresAdmin {
     content: "Admin: "
 }
 
+.read_only:before {
+    content: "Read Only: "
+}
+
+.token:before {
+    content: "Token: "
+}
+
 .pi:before {
     content: "PI/Lab Head: "
 }
