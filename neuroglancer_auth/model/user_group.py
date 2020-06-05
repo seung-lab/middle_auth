@@ -2,8 +2,6 @@ from .base import db
 from .user import User
 from .group import Group
 
-from flask_sqlalchemy import event
-
 class UserGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -37,9 +35,22 @@ class UserGroup(db.Model):
     def get_users(group_id):
         users = db.session.query(UserGroup.user_id, User.name, UserGroup.admin)\
             .filter(UserGroup.user_id == User.id)\
-            .filter(UserGroup.group_id == group_id).all()
+            .filter(UserGroup.group_id == group_id)\
+            .filter(User.parent_id.is_(None))\
+            .all()
 
         return [{'id': user_id, 'name': name, 'admin': admin} for user_id, name, admin in users]
+
+    @staticmethod
+    def get_service_accounts(group_id):
+        users = db.session.query(UserGroup.user_id, User.name)\
+            .filter(UserGroup.user_id == User.id)\
+            .filter(UserGroup.group_id == group_id)\
+            .filter(User.parent_id.isnot(None))\
+            .all()
+
+        return [{'id': user_id, 'name': name} for user_id, name in users]
+
 
     @staticmethod
     def get_admins(group_id):
@@ -60,9 +71,3 @@ class UserGroup(db.Model):
             self.admin = data['admin']
 
         db.session.commit()
-
-def insert_default_groups(target, connection, **kw):
-    db.session.add(Group(name="default"))
-    db.session.commit()
-
-event.listen(Group.__table__, 'after_create', insert_default_groups)
