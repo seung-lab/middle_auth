@@ -16,6 +16,8 @@ from .model.group import Group
 from .model.user_group import UserGroup
 from .model.dataset import Dataset
 from .model.group_dataset import GroupDataset
+from .model.service_account import ServiceAccount
+from .model.service_account_group import ServiceAccountGroup
 
 import os
 
@@ -539,3 +541,94 @@ def send_admin_index():
 @admin_site_bp.route('/<path:path>')
 def send_admin_files(path):
     return flask.send_from_directory('admin', path)
+
+
+
+@api_v1_bp.route('/serviceaccount', methods=['POST'])
+@requires_some_admin
+def create_service_account_route():
+    data = flask.request.json
+
+    required_fields = ['name']
+
+    for field in required_fields:
+        if not (data and field in data):
+            return flask.Response("Missing " + field + " .", 400) 
+
+    try:
+        sa = ServiceAccount.create_account(flask.g.auth_user['id'], data['name'], group_names=["default"])
+        return flask.jsonify(sa.as_dict())
+    except sqlalchemy.exc.IntegrityError as err:
+        return flask.Response("User with email already exists.", 422)
+
+# @api_v1_bp.route('/user/me')
+# @auth_required
+# def get_self():
+#     user = User.get_by_id(flask.g.auth_user['id'])
+
+#     if user:
+#         return flask.jsonify(user.as_dict())
+#     else:
+#         return flask.Response("Error finding user", 500)
+
+# @api_v1_bp.route('/user/cache')
+# @auth_required
+# def get_user_cache():
+#     return flask.jsonify(flask.g.auth_user)
+
+@api_v1_bp.route('/service_account/<int:sa_id>')
+@requires_some_admin
+def get_sa(sa_id):
+    sa = ServiceAccount.get_by_id(sa_id)
+
+    if sa:
+        return flask.jsonify(sa.as_dict())
+    else:
+        return flask.Response("Service account doesn't exist", 404)
+
+# @api_v1_bp.route('/user/<int:user_id>', methods=['PUT'])
+# @auth_requires_admin
+# def modify_user_route(user_id):
+#     data = flask.request.json
+
+#     if data and 'admin' in data and not data['admin'] and flask.g.auth_user['id'] == user_id:
+#         return flask.Response("Cannot remove admin permissions from yourself.", 403)
+
+#     user = User.get_by_id(user_id)
+
+#     if user:
+#         user.update(data)
+#         return flask.jsonify("success")
+#     else:
+#         return flask.Response("User doesn't exist", 404)
+
+#     if data and 'admin' in data:
+#         try:
+#             group = Group.add(data['name'])
+#             return flask.jsonify("success")
+#         except sqlalchemy.exc.IntegrityError as err:
+#             return flask.Response("Group already exists.", 422)
+#     else:
+#         return flask.Response("Missing name.", 400)
+
+@api_v1_bp.route('/service_account/<int:sa_id>/group')
+@requires_some_admin
+def get_sa_groups(sa_id):
+    sa = ServiceAccount.get_by_id(sa_id)
+
+    if sa:
+        groups = sa.get_groups()
+        return flask.jsonify(groups)
+    else:
+        return flask.Response("Service account doesn't exist", 404)
+
+@api_v1_bp.route('/service_account/<int:sa_id>/permissions')
+@auth_requires_admin
+def get_sa_permissions(sa_id):
+    sa = ServiceAccount.get_by_id(sa_id)
+
+    if sa:
+        permissions = sa.get_permissions()
+        return flask.jsonify(permissions)
+    else:
+        return flask.Response("Service account doesn't exist", 404)
