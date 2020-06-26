@@ -168,7 +168,13 @@ def oauth2callback():
 
     if user is None or not user.gdpr_consent:
         if flask.session.get('tos_agree'):
-            user = User.create_account(info['email'], info['name'], None, False, True, group_names=["default"])
+            if user:
+                user.update({
+                    'name': info['name'],
+                    'gdpr_consent': True,
+                })
+            else:
+                user = User.create_account(info['email'], info['name'], None, False, True, group_names=["default"])
         else:
             flask.session['user_info'] = info
             return flask.send_from_directory('gdpr', 'consent.html')
