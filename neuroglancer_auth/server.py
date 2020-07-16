@@ -5,7 +5,8 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+# from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from .decs import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
 
@@ -16,6 +17,7 @@ from .model.group import Group
 from .model.user_group import UserGroup
 from .model.dataset import Dataset
 from .model.group_dataset import GroupDataset
+from .model.cell_temp import CellTemp
 
 import os
 
@@ -647,3 +649,13 @@ def get_sa_permissions(sa_id):
         return flask.jsonify(permissions)
     else:
         return flask.Response("Service account doesn't exist", 404)
+
+@api_v1_bp.route('/table/<int:table_id>/cell/<int:cell_id>/is_public')
+@auth_required
+def is_cell_public(table_id, cell_id):
+    return flask.jsonify(CellTemp.is_public(table_id, cell_id))
+
+@api_v1_bp.route('/table/<int:table_id>/cell/<int:cell_id>')
+@auth_requires_permission
+def temp_get_cell_info(table_id, cell_id):
+    return flask.jsonify(CellTemp.get(table_id, cell_id).as_dict())
