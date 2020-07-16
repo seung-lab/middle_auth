@@ -16,6 +16,7 @@ from .model.group import Group
 from .model.user_group import UserGroup
 from .model.dataset import Dataset
 from .model.group_dataset import GroupDataset
+from .model.cell_temp import CellTemp
 
 import os
 
@@ -647,3 +648,8 @@ def get_sa_permissions(sa_id):
         return flask.jsonify(permissions)
     else:
         return flask.Response("Service account doesn't exist", 404)
+
+@api_v1_bp.route('/dataset/<int:dataset_id>/cell/<int:cell_id>/is_public')
+@auth_required
+def is_cell_public(dataset_id, cell_id):
+    return flask.jsonify(CellTemp.is_public(dataset_id, cell_id))
