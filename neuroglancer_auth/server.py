@@ -5,7 +5,8 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from .dec import auth_required, auth_requires_admin, auth_requires_permission
+# from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
 
