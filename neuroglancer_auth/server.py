@@ -5,7 +5,8 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from .decs import auth_required, auth_requires_admin, auth_requires_permission
+# from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
 
@@ -658,3 +659,9 @@ def temp_table_has_public(table_id):
 @auth_required
 def temp_is_root_public(table_id, root_id):
     return flask.jsonify(CellTemp.is_public(table_id, root_id))
+
+
+@api_v1_bp.route('/table/<table_id>/root/<int:root_id>/test')
+@auth_requires_permission('view', public_table_key='table_id', public_node_key='root_id')
+def temp_test_mac(table_id, root_id):
+    return flask.jsonify("WAAAAAAAAHOOOOOOOOO!!!")

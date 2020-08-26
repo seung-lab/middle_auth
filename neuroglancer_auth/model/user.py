@@ -192,7 +192,7 @@ class User(db.Model):
     def create_cache(self):
         return {
             'id': self.id,
-            "service_account": self.parent_id is not None,
+            'service_account': self.parent_id is not None,
             'name': self.name,
             'email': self.email,
             'admin': self.admin,
