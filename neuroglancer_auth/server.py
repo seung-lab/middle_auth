@@ -5,7 +5,8 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from .decs import auth_required, auth_requires_admin, auth_requires_permission
+# from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
 
@@ -29,6 +30,8 @@ URL_PREFIX = os.environ.get('URL_PREFIX', 'auth')
 AUTH_URI = os.environ.get('AUTH_URI', 'localhost:5000/auth') #deprecated
 AUTH_URL = os.environ.get('AUTH_URL', AUTH_URI)
 STICKY_AUTH_URL = os.environ.get('STICKY_AUTH_URL', AUTH_URL)
+
+SA_TOKEN = os.environ.get('MA_SERVICE_ACCOUNT_TOKEN', None)
 
 version_bp = flask.Blueprint('version_bp', __name__, url_prefix='/' + URL_PREFIX)
 
@@ -658,3 +661,9 @@ def temp_table_has_public(table_id):
 @auth_required
 def temp_is_root_public(table_id, root_id):
     return flask.jsonify(CellTemp.is_public(table_id, root_id))
+
+
+@api_v1_bp.route('/table/<table_id>/root/<int:root_id>/test')
+@auth_requires_permission('view', public_table_key='table_id', public_node_key='root_id', service_token=SA_TOKEN)
+def temp_test_mac(table_id, root_id):
+    return flask.jsonify("WAAAAAAAAHOOOOOOOOO!!!")
