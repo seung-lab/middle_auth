@@ -1,4 +1,5 @@
-const AUTH_URL = '../api/v1';
+// const AUTH_URL = '../api/v1';
+const AUTH_URL = 'https://authsl1.middleauth.com/auth/api/v1'
 
 const datasetDataApp = {
 	data: () => ({
@@ -11,8 +12,8 @@ const datasetDataApp = {
 		allGroups: [],
 		availableGroups: [],
 		selectedGroup: '',
-		selectedLevel: '',
-		availableLevels: ['none', 'view', 'edit'],
+		selectedPermission: '',
+		availablePermissions: ['none', 'view', 'edit'],
 		chosen: ''
 	}),
 	async beforeRouteUpdate (to, from, next) {
@@ -62,14 +63,14 @@ const datasetDataApp = {
 				},
 				body: JSON.stringify({
 					group_id: this.selectedGroup,
-					level: Number.parseInt(this.selectedLevel)
+					permission_ids: [this.selectedPermission]
 				})
 			});
 		
 			await this.updateAvailableGroups();
 		},
 		async removeGroup(group) {
-			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group/${group.id}`, {
+			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group/${group.id}/permission/${permission.id}`, {
 				method: 'DELETE'
 			});
 
@@ -172,9 +173,7 @@ const datasetDataApp = {
 								{{ group.name }}
 							</router-link>
 							<div>
-								<select @change="updatePermissions(group)" v-model="group.level">
-									<option v-for="(item, index) in availableLevels" v-bind:value="index">{{ item }}</option>
-								</select>
+								{{ group.permission }}
 							</div>
 							<div class="deleteRow" @click="removeGroup(group)"></div>
 						</div>
@@ -186,10 +185,10 @@ const datasetDataApp = {
 						<option disabled="disabled" value="">Select Group</option>
 						<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
 					</select>
-					<select v-model="selectedLevel">
-						<option disabled="disabled" value="">Select Level</option>
-						<option value="1">View</option>
-						<option value="2">Edit</option>
+					<select v-model="selectedPermission">
+						<option disabled="disabled" value="">Select Permission</option>
+						<option value="view">View</option>
+						<option value="edit">Edit</option>
 					</select>
 					<button @click="addGroupDataset">Add Group</button>
 				</div>
@@ -237,8 +236,8 @@ const groupDataApp = {
 		allDatasets: [],
 		selectedUser: '',
 		selectedDataset: '',
-		selectedLevel: '',
-		availableLevels: ['none', 'view', 'edit'],
+		selectedPermission: '',
+		selectedPermissions: ['none', 'view', 'edit'],
 		chosen: ''
 	}),
 	async beforeRouteUpdate (to, from, next) {
@@ -352,7 +351,7 @@ const groupDataApp = {
 				},
 				body: JSON.stringify({
 					group_id: this.group.id,
-					level: Number.parseInt(this.selectedLevel)
+					permission_ids: [this.selectedPermission]
 				})
 			});
 		
@@ -470,7 +469,7 @@ const groupDataApp = {
 						<router-link :to="{ name: 'datasetData', params: { id: dataset.id }}">
 							{{ dataset.name }}
 						</router-link>
-						<div class="datasetLevel">{{ availableLevels[dataset.level] }}</div>
+						<div class="datasetPermission">{{ dataset.permission }}</div>
 					</div>
 				</div>
 			</div>
@@ -480,10 +479,10 @@ const groupDataApp = {
 					<option disabled="disabled" value="">Select Dataset</option>
 					<option v-for="dataset in availableDatasets" v-bind:value="dataset.id">{{ dataset.name }}</option>
 				</select>
-				<select v-model="selectedLevel">
-					<option disabled="disabled" value="">Select Level</option>
-					<option value="1">View</option>
-					<option value="2">Edit</option>
+				<select v-model="selectedPermission">
+					<option disabled="disabled" value="">Select Permission</option>
+					<option value="view">View</option>
+					<option value="edit">Edit</option>
 				</select>
 				<button @click="addGroupDataset">Add Dataset</button>
 			</div>
