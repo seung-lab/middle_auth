@@ -11,8 +11,8 @@ const datasetDataApp = {
 		allGroups: [],
 		availableGroups: [],
 		selectedGroup: '',
-		selectedLevel: '',
-		availableLevels: ['none', 'view', 'edit'],
+		selectedPermission: '',
+		availablePermissions: ['none', 'view', 'edit'],
 		chosen: ''
 	}),
 	async beforeRouteUpdate (to, from, next) {
@@ -48,11 +48,10 @@ const datasetDataApp = {
 			this.loading = false;
 		},
 		async updateAvailableGroups() {
-			this.groups = await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group`);
-
-			this.availableGroups = this.allGroups.filter((group) => {
+			this.availableGroups = this.allGroups;
+			/*.filter((group) => {
 				return !this.groups.map((g) => g.id).includes(group.id);
-			});
+			});*/
 		},
 		async addGroupDataset() {
 			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group`, {
@@ -62,14 +61,14 @@ const datasetDataApp = {
 				},
 				body: JSON.stringify({
 					group_id: this.selectedGroup,
-					level: Number.parseInt(this.selectedLevel)
+					permission_ids: [Number.parseInt(this.selectedPermission)]
 				})
 			});
 		
 			await this.updateAvailableGroups();
 		},
 		async removeGroup(group) {
-			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group/${group.id}`, {
+			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group/${group.id}/permission/${group.permission_id}`, {
 				method: 'DELETE'
 			});
 
@@ -172,9 +171,7 @@ const datasetDataApp = {
 								{{ group.name }}
 							</router-link>
 							<div>
-								<select @change="updatePermissions(group)" v-model="group.level">
-									<option v-for="(item, index) in availableLevels" v-bind:value="index">{{ item }}</option>
-								</select>
+								{{ group.permission }}
 							</div>
 							<div class="deleteRow" @click="removeGroup(group)"></div>
 						</div>
@@ -186,8 +183,8 @@ const datasetDataApp = {
 						<option disabled="disabled" value="">Select Group</option>
 						<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
 					</select>
-					<select v-model="selectedLevel">
-						<option disabled="disabled" value="">Select Level</option>
+					<select v-model="selectedPermission">
+						<option disabled="disabled" value="">Select Permission</option>
 						<option value="1">View</option>
 						<option value="2">Edit</option>
 					</select>
@@ -237,8 +234,8 @@ const groupDataApp = {
 		allDatasets: [],
 		selectedUser: '',
 		selectedDataset: '',
-		selectedLevel: '',
-		availableLevels: ['none', 'view', 'edit'],
+		selectedPermission: '',
+		selectedPermissions: ['none', 'view', 'edit'],
 		chosen: ''
 	}),
 	async beforeRouteUpdate (to, from, next) {
@@ -352,7 +349,7 @@ const groupDataApp = {
 				},
 				body: JSON.stringify({
 					group_id: this.group.id,
-					level: Number.parseInt(this.selectedLevel)
+					permission_ids: [Number.parseInt(this.selectedPermission)]
 				})
 			});
 		
@@ -360,9 +357,10 @@ const groupDataApp = {
 			this.updateAvailableDatasets();
 		},
 		updateAvailableDatasets() {
-			this.availableDatasets = this.allDatasets.filter((dataset) => {
+			this.availableDatasets = this.allDatasets;
+			/*.filter((dataset) => {
 				return !this.datasets.map((d) => d.id).includes(dataset.id);
-			});
+			});*/
 		},
 		updateNonAdmins() {
 			this.nonAdmins = this.users.filter((user) => {
@@ -470,7 +468,7 @@ const groupDataApp = {
 						<router-link :to="{ name: 'datasetData', params: { id: dataset.id }}">
 							{{ dataset.name }}
 						</router-link>
-						<div class="datasetLevel">{{ availableLevels[dataset.level] }}</div>
+						<div class="datasetPermission">{{ dataset.permission }}</div>
 					</div>
 				</div>
 			</div>
@@ -480,8 +478,8 @@ const groupDataApp = {
 					<option disabled="disabled" value="">Select Dataset</option>
 					<option v-for="dataset in availableDatasets" v-bind:value="dataset.id">{{ dataset.name }}</option>
 				</select>
-				<select v-model="selectedLevel">
-					<option disabled="disabled" value="">Select Level</option>
+				<select v-model="selectedPermission">
+					<option disabled="disabled" value="">Select Permission</option>
 					<option value="1">View</option>
 					<option value="2">Edit</option>
 				</select>
