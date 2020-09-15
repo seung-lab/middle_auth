@@ -159,22 +159,29 @@ class User(db.Model):
 
     def get_permissions(self):
         # messy dependencies, not sure if it should be moved
-        from .group_dataset import GroupDataset
+        from .group_dataset_permission import GroupDatasetPermission
+        from .permission import Permission
         from .dataset import Dataset
         from .user_group import UserGroup
 
-        query = db.session.query(GroupDataset.dataset_id, Dataset.name, func.max(GroupDataset.level))\
-            .join(UserGroup, UserGroup.group_id == GroupDataset.group_id)\
-            .join(Dataset, Dataset.id == GroupDataset.dataset_id)\
+        query = db.session.query(GroupDatasetPermission.dataset_id, Dataset.name, Permission.name)\
+            .join(UserGroup, UserGroup.group_id == GroupDatasetPermission.group_id)\
+            .join(Permission, Permission.id == GroupDatasetPermission.permission_id)\
+            .join(Dataset, Dataset.id == GroupDatasetPermission.dataset_id)\
             .filter(UserGroup.user_id == self.id)\
-            .group_by(UserGroup.user_id, GroupDataset.dataset_id, Dataset.name)
+            .group_by(UserGroup.user_id, GroupDatasetPermission.dataset_id, Dataset.name)
         
+        #TODO: re-add read_only (filter by permission id if read_only is true)
+
         permissions = query.all()
-        return [{
-            'id': dataset_id,
-            'name': dataset_name,
-            'level': min(level, 1) if self.read_only else level
-        } for dataset_id, dataset_name, level in permissions]
+
+        temp = {}
+
+        for dataset_id, dataset_name, permission_name in permissions:
+            temp[dataset_id] = temp[dataset_id] or {'id': dataset_id, 'name': dataset_name, 'permissions': []}
+            temp[dataset_id] += [permission_name]
+
+        return temp.values()
 
     def get_datasets_adminning(self):
         # move to DatasetAdmin
@@ -190,6 +197,17 @@ class User(db.Model):
         return [{'id': dataset_id, 'name': dataset_name} for dataset_id, dataset_name in datasets]
 
     def create_cache(self):
+        permissions = self.get_permissions()
+
+        def permission_to_level(p):
+            return {'none': 0, 'read': 1, 'edit': 2}.get(p, 0)
+
+        # permission_old = [{
+        #     'id': dataset_id,
+        #     'name': dataset_name,
+        #     'level': max(map(permission_to_level, permissions2)),
+        # } for dataset_id, dataset_name, permissions2 in permissions]
+
         return {
             'id': self.id,
             "service_account": self.parent_id is not None,
@@ -197,7 +215,8 @@ class User(db.Model):
             'email': self.email,
             'admin': self.admin,
             'groups': [x['name'] for x in self.get_groups()],
-            'permissions': {x['name']: x['level'] for x in self.get_permissions()},
+            'permissions': {x['name']: max(map(permission_to_level, x['permissions'])) for x in permissions},
+            'permissions_v2': {x['name']: x['permissions'] for x in permissions},
         }
 
     def update_cache(self):
