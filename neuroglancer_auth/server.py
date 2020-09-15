@@ -15,7 +15,7 @@ from .model.dataset_admin import DatasetAdmin
 from .model.group import Group
 from .model.user_group import UserGroup
 from .model.dataset import Dataset
-from .model.group_dataset import GroupDataset
+from .model.group_dataset_permission import GroupDatasetPermission
 from .model.cell_temp import CellTemp
 
 import os
@@ -393,7 +393,7 @@ def remove_admin_from_dataset(dataset_id, user_id):
 @api_v1_bp.route('/dataset/<int:dataset_id>/group', methods=['GET'])
 @requires_dataset_admin
 def get_all_groups_for_dataset(dataset_id): # nearly identical to get_datasets_from_group_route
-    permissions = GroupDataset.get_all_group_permissions(dataset_id)
+    permissions = GroupDatasetPermission.get_all_group_permissions(dataset_id)
     return flask.jsonify(permissions)
 
 @api_v1_bp.route('/dataset/<int:dataset_id>/group', methods=['POST'])
@@ -402,42 +402,43 @@ def add_dataset_to_group_route(dataset_id):
     data = flask.request.json
 
     if data and 'group_id' in data:
-        level = data.get('level', 0)
+        permission_ids = [int(x) for x in data.get('permission_id', [])]
+        group_id = int(data['group_id'])
 
-        if level > 2:
-            return flask.make_response(flask.jsonify("Invalid level: {0}".format(level)), 400)
+        # if level > 2:
+        #     return flask.make_response(flask.jsonify("Invalid level: {0}".format(level)), 400)
 
         try:
-            GroupDataset.add(dataset_id=dataset_id, group_id=int(data['group_id']), level=level)
+            GroupDatasetPermission.add(dataset_id=dataset_id, group_id=group_id, permission_ids=permission_ids)
             return flask.jsonify("success")
         except sqlalchemy.exc.IntegrityError as err:
-            return flask.make_response(flask.jsonify("Dataset already includes group."), 422)
+            return flask.make_response(flask.jsonify("Dataset already includes group with permission."), 422)
     else:
         return flask.make_response(flask.jsonify("Missing group_id."), 400)
 
-@api_v1_bp.route('/dataset/<int:dataset_id>/group/<int:group_id>', methods=['PUT'])
-@requires_dataset_admin
-def update_dataset_to_group_route(dataset_id, group_id):
-    data = flask.request.json
+# @api_v1_bp.route('/dataset/<int:dataset_id>/group/<int:group_id>', methods=['PUT'])
+# @requires_dataset_admin
+# def update_dataset_to_group_route(dataset_id, group_id):
+#     data = flask.request.json
 
-    if data:
-        try:
-            gd = GroupDataset.query.filter_by(group_id=group_id, dataset_id=int(dataset_id)).first()
+#     if data:
+#         try:
+#             gd = GroupDataset.query.filter_by(group_id=group_id, dataset_id=int(dataset_id)).first()
 
-            if gd:
-                gd.update(data.get('level', 0))
-                return flask.jsonify("success")
-            else:
-                return flask.Response("Dataset doesn't exist for this group", 404)
-        except sqlalchemy.exc.IntegrityError as err:
-            return flask.Response("Group already contains dataset.", 422)
-    else:
-        return flask.Response("Missing data.", 400)
+#             if gd:
+#                 gd.update(data.get('level', 0))
+#                 return flask.jsonify("success")
+#             else:
+#                 return flask.Response("Dataset doesn't exist for this group", 404)
+#         except sqlalchemy.exc.IntegrityError as err:
+#             return flask.Response("Group already contains dataset.", 422)
+#     else:
+#         return flask.Response("Missing data.", 400)
 
 @api_v1_bp.route('/dataset/<int:dataset_id>/group/<int:group_id>', methods=['DELETE'])
 @requires_dataset_admin
 def remove_dataset_to_group_route(dataset_id, group_id):
-    GroupDataset.remove(group_id=group_id, dataset_id=int(dataset_id)) # TODO return error if group doesn't exist
+    GroupDatasetPermission.remove(group_id=group_id, dataset_id=int(dataset_id)) # TODO return error if group doesn't exist
     return flask.jsonify("success")
 
 @api_v1_bp.route('/group', methods=['GET'])
@@ -474,7 +475,7 @@ def get_group(group_id):
 @api_v1_bp.route('/group/<int:group_id>/dataset', methods=['GET'])
 @requires_some_admin
 def get_datasets_from_group_route(group_id):
-    permissions = GroupDataset.get_permissions_for_group(group_id)
+    permissions = GroupDatasetPermission.get_permissions_for_group(group_id)
     return flask.jsonify(permissions)
 
 @api_v1_bp.route('/group/<int:group_id>/user', methods=['GET'])

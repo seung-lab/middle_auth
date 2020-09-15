@@ -1,4 +1,5 @@
-const AUTH_URL = '../api/v1';
+// const AUTH_URL = '../api/v1';
+const AUTH_URL = 'https://authsl1.middleauth.com/auth/api/v1'
 
 const datasetDataApp = {
 	data: () => ({
@@ -470,7 +471,7 @@ const groupDataApp = {
 						<router-link :to="{ name: 'datasetData', params: { id: dataset.id }}">
 							{{ dataset.name }}
 						</router-link>
-						<div class="datasetLevel">{{ availableLevels[dataset.level] }}</div>
+						<div class="datasetPermission">{{ dataset.permission }}</div>
 					</div>
 				</div>
 			</div>
