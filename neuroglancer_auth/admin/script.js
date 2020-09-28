@@ -1013,16 +1013,7 @@ const mainApp = new Vue({
 async function authorize(auth_url) {
 	const plainURL = `${location.origin}${location.pathname}`.replace(/[^/]*$/, '');
 
-	const oauth_uri = await fetch(`${auth_url}?redirect=${encodeURI(plainURL + 'redirect.html')}`, {
-		credentials: 'include',
-		headers: {
-			'X-Requested-With': 'Fetch'
-		}
-	}).then((res) => {
-		return res.text();
-	});
-
-	const auth_popup = window.open(oauth_uri);
+	const auth_popup = window.open(`${auth_url}?redirect=${encodeURI(plainURL + 'redirect.html')}`);
 
 	if (!auth_popup) {
 		alert('Allow popups on this page to authenticate');
