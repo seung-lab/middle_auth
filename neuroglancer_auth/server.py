@@ -645,3 +645,18 @@ def temp_table_has_public(table_id):
 @auth_required
 def temp_is_root_public(table_id, root_id):
     return flask.jsonify(CellTemp.is_public(table_id, root_id))
+
+@api_v1_bp.route('/table/<table_id>/test_mac')
+@auth_requires_permission('view')
+def temp_test_mac(table_id):
+    return flask.jsonify("yay")
+
+@api_v1_bp.route('/table/<table_id>/test_mac_edit')
+@auth_requires_permission('edit')
+def temp_test_mac_edit(table_id):
+    return flask.jsonify("yay2")
+
+@api_v1_bp.route('/table/<table_id>/test_mac_admin_view')
+@auth_requires_permission('admin_view')
+def temp_test_mac_admin_view(table_id):
+    return flask.jsonify("yay3")
