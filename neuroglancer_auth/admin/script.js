@@ -911,6 +911,84 @@ const listApp = {
 	`
 }
 
+const userStatsApp = {
+	data: () => ({
+		loading: true,
+		rows: [],
+		fromInput: '',
+		toInput: '',
+		url: '/user',
+		title: 'User Stats',
+		displayedProps: ['name', 'email', 'created'],
+	}),
+	methods: {
+		refresh() {
+			const searchQuery = new URLSearchParams();
+
+			function unitTimestamp(date) {
+				return parseInt((new Date(date).getTime() / 1000).toFixed(0))
+			}
+
+			if (this.fromInput.length) {
+				searchQuery.set('from', unitTimestamp(new Date(this.fromInput)))
+			}
+
+			if (this.toInput.length) {
+				searchQuery.set('to', unitTimestamp(new Date(this.toInput)))
+			}
+			
+			const searchQueryString = searchQuery.toString();
+		
+			authFetch(`${AUTH_URL}${this.url}${searchQueryString ? '?' + searchQueryString : ''}`).then((rows) => {
+				this.rows = rows;
+				this.loading = false;
+			});
+		},
+		exportToCSV() {
+			let csvContent = "data:text/csv;charset=utf-8,";
+			csvContent += this.displayedProps.join('\t');
+			if (this.rows) {
+				csvContent += '\n';
+			}
+			csvContent += this.rows.map((r) => this.displayedProps.map((p) => r[p]).join('\t')).join('\n');
+			window.open(encodeURI(csvContent));
+		}
+	},
+	mounted: function () {
+		this.refresh();
+	},
+	template: `
+	<div id="searchUsers" class="searchAndResults">
+	<div class="searchForm right">
+		<label for="fromInput">From</label>
+		<input id="fromInput" v-model="fromInput" type="date" @change="refresh">
+		<label for="toInput">To</label>
+		<input id="toInput" v-model="toInput" type="date" @change="refresh">
+	</div>
+
+	<button @click="exportToCSV">Export to CSV</button>
+
+	<div id="searchUserResults" class="listContainer block">
+		<div class="header">{{ title }}</div>
+		<div class="list selectable" :style="{'grid-template-columns': 'repeat(' + displayedProps.length + ', auto)' }">
+			<div v-if="loading">
+				<div>Loading...</div>
+			</div>
+			<div v-else-if="rows.length === 0">
+				<div>No Results</div>
+			</div>
+			<template v-else>
+				<router-link v-for="data in rows" v-bind:key="data.id" :to="{ path: '' + data.id }" append>
+					<div v-for="prop in displayedProps">{{ data[prop] }}</div>
+				</router-link>
+			</template>
+		</div>
+	</div>
+
+	</div>
+	`
+}
+
 const userListApp = {
 	mixins: [listApp],
 	data: () => ({
@@ -964,6 +1042,7 @@ const routes = [
 	{ path: '/group/:id', name: 'groupData', component: groupDataApp },
 	{ path: '/dataset', name: 'datasetList', component: datasetListApp },
 	{ path: '/dataset/:id', name: 'datasetData', component: datasetDataApp },
+	{ path: '/stats', name: 'userStats', component: userStatsApp },
 ];
 
 const router = new VueRouter({
