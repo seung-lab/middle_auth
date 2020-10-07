@@ -240,6 +240,12 @@ def get_users_by_filter():
         users = User.get_normal_accounts()
     return flask.jsonify([user.as_dict() for user in users])
 
+@api_v1_bp.route('/user/stats')
+@requires_some_admin
+def get_user_stats():
+    users = User.filter_by_created(flask.request.args.get('from', None), flask.request.args.get('to', None))
+    return flask.jsonify([user.as_dict() for user in users])
+
 @api_v1_bp.route('/username')
 @auth_required
 def get_usernames():
