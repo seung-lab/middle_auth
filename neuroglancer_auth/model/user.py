@@ -3,6 +3,7 @@ from .api_key import insert_and_generate_unique_token
 
 import json
 from sqlalchemy.sql import func
+import psycopg2
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -125,6 +126,21 @@ class User(db.Model):
     @staticmethod
     def search_by_email(email):
         return User.query.filter(User.email.ilike(f'%{email}%')).all()
+
+    @staticmethod
+    def filter_by_created(from_time=None, to_time=None):
+        res = User.query.filter(User.parent_id.is_(None))
+
+        if from_time is not None:
+            res = res.filter(User.created >= func.to_timestamp(from_time))
+
+        if to_time is not None:
+            res = res.filter(User.created <= func.to_timestamp(to_time))
+
+        try:
+            return res.all()
+        except psycopg2.errors.DatetimeFieldOverflow:
+            return []
 
     @staticmethod
     def search_by_name(name):
