@@ -236,6 +236,8 @@ def get_users_by_filter():
         users = User.search_by_email(flask.request.args.get('email'))
     elif flask.request.args.get('name'):
         users = User.search_by_name(flask.request.args.get('name'))
+    elif flask.request.args.get('from') or flask.request.args.get('to'):
+        users = User.filter_by_created(flask.request.args.get('from'), flask.request.args.get('to'))
     else:
         users = User.get_normal_accounts()
     return flask.jsonify([user.as_dict() for user in users])
