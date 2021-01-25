@@ -16,6 +16,7 @@ from .model.group import Group
 from .model.user_group import UserGroup
 from .model.dataset import Dataset
 from .model.group_dataset_permission import GroupDatasetPermission
+from .model.app import App
 from .model.cell_temp import CellTemp
 
 import os
@@ -647,3 +648,9 @@ def temp_table_has_public(table_id):
 @auth_required
 def temp_is_root_public(table_id, root_id):
     return flask.jsonify(CellTemp.is_public(table_id, root_id))
+
+@api_v1_bp.route('/app', methods=['GET'])
+@auth_required
+def get_apps(url):
+    apps = App.query.order_by(App.id.asc()).all() 
+    return flask.jsonify([app.as_dict() for app in apps])
