@@ -33,12 +33,27 @@ STICKY_AUTH_URL = os.environ.get('STICKY_AUTH_URL', AUTH_URL)
 
 version_bp = flask.Blueprint('version_bp', __name__, url_prefix='/' + URL_PREFIX)
 
-test_bp = flask.Blueprint('test_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/test')
+from flask_restx import Namespace, Resource
 
-@test_bp.route('/user/cache')
-@auth_required
-def get_user_cache():
-    return flask.jsonify(flask.g.auth_user)
+
+test_bp = Namespace("Test Namespace",
+                   description="blah test namespace")
+
+# test_bp = flask.Blueprint('test_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/test')
+
+# @test_bp.route('/user/cache')
+# @auth_required
+# def get_user_cache_boop():
+#     return flask.jsonify(flask.g.auth_user)
+
+@test_bp.route("/user/cache2")
+class UserCache(Resource):
+    @test_bp.doc("get user cache")
+    @auth_required
+    def get(self):
+        """Get user cache
+        """
+        return flask.g.auth_user
 
 @version_bp.route("/version")
 def version():
