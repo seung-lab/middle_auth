@@ -5,7 +5,7 @@ app = Flask(__name__)
 from flask_session import Session
 from flask_cors import CORS
 
-from .server import version_bp, api_v1_bp, admin_site_bp
+from .server import version_bp, api_v1_bp, admin_site_bp, test_bp
 from .model.base import db
 from .model.user import User
 from .model.api_key import APIKey
@@ -32,9 +32,11 @@ def setup_app():
     with app.app_context():
         db.init_app(app)
         db.create_all()
-        app.register_blueprint(version_bp)
-        app.register_blueprint(api_v1_bp)
-        app.register_blueprint(admin_site_bp)
+        app.register_blueprint(test_bp)
+
+    app.register_blueprint(version_bp)
+    app.register_blueprint(api_v1_bp)
+    app.register_blueprint(admin_site_bp)
 
     @app.before_first_request
     def initialize():
