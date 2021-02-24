@@ -32,10 +32,9 @@ def setup_app():
     with app.app_context():
         db.init_app(app)
         db.create_all()
-
-    app.register_blueprint(version_bp)
-    app.register_blueprint(api_v1_bp)
-    app.register_blueprint(admin_site_bp)
+        app.register_blueprint(version_bp)
+        app.register_blueprint(api_v1_bp)
+        app.register_blueprint(admin_site_bp)
 
     @app.before_first_request
     def initialize():
