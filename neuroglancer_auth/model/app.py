@@ -9,3 +9,7 @@ class App(db.Model):
             "id": self.id,
             "url": self.url,
         }
+    
+    @staticmethod
+    def get_all(self):
+        return App.query.order_by(App.id.asc()).all()
