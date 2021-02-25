@@ -671,6 +671,26 @@ def temp_table_has_public(table_id):
 def temp_is_root_public(table_id, root_id):
     return flask.jsonify(CellTemp.is_public(table_id, root_id))
 
+@api_v1_bp.route('/table/<table_id>/test')
+@auth_requires_permission('edit')
+def temp_table_test(table_id):
+    return flask.jsonify(table_id)
+
+@api_v1_bp.route('/table/<table_id>/test2')
+@auth_requires_permission('edit', dataset='fakedataset')
+def temp_table_test_fake(table_id):
+    return flask.jsonify(table_id)
+
+@api_v1_bp.route('/table/test3')
+@auth_requires_permission('edit', dataset='fakedataset')
+def temp_table_test_foo(table_id):
+    return flask.jsonify(table_id)
+
+@api_v1_bp.route('/table/test4')
+@auth_requires_permission('edit')
+def temp_table_test_bar(table_id):
+    return flask.jsonify(table_id)
+
 @api_v1_bp.route('/app', methods=['GET'])
 @auth_required
 def get_apps():
