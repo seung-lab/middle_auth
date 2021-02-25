@@ -5,7 +5,7 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from .dec import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
 
@@ -33,11 +33,11 @@ STICKY_AUTH_URL = os.environ.get('STICKY_AUTH_URL', AUTH_URL)
 
 version_bp = flask.Blueprint('version_bp', __name__, url_prefix='/' + URL_PREFIX)
 
-from flask_restx import Namespace, Resource
+# from flask_restx import Namespace, Resource
 
 
-test_bp = Namespace("Test Namespace",
-                   description="blah test namespace")
+# test_bp = Namespace("Test Namespace",
+#                    description="blah test namespace")
 
 # test_bp = flask.Blueprint('test_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/test')
 
@@ -46,14 +46,14 @@ test_bp = Namespace("Test Namespace",
 # def get_user_cache_boop():
 #     return flask.jsonify(flask.g.auth_user)
 
-@test_bp.route("/user/cache2")
-class UserCache(Resource):
-    @test_bp.doc("get user cache")
-    @auth_required
-    def get(self):
-        """Get user cache
-        """
-        return flask.g.auth_user
+# @test_bp.route("/user/cache2")
+# class UserCache(Resource):
+#     @test_bp.doc("get user cache")
+#     @auth_required
+#     def get(self):
+#         """Get user cache
+#         """
+#         return flask.g.auth_user
 
 @version_bp.route("/version")
 def version():
@@ -670,6 +670,26 @@ def temp_table_has_public(table_id):
 @auth_required
 def temp_is_root_public(table_id, root_id):
     return flask.jsonify(CellTemp.is_public(table_id, root_id))
+
+@api_v1_bp.route('/table/<table_id>/test')
+@auth_requires_permission('edit')
+def temp_table_test(table_id):
+    return flask.jsonify(table_id)
+
+@api_v1_bp.route('/table/<table_id>/test2')
+@auth_requires_permission('edit', dataset='fakedataset')
+def temp_table_test_fake(table_id):
+    return flask.jsonify(table_id)
+
+@api_v1_bp.route('/table/test3')
+@auth_requires_permission('edit', dataset='fakedataset')
+def temp_table_test_foo(table_id):
+    return flask.jsonify(table_id)
+
+@api_v1_bp.route('/table/test4')
+@auth_requires_permission('edit')
+def temp_table_test_bar(table_id):
+    return flask.jsonify(table_id)
 
 @api_v1_bp.route('/app', methods=['GET'])
 @auth_required
