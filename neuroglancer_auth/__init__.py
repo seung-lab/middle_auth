@@ -31,7 +31,7 @@ mybp = Blueprint('api', __name__, url_prefix='/auth/my')
 def setup_app():
     app.config.from_envvar('AUTH_CONFIG_SETTINGS')
 
-    app.app_context().push()
+    # app.app_context().push()
 
     Session(app)
     CORS(app, expose_headers=['WWW-Authenticate', 'X-Requested-With'])
