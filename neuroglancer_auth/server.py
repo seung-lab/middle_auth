@@ -5,7 +5,7 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from .dec import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
 from furl import furl
 
@@ -33,11 +33,11 @@ STICKY_AUTH_URL = os.environ.get('STICKY_AUTH_URL', AUTH_URL)
 
 version_bp = flask.Blueprint('version_bp', __name__, url_prefix='/' + URL_PREFIX)
 
-from flask_restx import Namespace, Resource
+# from flask_restx import Namespace, Resource
 
 
-test_bp = Namespace("Test Namespace",
-                   description="blah test namespace")
+# test_bp = Namespace("Test Namespace",
+#                    description="blah test namespace")
 
 # test_bp = flask.Blueprint('test_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/test')
 
@@ -46,14 +46,14 @@ test_bp = Namespace("Test Namespace",
 # def get_user_cache_boop():
 #     return flask.jsonify(flask.g.auth_user)
 
-@test_bp.route("/user/cache2")
-class UserCache(Resource):
-    @test_bp.doc("get user cache")
-    @auth_required
-    def get(self):
-        """Get user cache
-        """
-        return flask.g.auth_user
+# @test_bp.route("/user/cache2")
+# class UserCache(Resource):
+#     @test_bp.doc("get user cache")
+#     @auth_required
+#     def get(self):
+#         """Get user cache
+#         """
+#         return flask.g.auth_user
 
 @version_bp.route("/version")
 def version():
@@ -121,20 +121,17 @@ def authorize():
         prompt='consent')
 
     flask.session['state'] = state
-    flask.session['redirect'] = flask.request.args.get('redirect')
+
+    redirect = flask.request.args.get('redirect')
+    print(f"redirect: {redirect}")
+    if redirect:
+        flask.session['redirect'] = flask.request.args.get('redirect')
 
     if flask.request.method == 'POST':
         flask.session['tos_agree'] = flask.request.form.get('tos_agree') == 'true'
 
-    if not 'redirect' in flask.session:
-        return flask.Response("Invalid Request", 400)
-
     cors_origin = flask.request.environ.get('HTTP_ORIGIN')
     programmatic_access = flask.request.headers.get('X-Requested-With')# or cors_origin
-
-    referer = flask.request.headers.get("Referer", "no referrer")
-
-    print("referer: " + referer)
 
     if programmatic_access:
         resp = flask.Response(authorization_url)
@@ -148,14 +145,24 @@ def authorize():
         return flask.redirect(authorization_url, code=302)
 
 def finish_auth_flow(user):
-    def create_auth_flow_end_redirect(token):
+    token = user.generate_token(ex=7 * 24 * 60 * 60) # 7 days
+
+    print("finish_auth_flow")
+
+    if 'redirect' in flask.session:
+        print("have redirect")
         return flask.redirect(furl(flask.session['redirect']) # assert redirect exists?
             .add({TOKEN_NAME: token, 'middle_auth_url': STICKY_AUTH_URL})
             .add({'token': token}) # deprecated
             .url, code=302)
-
-    token = user.generate_token(ex=7 * 24 * 60 * 60) # 7 days
-    return create_auth_flow_end_redirect(token)
+    else:
+        print("no redirect")
+        app_urls = [app['url'] for app in App.get_all_dict()]
+        return f"""<script type="text/javascript">
+            if (window.opener) {{
+                window.opener.postMessage({{token: "{token}", app_urls: {app_urls}}}, "*");
+            }}
+            </script>"""
 
 @api_v1_bp.route("/oauth2callback")
 def oauth2callback():
@@ -163,9 +170,6 @@ def oauth2callback():
         return flask.Response("Invalid Request, are third-party cookies enabled?", 400)
 
     if not 'state' in flask.session:
-        return flask.Response("Invalid Request", 400)
-
-    if not 'redirect' in flask.session:
         return flask.Response("Invalid Request", 400)
 
     state = flask.session['state']
@@ -671,8 +675,27 @@ def temp_table_has_public(table_id):
 def temp_is_root_public(table_id, root_id):
     return flask.jsonify(CellTemp.is_public(table_id, root_id))
 
+@api_v1_bp.route('/table/<table_id>/test')
+@auth_requires_permission('edit')
+def temp_table_test(table_id):
+    return flask.jsonify(table_id)
+
+@api_v1_bp.route('/table/<table_id>/test2')
+@auth_requires_permission('edit', dataset='fakedataset')
+def temp_table_test_fake(table_id):
+    return flask.jsonify(table_id)
+
+@api_v1_bp.route('/table/test3')
+@auth_requires_permission('edit', dataset='fakedataset')
+def temp_table_test_foo():
+    return flask.jsonify("yo")
+
+@api_v1_bp.route('/table/test4')
+@auth_requires_permission('edit')
+def temp_table_test_bar(table_id):
+    return flask.jsonify(table_id)
+
 @api_v1_bp.route('/app', methods=['GET'])
 @auth_required
 def get_apps():
-    apps = App.query.order_by(App.id.asc()).all() 
-    return flask.jsonify([app.as_dict() for app in apps])
+    return flask.jsonify(App.get_all_dict())
