@@ -104,15 +104,8 @@ def authorize():
     if flask.request.method == 'POST':
         flask.session['tos_agree'] = flask.request.form.get('tos_agree') == 'true'
 
-    if not 'redirect' in flask.session:
-        return flask.Response("Invalid Request", 400)
-
     cors_origin = flask.request.environ.get('HTTP_ORIGIN')
     programmatic_access = flask.request.headers.get('X-Requested-With')# or cors_origin
-
-    referer = flask.request.headers.get("Referer", "no referrer")
-
-    print("referer: " + referer)
 
     if programmatic_access:
         resp = flask.Response(authorization_url)
@@ -126,14 +119,22 @@ def authorize():
         return flask.redirect(authorization_url, code=302)
 
 def finish_auth_flow(user):
-    def create_auth_flow_end_redirect(token):
-        return flask.redirect(furl(flask.session['redirect']) # assert redirect exists?
+    token = user.generate_token(ex=7 * 24 * 60 * 60) # 7 days
+
+    redirect = flask.session.get('redirect')
+
+    if redirect:
+        return flask.redirect(furl(redirect)
             .add({TOKEN_NAME: token, 'middle_auth_url': STICKY_AUTH_URL})
             .add({'token': token}) # deprecated
             .url, code=302)
-
-    token = user.generate_token(ex=7 * 24 * 60 * 60) # 7 days
-    return create_auth_flow_end_redirect(token)
+    else:
+        app_urls = [app['url'] for app in App.get_all_dict()]
+        return f"""<script type="text/javascript">
+            if (window.opener) {{
+                window.opener.postMessage({{token: "{token}", app_urls: {app_urls}}}, "*");
+            }}
+            </script>"""
 
 @api_v1_bp.route("/oauth2callback")
 def oauth2callback():
@@ -141,9 +142,6 @@ def oauth2callback():
         return flask.Response("Invalid Request, are third-party cookies enabled?", 400)
 
     if not 'state' in flask.session:
-        return flask.Response("Invalid Request", 400)
-
-    if not 'redirect' in flask.session:
         return flask.Response("Invalid Request", 400)
 
     state = flask.session['state']
@@ -652,5 +650,4 @@ def temp_is_root_public(table_id, root_id):
 @api_v1_bp.route('/app', methods=['GET'])
 @auth_required
 def get_apps():
-    apps = App.query.order_by(App.id.asc()).all() 
-    return flask.jsonify([app.as_dict() for app in apps])
+    return flask.jsonify(App.get_all_dict())
