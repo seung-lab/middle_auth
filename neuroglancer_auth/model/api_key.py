@@ -16,7 +16,7 @@ class APIKey(db.Model):
         api_keys = APIKey().query.all()
 
         for api_key in api_keys:
-            user = User.user_get_by_id(api_key.user_id)
+            user = User.get_by_id(api_key.user_id)
             r.set("token_" + api_key.key, json.dumps(user.create_cache()), nx=True)
     
     @staticmethod
@@ -29,7 +29,7 @@ class APIKey(db.Model):
         if new_entry:
             entry = APIKey(user_id=user_id, key="")
 
-        user = User.user_get_by_id(user_id)
+        user = User.get_by_id(user_id)
         user_json = json.dumps(user.create_cache())
         token = insert_and_generate_unique_token("userid_" + str(user_id), user_json)
 

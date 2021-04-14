@@ -269,7 +269,7 @@ def create_user_route():
 @api_v1_bp.route('/user/me')
 @auth_required
 def get_self():
-    user = User.user_get_by_id(flask.g.auth_user['id'])
+    user = User.get_by_id(flask.g.auth_user['id'])
 
     if user:
         return flask.jsonify(user.as_dict())
@@ -547,7 +547,7 @@ def remove_user_from_group_route(group_id, user_id):
 @api_v1_bp.route('/my_permissions')
 @auth_required
 def get_permissions():
-    return flask.jsonify(User.user_get_by_id(flask.g.auth_user['id']).get_permissions())
+    return flask.jsonify(User.get_by_id(flask.g.auth_user['id']).get_permissions())
 
 @admin_site_bp.route('/')
 def send_admin_index():

@@ -1,5 +1,5 @@
 from .base import db, r
-from .api_key import insert_and_generate_unique_token
+from .api_key import insert_and_generate_unique_token, APIKey
 
 import json
 from sqlalchemy.sql import func
@@ -64,7 +64,7 @@ class User(db.Model):
         db.session.commit()
 
         if user.is_service_account:
-            user.generate_token()
+            APIKey.generate(user.id)
 
         return user
     
