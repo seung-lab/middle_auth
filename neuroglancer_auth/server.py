@@ -215,6 +215,10 @@ def refresh_token():
 @api_v1_bp.route('/logout')
 @auth_required
 def logout():
+    is_api_key = APIKey.query.filter_by(key=flask.g.auth_token).exists()
+    if is_api_key:
+        return flask.Response("Can't logout an API Key.", 422)
+
     delete_token(flask.g.auth_user['id'], flask.g.auth_token)
     return flask.jsonify("success")
 

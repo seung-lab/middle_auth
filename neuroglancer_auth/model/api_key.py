@@ -72,4 +72,6 @@ def delete_all_tokens_for_user(user_id):
 
     for token_bytes in tokens:
         token = token_bytes.decode('utf-8')
-        delete_token(user_id, token)
+        ttl = r.ttl("token_" + token)
+        if ttl != -1: # don't delete API keys
+            delete_token(user_id, token)

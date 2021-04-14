@@ -74,7 +74,8 @@ class User(db.Model):
         sa = User.sa_get_by_id(sa_id)
         if sa:
             UserGroup.query.filter_by(user_id=sa_id).delete()
-            sa.delete_cache()
+            APIKey.query.filter_by(user_id=sa_id).delete()
+            sa.sa_delete_cache()
             db.session.delete(sa)
             db.session.commit()
 
@@ -247,7 +248,7 @@ class User(db.Model):
                 ttl = ttl if ttl != -1 else None # -1 is no expiration (API KEYS)
                 r.set("token_" + token, user_json, nx=False, ex=ttl)
 
-    def delete_cache(self):
+    def sa_delete_cache(self):
         token = self.get_service_account_token()
 
         if token:
