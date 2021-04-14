@@ -1,5 +1,5 @@
 from .base import db, r
-from .api_key import insert_and_generate_unique_token, APIKey
+from .api_key import insert_and_generate_unique_token, APIKey, delete_token
 
 import json
 from sqlalchemy.sql import func
@@ -74,7 +74,10 @@ class User(db.Model):
         sa = User.sa_get_by_id(sa_id)
         if sa:
             UserGroup.query.filter_by(user_id=sa_id).delete()
-            sa.delete_cache()
+            APIKey.query.filter_by(user_id=sa_id).delete()
+            token = sa.get_service_account_token()
+            if token: # should always be true. TODO, figure out how to combine in with APIKey.delete()
+                delete_token(sa_id, token)
             db.session.delete(sa)
             db.session.commit()
 
@@ -93,19 +96,6 @@ class User(db.Model):
     @staticmethod
     def get_by_parent(id):
         return User.query.filter_by(parent_id=id).first()
-
-    def tokens_key(self):
-        return "userid_" + str(self.id)
-
-    def generate_token(self, ex=None):
-        user_json = json.dumps(self.create_cache())
-        return insert_and_generate_unique_token(self.tokens_key(), user_json, ex=ex) # 7 days
-
-    def get_service_account_token(self):
-        tokens = r.smembers(self.tokens_key())
-
-        for token_bytes in tokens: # should only be one
-            return token_bytes.decode('utf-8')
 
     @staticmethod
     def get_normal_accounts():
@@ -232,28 +222,30 @@ class User(db.Model):
             'permissions_v2': {x['name']: x['permissions'] for x in permissions},
         }
 
+    def tokens_key(self):
+        return "userid_" + str(self.id)
+
+    def generate_token(self, ex=None):
+        user_json = json.dumps(self.create_cache())
+        return insert_and_generate_unique_token(self.id, user_json, ex=ex) # 7 days
+
+    def get_service_account_token(self):
+        tokens = r.smembers(self.tokens_key())
+
+        for token_bytes in tokens: # should only be one
+            return token_bytes.decode('utf-8')
+
     def update_cache(self):
         user_json = json.dumps(self.create_cache())
 
-        tokens = r.smembers("userid_" + str(self.id))
+        tokens = r.smembers(self.tokens_key())
 
         for token_bytes in tokens:
             token = token_bytes.decode('utf-8')
             ttl = r.ttl("token_" + token) # update token without changing ttl
 
             if ttl == -2: # doesn't exist (expired)
-                r.srem("userid_" + str(self.id), token)
+                r.srem(self.tokens_key(), token)
             else:
                 ttl = ttl if ttl != -1 else None # -1 is no expiration (API KEYS)
                 r.set("token_" + token, user_json, nx=False, ex=ttl)
-
-    def delete_cache(self):
-        token = self.get_service_account_token()
-
-        if token:
-            token_key = "token_" + token
-            tokens_key = "userid_" + str(self.id)
-            p = r.pipeline()
-            p.delete(token_key)
-            p.srem(tokens_key, token)
-            p.execute()
