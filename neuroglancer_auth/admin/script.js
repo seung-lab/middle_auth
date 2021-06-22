@@ -1,4 +1,6 @@
-const AUTH_URL = '../api/v1';
+// const AUTH_URL = '../api/v1';
+
+const AUTH_URL = 'https://authsl1.middleauth.com/auth/api/v1';
 
 const datasetDataApp = {
 	data: () => ({
@@ -850,6 +852,142 @@ const serviceAccountDataApp = {
 	`
 };
 
+const dataApp = {
+	data: () => ({
+		loading: true,
+		newEntry: false,
+		type: null,
+		typeName: null,
+		thing: null,
+		properties: {},
+		// users: [],
+		// serviceAccounts: [],
+		// admins: [],
+		// nonAdmins: [],
+		// datasets: [],
+		// availableDatasets: [],
+		// allDatasets: [],
+		// selectedUser: '',
+		// selectedDataset: '',
+		// selectedPermission: '',
+		// selectedPermissions: ['none', 'view', 'edit'],
+		// chosen: ''
+	}),
+	async beforeRouteUpdate (to, from, next) {
+		await this.load(to.params.id);
+		next();
+	},
+	mounted: async function () {
+		await this.load(this.$route.params.id);
+	},
+	methods: {
+		async load(param_id) {
+			this.loading = true;
+			this.newEntry = param_id === 'create';
+
+			if (param_id === 'create') {
+				this.loading = false;
+
+				this.thing = {
+					name: '',
+					linkText: '',
+				};
+
+				return;
+			}
+
+			const id = Number.parseInt(param_id);
+
+			let [thing] = await authFetch([
+				`${AUTH_URL}/${this.type}/${id}`,
+			]);
+
+			this.thing = thing;
+
+			// this.group = group;
+
+			// this.users = users;
+			// this.serviceAccounts = serviceAccounts;
+			// this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
+			// this.updateNonAdmins();
+			// this.datasets = datasets;
+
+			// this.allDatasets = availableDatasets;
+			// this.updateAvailableDatasets();
+
+			this.loading = false;
+		},
+		async save() {
+			this.errors = [];
+
+			if (this.newEntry) {
+				console.log('save new entry!');
+
+				// if (!this.thing.name) {
+				// 	this.errors.push(['name', 'missing']);
+				// }
+
+				if (!this.errors.length) {
+					authFetch(`${AUTH_URL}/${this.type}`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify(this.thing)
+					}).then((res) => {
+						if (this.newEntry) {
+							console.log('created entry!');
+						} else {
+							console.log('updated entry!');
+						}
+						
+						router.push('./')
+					})
+					.catch((res) => {
+						alert(res);
+					})
+				}
+			} else {
+				console.log('update entry TODO!');
+			}
+		}
+	},
+	template: `
+	<div class="dataAppContainer">
+		<template v-if="loading">
+			<div>Loading...</div>
+		</template>
+		<template v-else-if="newEntry">
+			<div class="title">Create {{ typeName }}</div>
+			<input v-model="thing.name" placeholder="Name" required>
+			<textarea v-model="thing.linkText" placeholder="Text" required></textarea>
+
+			<button @click="save">Create</button>
+		</template>
+		<template v-else>
+			<div class="title">Edit {{ typeName }}</div>
+			<input v-model="thing.name" placeholder="Name" required>
+			<textarea v-model="thing.linkText" placeholder="Text" required></textarea>
+
+			<button @click="save">Update</button>
+		</template>
+	</div>
+	`
+};
+
+const tosDataApp = {
+	mixins: [dataApp],
+	data: () => ({
+		// url: '/user',
+		// searchKey: 'email',
+		// title: 'Users',
+		// displayedProps: ['name', 'email'],
+		// canCreate: true
+		type: 'tos',
+		typeName: 'Terms of Service',
+	})
+};
+
 const listApp = {
 	data: () => ({
 		loading: true,
@@ -1033,6 +1171,17 @@ const datasetListApp = {
 	})
 };
 
+const tosListApp = {
+	mixins: [listApp],
+	data: () => ({
+		url: '/tos',
+		searchKey: 'name',
+		title: 'Terms of Services',
+		displayedProps: ['name'],
+		canCreate: true
+	})
+};
+
 const routes = [
 	{ path: '/user', name: 'userList', component: userListApp },
 	{ path: '/user/:id', name: 'userData', component: userDataApp },
@@ -1042,6 +1191,8 @@ const routes = [
 	{ path: '/group/:id', name: 'groupData', component: groupDataApp },
 	{ path: '/dataset', name: 'datasetList', component: datasetListApp },
 	{ path: '/dataset/:id', name: 'datasetData', component: datasetDataApp },
+	{ path: '/tos', name: 'tosList', component: tosListApp },
+	{ path: '/tos/:id', name: 'tosData', component: tosDataApp },
 	{ path: '/stats', name: 'userStats', component: userStatsApp },
 ];
 
