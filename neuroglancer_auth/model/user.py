@@ -1,5 +1,5 @@
 from .base import db, r
-from .api_key import insert_and_generate_unique_token, APIKey, delete_token
+from .api_key import insert_and_generate_unique_token, APIKey, delete_token, tokens_key
 
 import json
 from sqlalchemy.sql import func
@@ -47,6 +47,10 @@ class User(db.Model):
         if self.parent_id:
             return User.user_get_by_id(self.parent_id)
     
+    @property
+    def tokens_key(self):
+        return tokens_key(self.id)
+
     @staticmethod
     def create_account(email, name, pi, admin=False, gdpr_consent=False, group_names=[], parent_id=None):
         from .user_group import UserGroup
@@ -222,15 +226,12 @@ class User(db.Model):
             'permissions_v2': {x['name']: x['permissions'] for x in permissions},
         }
 
-    def tokens_key(self):
-        return "userid_" + str(self.id)
-
     def generate_token(self, ex=None):
         user_json = json.dumps(self.create_cache())
-        return insert_and_generate_unique_token(self.id, user_json, ex=ex) # 7 days
+        return insert_and_generate_unique_token(self.id, user_json, ex=ex)
 
     def get_service_account_token(self):
-        tokens = r.smembers(self.tokens_key())
+        tokens = r.smembers(self.tokens_key)
 
         for token_bytes in tokens: # should only be one
             return token_bytes.decode('utf-8')
@@ -238,14 +239,14 @@ class User(db.Model):
     def update_cache(self):
         user_json = json.dumps(self.create_cache())
 
-        tokens = r.smembers(self.tokens_key())
+        tokens = r.smembers(self.tokens_key)
 
         for token_bytes in tokens:
             token = token_bytes.decode('utf-8')
             ttl = r.ttl("token_" + token) # update token without changing ttl
 
             if ttl == -2: # doesn't exist (expired)
-                r.srem(self.tokens_key(), token)
+                r.srem(self.tokens_key, token)
             else:
                 ttl = ttl if ttl != -1 else None # -1 is no expiration (API KEYS)
                 r.set("token_" + token, user_json, nx=False, ex=ttl)
