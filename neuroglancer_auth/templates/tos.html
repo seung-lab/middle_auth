@@ -1,0 +1,81 @@
+<html>
+    <head>
+        <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+        <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+        <style>
+            .formGroup {
+                display: grid;
+                grid-row-gap: 10px;
+            }
+
+            body {
+                max-width: 600px;
+                margin: auto;
+                padding: 20px;
+                font-family: Roboto,sans-serif;
+                -webkit-font-smoothing: antialiased;
+                color: var(--mdc-theme-text-primary-on-background, rgba(0, 0, 0, 0.87));
+                letter-spacing: var(--mdc-typography-body2-letter-spacing, 0.0178571429em);
+            }
+
+            #form {
+                margin-top: 20px;
+            }
+
+            #register {
+                margin-top: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>{{ name }} Registration</h1>
+        <span>Before you can access {{ name }}, we need some additional information.</span>
+        <form id="form" action="register" method="POST" class="formGroup">
+            <div class="mdc-form-field">
+                <div class="mdc-checkbox">
+                  <input type="checkbox"
+                         name="tos_agree" value="true"
+                         class="mdc-checkbox__native-control"
+                         id="checkbox-1"/>
+                  <div class="mdc-checkbox__background">
+                    <svg class="mdc-checkbox__checkmark"
+                         viewBox="0 0 24 24">
+                      <path class="mdc-checkbox__checkmark-path"
+                            fill="none"
+                            d="M1.73,12.91 8.1,19.28 22.79,4.59"/>
+                    </svg>
+                    <div class="mdc-checkbox__mixedmark"></div>
+                  </div>
+                  <div class="mdc-checkbox__ripple"></div>
+                </div>
+                <label for="checkbox-1">I have read and agree to FlyWire's <a href="https://flywire.ai/tos.html" target="_blank">terms of service</a></label>
+              </div>
+
+            <button id="register" class="mdc-button mdc-button--unelevated" disabled>
+                <div class="mdc-button__ripple"></div>
+                <span class="mdc-button__label">Register</span>
+            </button>
+
+            {{ linkText|markdown }}
+        </form>
+    </body>
+    <script>
+        const MDCRipple = mdc.ripple.MDCRipple;
+        const MDCCheckbox = mdc.checkbox.MDCCheckbox;
+        const MDCFormField = mdc.formField.MDCFormField;
+
+        const button = new MDCRipple(document.querySelector('.mdc-button'));
+
+        const checkbox = new MDCCheckbox(document.querySelector('.mdc-checkbox'));
+        const formField = new MDCFormField(document.querySelector('.mdc-form-field'));
+        formField.input = checkbox;
+
+        checkbox.listen('change', checkFormValidity);
+
+        function checkFormValidity() {
+            const validForm = checkbox.checked;
+            button.root.disabled = !validForm;
+        }
+    </script>
+</html>
