@@ -2,15 +2,33 @@ from .base import db, r
 
 import json
 import secrets
+from sqlalchemy.sql import func
 
 class APIKey(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
+    user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), unique=False, nullable=False)
     key = db.Column(db.String(32), unique=True, nullable=False)
+    created = db.Column(db.DateTime, server_default=func.now())
+    updated = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
+
+    def as_dict(self):
+        res = {
+            "id": self.id,
+            "user_id": self.user_id,
+            "token": self.key,
+            "created": self.created,
+            "updated": self.updated
+        }
+
+        return res
 
     @staticmethod
     def get_by_key(key):
         return APIKey.query.filter_by(key=key).first()
+    
+    @staticmethod
+    def get_by_user_id(user_id):
+        return APIKey.query.filter_by(user_id=user_id)
 
     # load api keys into cache if they don't already exist in redis
     # i.e. new deployment or some redis failure
@@ -26,16 +44,29 @@ class APIKey(db.Model):
     @staticmethod
     def generate(user_id):
         from .user import User
-        entry = APIKey.query.filter_by(user_id=user_id).first()
+        user = User.get_by_id(user_id)
 
-        new_entry = not entry
+        token = user.generate_token()
 
-        if new_entry:
-            entry = APIKey(user_id=user_id, key="")
+        entry = APIKey(user_id=user_id, key=token)
+
+        db.session.add(entry)
+
+        return token
+
+        
+
+
+        # entry = APIKey.query.filter_by(user_id=user_id).first()
+
+        # new_entry = not entry
+
+        # if new_entry:
+        #     entry = APIKey(user_id=user_id, key="")
 
         user = User.get_by_id(user_id)
-        user_json = json.dumps(user.create_cache())
-        token = insert_and_generate_unique_token(user_id, user_json)
+
+        token = user.generate_token()
 
         if not new_entry:
             delete_token(user_id, entry.key)
@@ -53,19 +84,22 @@ def maybe_insert_token(user_id, token, value, ex=None, force=False):
     # nx = Only set the key if it does not already exist
     not_dupe = r.set("token_" + token, value, nx=True, ex=ex)
 
-    if not_dupe or force:
-        r.sadd("userid_" + str(user_id), token)
+    if not_dupe or force: # force is temporary fix since delete_all_tokens was deleting api_keys
+        r.sadd(tokens_key(user_id), token)
 
     return not_dupe
 
 def delete_token(user_id, token):
     p = r.pipeline()
     p.delete("token_" + token)
-    p.srem("userid_" + str(user_id), token)
+    p.srem(tokens_key(user_id), token)
     p.execute()
 
-def delete_all_tokens_for_user(user_id):
-    tokens = r.smembers("userid_" + str(user_id))
+def tokens_key(user_id):
+    return "userid_" + str(user_id)
+
+def delete_all_temp_tokens_for_user(user_id):
+    tokens = r.smembers(tokens_key(user_id))
 
     for token_bytes in tokens:
         token = token_bytes.decode('utf-8')
