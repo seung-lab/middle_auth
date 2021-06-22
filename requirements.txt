@@ -2,7 +2,7 @@ redis
 google_auth==1.11.3
 google_auth_oauthlib==0.4.1
 google-api-python-client==1.8.0
-Flask
+Flask==2.0.1
 Flask-Session
 Flask-Cors
 psycopg2
@@ -10,3 +10,4 @@ sqlalchemy
 flask-sqlalchemy
 middle-auth-client==3.2.5
 furl
+Flask-Markdown
