@@ -1,4 +1,6 @@
-const AUTH_URL = '../api/v1';
+// const AUTH_URL = '../api/v1';
+
+const AUTH_URL = 'https://authsl1.middleauth.com/auth/api/v1';
 
 const datasetDataApp = {
 	data: () => ({
@@ -10,9 +12,10 @@ const datasetDataApp = {
 		admins: [],
 		allGroups: [],
 		availableGroups: [],
+		toses: [],
 		selectedGroup: '',
 		selectedPermission: '',
-		availablePermissions: ['none', 'view', 'edit'],
+		availablePermissions: ['none', 'view', 'edit', 'admin_view'],
 		chosen: ''
 	}),
 	async beforeRouteUpdate (to, from, next) {
@@ -43,6 +46,7 @@ const datasetDataApp = {
 			this.dataset = await authFetch(`${AUTH_URL}/dataset/${id}`);
 			this.allGroups = await authFetch(`${AUTH_URL}/group`);
 			this.admins = await authFetch(`${AUTH_URL}/dataset/${id}/admin`);
+			this.toses = await authFetch(`${AUTH_URL}/tos`);
 			await this.updateAvailableGroups();
 
 			this.loading = false;
@@ -87,7 +91,7 @@ const datasetDataApp = {
 
 			await this.updateAvailableGroups();
 		},
-		save() {
+		async save() {
 			this.errors = [];
 
 			if (!this.dataset.name) {
@@ -95,7 +99,7 @@ const datasetDataApp = {
 			}
 
 			if (!this.errors.length) {
-				authFetch(`${AUTH_URL}/dataset`, {
+				await authFetch(`${AUTH_URL}/dataset`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json'
@@ -110,6 +114,20 @@ const datasetDataApp = {
 					alert(res);
 				});
 			}
+		},
+		async update() {
+			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					name: this.dataset.name,
+					tos_id: this.dataset.tos_id,
+				})
+			});
+
+			await this.load(this.$route.params.id);
 		},
 		async simpleSuggestionList(email) {
 			const users =  await authFetch(`${AUTH_URL}/user?email=${email}`);
@@ -155,12 +173,13 @@ const datasetDataApp = {
 			<div>Loading...</div>
 		</template>
 		<template v-else>
-			<template v-if="newEntry">
-				<input v-model="dataset.name" placeholder="Name" required>
-			</template>
-			<template v-else>
-				<div>{{ dataset.name }}</div>
-			</template>
+			<input v-model="dataset.name" placeholder="Name" required>
+
+			<label>Terms of Service</label>
+			<select v-model="dataset.tos_id">
+					<option :value="null">None</option>
+					<option v-for="tos in toses" v-bind:value="tos.id">{{ tos.name }}</option>
+				</select>
 
 			<template v-if="!newEntry">
 				<div class="listContainer">
@@ -215,6 +234,7 @@ const datasetDataApp = {
 				</vue-simple-suggest>
 			</template>
 			<button @click="save" v-if="newEntry">Create</button>
+			<button @click="update" v-else>Save</button>
 		</template>
 	</div>
 	`
@@ -850,6 +870,153 @@ const serviceAccountDataApp = {
 	`
 };
 
+const dataApp = {
+	data: () => ({
+		loading: true,
+		newEntry: false,
+		type: null,
+		typeName: null,
+		thing: null,
+		properties: {},
+		// users: [],
+		// serviceAccounts: [],
+		// admins: [],
+		// nonAdmins: [],
+		// datasets: [],
+		// availableDatasets: [],
+		// allDatasets: [],
+		// selectedUser: '',
+		// selectedDataset: '',
+		// selectedPermission: '',
+		// selectedPermissions: ['none', 'view', 'edit'],
+		// chosen: ''
+	}),
+	async beforeRouteUpdate (to, from, next) {
+		await this.load(to.params.id);
+		next();
+	},
+	mounted: async function () {
+		await this.load(this.$route.params.id);
+	},
+	methods: {
+		async load(param_id) {
+			this.loading = true;
+			this.newEntry = param_id === 'create';
+
+			if (param_id === 'create') {
+				this.loading = false;
+
+				this.thing = {
+					name: '',
+					linkText: '',
+				};
+
+				return;
+			}
+
+			const id = Number.parseInt(param_id);
+
+			let [thing] = await authFetch([
+				`${AUTH_URL}/${this.type}/${id}`,
+			]);
+
+			this.thing = thing;
+
+			// this.group = group;
+
+			// this.users = users;
+			// this.serviceAccounts = serviceAccounts;
+			// this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
+			// this.updateNonAdmins();
+			// this.datasets = datasets;
+
+			// this.allDatasets = availableDatasets;
+			// this.updateAvailableDatasets();
+
+			this.loading = false;
+		},
+		async save() {
+			this.errors = [];
+
+			if (this.newEntry) {
+				console.log('save new entry!');
+
+				// if (!this.thing.name) {
+				// 	this.errors.push(['name', 'missing']);
+				// }
+
+				if (!this.errors.length) {
+					const res = await authFetch(`${AUTH_URL}/${this.type}`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify(this.thing)
+					}).then((res) => {
+						if (this.newEntry) {
+							console.log('created entry!');
+						} else {
+							console.log('updated entry!');
+						}
+
+						console.log('res', res);
+						
+						router.push('./')
+					})
+					.catch((res) => {
+						alert(res);
+					})
+				}
+			} else {
+				await authFetch(`${AUTH_URL}/${this.type}/${this.thing.id}`, {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(this.thing)
+				});
+
+			}
+
+				// router.push('./')
+		}
+	},
+	template: `
+	<div class="dataAppContainer">
+		<template v-if="loading">
+			<div>Loading...</div>
+		</template>
+		<template v-else-if="newEntry">
+			<div class="title">Create {{ typeName }}</div>
+			<input v-model="thing.name" placeholder="Name" required>
+			<textarea v-model="thing.linkText" placeholder="Text" required></textarea>
+
+			<button @click="save">Create</button>
+		</template>
+		<template v-else>
+			<div class="title">Edit {{ typeName }}</div>
+			<input v-model="thing.name" placeholder="Name" required>
+			<textarea v-model="thing.linkText" placeholder="Text" required></textarea>
+
+			<button @click="save">Update</button>
+		</template>
+	</div>
+	`
+};
+
+const tosDataApp = {
+	mixins: [dataApp],
+	data: () => ({
+		// url: '/user',
+		// searchKey: 'email',
+		// title: 'Users',
+		// displayedProps: ['name', 'email'],
+		// canCreate: true
+		type: 'tos',
+		typeName: 'Terms of Service',
+	})
+};
+
 const listApp = {
 	data: () => ({
 		loading: true,
@@ -1033,6 +1200,17 @@ const datasetListApp = {
 	})
 };
 
+const tosListApp = {
+	mixins: [listApp],
+	data: () => ({
+		url: '/tos',
+		searchKey: 'name',
+		title: 'Terms of Services',
+		displayedProps: ['name'],
+		canCreate: true
+	})
+};
+
 const routes = [
 	{ path: '/user', name: 'userList', component: userListApp },
 	{ path: '/user/:id', name: 'userData', component: userDataApp },
@@ -1042,6 +1220,8 @@ const routes = [
 	{ path: '/group/:id', name: 'groupData', component: groupDataApp },
 	{ path: '/dataset', name: 'datasetList', component: datasetListApp },
 	{ path: '/dataset/:id', name: 'datasetData', component: datasetDataApp },
+	{ path: '/tos', name: 'tosList', component: tosListApp },
+	{ path: '/tos/:id', name: 'tosData', component: tosDataApp },
 	{ path: '/stats', name: 'userStats', component: userStatsApp },
 ];
 
