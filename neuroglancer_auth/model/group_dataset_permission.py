@@ -24,13 +24,14 @@ class GroupDatasetPermission(db.Model):
         GroupDatasetPermission.query.filter_by(group_id=group_id, dataset_id=dataset_id, permission_id=permission_id).delete()
         db.session.commit()
         group = Group.get_by_id(group_id).update_cache()
-    
-    def update(self, level):
-        self.level = level
-        db.session.commit()
-        group = Group.get_by_id(self.group_id)
-        group.update_cache()
-    
+
+    @staticmethod
+    def get_groups_by_dataset(dataset_id):
+        query = db.session.query(Group)\
+            .join(GroupDatasetPermission, GroupDatasetPermission.group_id == GroupDatasetPermission.group_id)
+
+        return query.distinct()
+
     @staticmethod
     def get_permissions_for_group(group_id):
         query = db.session.query(GroupDatasetPermission.dataset_id, Dataset.name, Permission.name, Permission.id)\
