@@ -18,12 +18,15 @@ from .model.dataset import Dataset
 from .model.group_dataset_permission import GroupDatasetPermission
 from .model.app import App
 from .model.cell_temp import CellTemp
+from .model.tos import Tos
 
 import os
 
 from functools import wraps
 
 __version__ = '2.3.2'
+
+print(f'flask version: {flask.__version__}')
 
 TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
 URL_PREFIX = os.environ.get('URL_PREFIX', 'auth')
@@ -654,3 +657,50 @@ def temp_is_root_public(table_id, root_id):
 @auth_required
 def get_apps():
     return flask.jsonify(App.get_all_dict())
+
+
+@api_v1_bp.route(f'/{"boop"}', methods=['GET'])
+@auth_required
+def get_all():    
+    return flask.jsonify([1,3,3])
+
+
+def create_generic_routes(name, model, data):
+    local_bp = flask.Blueprint(f'{name}_bp', __name__, url_prefix=f'/{name}')
+
+    @local_bp.route('', methods=['GET'])
+    @auth_required
+    def get_all_route():    
+        groups = model.search_by_name(flask.request.args.get('name'))
+        return flask.jsonify([group.as_dict() for group in groups])
+
+    @local_bp.route('', methods=['POST'])
+    @requires_some_admin
+    def create_route():
+        data = flask.request.json
+
+        if data and 'name' in data:
+            try:
+                model.add(data['name'])
+                return flask.jsonify("success")
+            except sqlalchemy.exc.IntegrityError as err:
+                return flask.Response(f"{name} already exists.", 422)
+        else:
+            return flask.Response("Missing name.", 400)
+
+    @local_bp.route('/<int:model_id>', methods=['GET'])
+    @requires_some_admin
+    def get_route(model_id):
+        el = model.get_by_id(model_id)
+
+        if el:
+            return flask.jsonify(el.as_dict())
+        else:
+            return flask.Response(f"{name} doesn't exist", 404)
+
+
+
+    api_v1_bp.register_blueprint(local_bp)
+
+
+create_generic_routes("tos", Tos, 3)
