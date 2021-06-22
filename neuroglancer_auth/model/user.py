@@ -227,7 +227,7 @@ class User(db.Model):
 
     def generate_token(self, ex=None):
         user_json = json.dumps(self.create_cache())
-        return insert_and_generate_unique_token(self.id, user_json, ex=ex) # 7 days
+        return insert_and_generate_unique_token(self.id, user_json, ex=ex)
 
     def get_service_account_token(self):
         tokens = r.smembers(self.tokens_key())

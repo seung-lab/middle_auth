@@ -34,8 +34,8 @@ class APIKey(db.Model):
             entry = APIKey(user_id=user_id, key="")
 
         user = User.get_by_id(user_id)
-        user_json = json.dumps(user.create_cache())
-        token = insert_and_generate_unique_token(user_id, user_json)
+
+        token = user.generate_token()
 
         if not new_entry:
             delete_token(user_id, entry.key)
