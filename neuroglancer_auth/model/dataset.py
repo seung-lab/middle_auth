@@ -3,6 +3,7 @@ from .base import db
 class Dataset(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
+    tos_id = db.Column('tos_id', db.Integer, db.ForeignKey("tos.id"), nullable=True)
 
     def as_dict(self):
         return {
