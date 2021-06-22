@@ -18,6 +18,7 @@ from .model.dataset import Dataset
 from .model.group_dataset_permission import GroupDatasetPermission
 from .model.app import App
 from .model.cell_temp import CellTemp
+from .model.tos import Tos
 
 import os
 
@@ -654,3 +655,45 @@ def temp_is_root_public(table_id, root_id):
 @auth_required
 def get_apps():
     return flask.jsonify(App.get_all_dict())
+
+
+@api_v1_bp.route(f'/{"boop"}', methods=['GET'])
+@auth_required
+def get_all():    
+    return flask.jsonify([1,3,3])
+
+
+def create_generic_routes(name, model, data):
+    @api_v1_bp.route(f'/{name}', methods=['GET'])
+    @auth_required
+    def get_all():    
+        groups = model.search_by_name(flask.request.args.get('name'))
+        return flask.jsonify([group.as_dict() for group in groups])
+
+    # @api_v1_bp.route(f'/{name}', methods=['POST'])
+    # @requires_some_admin
+    # def create_group_route():
+    #     data = flask.request.json
+
+    #     if data and 'name' in data:
+    #         try:
+    #             group = Group.add(data['name'])
+    #             UserGroup.add(flask.g.auth_user['id'], group.id, True)
+    #             return flask.jsonify("success")
+    #         except sqlalchemy.exc.IntegrityError as err:
+    #             return flask.Response("Group already exists.", 422)
+    #     else:
+    #         return flask.Response("Missing name.", 400)
+
+    # @api_v1_bp.route('/group/<int:group_id>', methods=['GET'])
+    # @requires_some_admin
+    # def get_group(group_id):
+    #     group = Group.get_by_id(group_id)
+
+    #     if group:
+    #         return flask.jsonify(group.as_dict())
+    #     else:
+    #         return flask.Response("Group doesn't exist", 404)
+
+
+create_generic_routes("tos", Tos, 3)
