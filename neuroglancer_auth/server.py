@@ -294,6 +294,16 @@ def get_user(user_id):
     else:
         return flask.Response("User doesn't exist", 404)
 
+@api_v1_bp.route('/user/<int:user_id>/debug_redis')
+@auth_requires_admin
+def user_debug_redis(user_id):
+    user = User.get_by_id(user_id)
+
+    if user:
+        return flask.jsonify(user.debug_redis())
+    else:
+        return flask.Response("User doesn't exist", 404)
+
 @api_v1_bp.route('/user/<int:user_id>', methods=['PUT'])
 @auth_requires_admin
 def modify_user_route(user_id):

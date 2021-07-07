@@ -38,6 +38,26 @@ class User(db.Model):
 
         return res
 
+    def debug_redis(self):
+        tokens = r.smembers(self.tokens_key)
+        tokens = [token_bytes.decode('utf-8') for token_bytes in tokens]
+
+        res = {
+            "tokens": tokens,
+            "values": {}
+        }
+
+        for token in tokens:
+            cached_user_data = r.get("token_" + token)
+            ttl = r.ttl("token_" + token)
+            if cached_user_data:
+                res["values"][token] = {
+                    "data": json.loads(cached_user_data.decode('utf-8')),
+                    "ttl": ttl
+                }
+
+        return res
+
     @property
     def is_service_account(self):
         return self.parent_id is not None
