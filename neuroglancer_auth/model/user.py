@@ -76,7 +76,7 @@ class User(db.Model):
             apikey = APIKey.get_by_key(token)
 
             if apikey and apikey.user_id != self.id:
-                tokens_to_remove += [apikey]
+                tokens_to_remove += [token]
                 users_to_update += [apikey.user_id]
 
         elements_removed = 0
