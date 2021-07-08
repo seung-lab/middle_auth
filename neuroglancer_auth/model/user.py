@@ -66,6 +66,25 @@ class User(db.Model):
 
         return res
 
+    def fix_redis(self, soft=False):
+        tokens = r.smembers(self.tokens_key)
+        tokens = [token_bytes.decode('utf-8') for token_bytes in tokens]
+
+        tokens_to_remove = []
+
+        for token in tokens:
+            apikey = APIKey.get_by_key(token)
+
+            if apikey and apikey.user_id != self.id:
+                tokens_to_remove += [apikey]
+
+        elements_removed = 0
+
+        if not soft:
+            elements_removed = r.srem(self.tokens_key, tokens_to_remove)
+
+        return elements_removed, tokens_to_remove
+
     @property
     def is_service_account(self):
         return self.parent_id is not None
