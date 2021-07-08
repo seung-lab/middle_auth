@@ -56,6 +56,13 @@ class User(db.Model):
                     "ttl": ttl
                 }
 
+                if ttl == -1:
+                    # check the corresponding api key
+                    apikey = APIKey.get_by_key(token)
+
+                    if apikey:
+                        res["values"][token]["apikey"] = {"user_id": apikey.user_id}
+
         return res
 
     @property
