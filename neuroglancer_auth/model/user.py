@@ -57,14 +57,39 @@ class User(db.Model):
                     "ttl": ttl
                 }
 
-                if ttl == -1:
-                    # check the corresponding api key
-                    apikey = APIKey.get_by_key(token)
+            # check for an api key
+            apikey = APIKey.get_by_key(token)
 
-                    if apikey:
-                        res["values"][token]["apikey"] = {"user_id": apikey.user_id}
+            if apikey:
+                res["values"][token] = res["values"][token] or {}
+                res["values"][token]["apikey"] = {"user_id": apikey.user_id}
 
         return res
+
+    def fix_redis(self, soft=False):
+        tokens = r.smembers(self.tokens_key)
+        tokens = [token_bytes.decode('utf-8') for token_bytes in tokens]
+
+        tokens_to_remove = []
+        users_to_update = [self.id]
+
+        for token in tokens:
+            apikey = APIKey.get_by_key(token)
+
+            if apikey and apikey.user_id != self.id:
+                tokens_to_remove += [apikey]
+                users_to_update += [apikey.user_id]
+
+        elements_removed = 0
+
+        if not soft:
+            elements_removed = r.srem(self.tokens_key, tokens_to_remove)
+
+            for user in users_to_update:
+                user.update_cache()
+
+
+        return elements_removed, tokens_to_remove
 
     @property
     def is_service_account(self):
