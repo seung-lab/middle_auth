@@ -23,7 +23,7 @@ import os
 
 from functools import wraps
 
-__version__ = '2.3.8'
+__version__ = '2.3.9'
 
 TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
 URL_PREFIX = os.environ.get('URL_PREFIX', 'auth')
