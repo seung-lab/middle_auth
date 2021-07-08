@@ -343,6 +343,21 @@ def user_debug_redis(user_id):
     else:
         return flask.Response("User doesn't exist", 404)
 
+@api_v1_bp.route('/user/<int:user_id>/fix_redis', methods=['POST'])
+@auth_requires_admin
+def user_fix_redis(user_id):
+    user = User.get_by_id(user_id)
+
+    if user:
+        soft = flask.request.args.get('soft') == 'true'
+        elements_removed, tokens_to_remove = user.debug_redis(soft=soft)
+        return flask.jsonify({
+            "elements_removed": elements_removed,
+            "tokens_to_remove": tokens_to_remove,
+        })
+    else:
+        return flask.Response("User doesn't exist", 404)
+
 @api_v1_bp.route('/user/<int:user_id>', methods=['PUT'])
 @auth_requires_admin
 def modify_user_route(user_id):
