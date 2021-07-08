@@ -84,7 +84,8 @@ class User(db.Model):
         if not soft:
             elements_removed = r.srem(self.tokens_key(), *tokens_to_remove)
 
-            for user in users_to_update:
+            for user_id in users_to_update:
+                user = User.get_by_id(user_id)
                 user.update_cache()
 
 

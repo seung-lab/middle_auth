@@ -304,6 +304,17 @@ def user_debug_redis(user_id):
     else:
         return flask.Response("User doesn't exist", 404)
 
+@api_v1_bp.route('/user/<int:user_id>/update_cache')
+@auth_requires_admin
+def user_update_cache(user_id):
+    user = User.get_by_id(user_id)
+
+    if user:
+        user.update_cache()
+        return flask.jsonify("success")
+    else:
+        return flask.Response("User doesn't exist", 404)
+
 @api_v1_bp.route('/user/<int:user_id>/fix_redis', methods=['POST'])
 @auth_requires_admin
 def user_fix_redis(user_id):
