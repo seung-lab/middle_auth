@@ -45,9 +45,3 @@ class Group(db.Model):
 
         for sa in service_accounts:
             User.sa_get_by_id(sa["id"]).update_cache()
-
-def insert_default_groups(target, connection, **kw):
-    db.session.add(Group(name="default"))
-    db.session.commit()
-
-event.listen(Group.__table__, 'after_create', insert_default_groups)
