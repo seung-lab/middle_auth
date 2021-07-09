@@ -1,5 +1,6 @@
 <html>
     <head>
+        <base target="_blank">
         <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
         <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
         <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
@@ -29,9 +30,9 @@
         </style>
     </head>
     <body>
-        <h2>FlyWire Registration</h1>
-        <span>Before you can continue to FlyWire, we need some additional information.</span>
-        <form id="form" action="register" method="POST" class="formGroup">
+        <h2>{{ name }}'s Terms of Service</h1>
+        <span>Before you can access {{ name }}, you need to accept its Terms of Service.</span>
+        <form id="form" action="accept" method="POST" class="formGroup" target="_self">
             <div class="mdc-form-field">
                 <div class="mdc-checkbox">
                   <input type="checkbox"
@@ -49,16 +50,18 @@
                   </div>
                   <div class="mdc-checkbox__ripple"></div>
                 </div>
-                <label for="checkbox-1">I have read and agree to FlyWire's <a href="https://flywire.ai/tos.html" target="_blank">terms of service</a></label>
+                <label for="checkbox-1">{{ text|markdown }}</label>
               </div>
 
             <button id="register" class="mdc-button mdc-button--unelevated" disabled>
                 <div class="mdc-button__ripple"></div>
-                <span class="mdc-button__label">Register</span>
+                <span class="mdc-button__label">Accept</span>
             </button>
         </form>
     </body>
     <script>
+        document.getElementById('form').action += new URL(location).search; // keep query string so neuroglancer can indicate the preferred response type
+
         const MDCRipple = mdc.ripple.MDCRipple;
         const MDCCheckbox = mdc.checkbox.MDCCheckbox;
         const MDCFormField = mdc.formField.MDCFormField;
