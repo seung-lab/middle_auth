@@ -30,10 +30,3 @@ class Permission(db.Model):
         db.session.add(el)
         db.session.commit()
         return el
-
-def insert_default_permissions(target, connection, **kw):
-    db.session.add(Permission(name="view"))
-    db.session.add(Permission(name="edit"))
-    db.session.commit()
-
-event.listen(Permission.__table__, 'after_create', insert_default_permissions)
