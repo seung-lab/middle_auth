@@ -10,7 +10,7 @@ import sqlalchemy
 from furl import furl
 
 from .model.user import User
-from .model.api_key import APIKey, delete_token, delete_all_tokens_for_user
+from .model.api_key import APIKey, delete_token, delete_all_temp_tokens_for_user
 from .model.dataset_admin import DatasetAdmin
 from .model.group import Group
 from .model.user_group import UserGroup
@@ -18,12 +18,17 @@ from .model.dataset import Dataset
 from .model.group_dataset_permission import GroupDatasetPermission
 from .model.app import App
 from .model.cell_temp import CellTemp
+from .model.tos import Tos
+from .model.user_tos import UserTos
+from .model.permission import Permission
 
 import os
 
 from functools import wraps
 
 __version__ = '2.3.9'
+
+print(f'flask version: {flask.__version__}')
 
 TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
 URL_PREFIX = os.environ.get('URL_PREFIX', 'auth')
@@ -118,8 +123,17 @@ def authorize():
     else:
         return flask.redirect(authorization_url, code=302)
 
+DEFAULT_LOGIN_TOKEN_LENGTH = 7 * 24 * 60 * 60 # 7 days
+
+def generatePostMessageResponse(token, app_urls):
+    return f"""<script type="text/javascript">
+        if (window.opener) {{
+            window.opener.postMessage({{token: "{token}", app_urls: {app_urls}}}, "*");
+        }}
+        </script>"""
+
 def finish_auth_flow(user):
-    token = user.generate_token(ex=7 * 24 * 60 * 60) # 7 days
+    token = user.generate_token(ex=DEFAULT_LOGIN_TOKEN_LENGTH)
 
     redirect = flask.session.get('redirect')
 
@@ -130,11 +144,7 @@ def finish_auth_flow(user):
             .url, code=302)
     else:
         app_urls = [app['url'] for app in App.get_all_dict()]
-        return f"""<script type="text/javascript">
-            if (window.opener) {{
-                window.opener.postMessage({{token: "{token}", app_urls: {app_urls}}}, "*");
-            }}
-            </script>"""
+        return generatePostMessageResponse(token, app_urls)
 
 @api_v1_bp.route("/oauth2callback")
 def oauth2callback():
@@ -202,16 +212,6 @@ def register():
         resp = flask.Response("Unauthorized", 401)
         return resp
 
-@api_v1_bp.route('/test_consent')
-def test_consent():
-    return flask.send_from_directory('gdpr', 'consent.html')
-
-@api_v1_bp.route('/refresh_token')
-@auth_required
-def refresh_token():
-    key = APIKey.generate(flask.g.auth_user['id'])
-    return flask.jsonify(key)
-
 @api_v1_bp.route('/logout')
 @auth_required
 def logout():
@@ -224,7 +224,7 @@ def logout():
 @api_v1_bp.route('/logout_all')
 @auth_required
 def logout_all():
-    delete_all_tokens_for_user(flask.g.auth_user['id'])
+    delete_all_temp_tokens_for_user(flask.g.auth_user['id'])
     return flask.jsonify("success")
 
 @api_v1_bp.route('/user')
@@ -283,6 +283,43 @@ def get_self():
 @auth_required
 def get_user_cache():
     return flask.jsonify(flask.g.auth_user)
+
+def dict_response(els):
+    return flask.jsonify([el.as_dict() for el in els])
+
+@api_v1_bp.route('/create_token')
+@api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
+@auth_required
+def create_token():
+    key = APIKey.generate(flask.g.auth_user['id'])
+    return flask.jsonify(key)
+
+@api_v1_bp.route('/user/token')
+@auth_required
+def get_user_tokens():
+    tokens = APIKey.get_by_user_id(flask.g.auth_user['id'])
+    return dict_response(tokens)
+
+@api_v1_bp.route('/user/missing')
+@auth_required
+def get_user_missing_tos():
+    user = User.get_by_id(flask.g.auth_user['id'])
+
+    missing = user.datasets_missing_tos()
+
+    return flask.jsonify(missing)
+
+@api_v1_bp.route('/user/token/<int:token_id>', methods=['DELETE'])
+@auth_required
+def delete_token(token_id):
+    token = APIKey.get_by_user_id_token_id(flask.g.auth_user['id'], token_id)
+
+    if token:
+        token.delete_with_redis()
+        return flask.jsonify("success")
+    else:
+        return flask.Response("Token doesn't exist", 404)
+
 
 @api_v1_bp.route('/user/<int:user_id>')
 @requires_some_admin
@@ -356,6 +393,12 @@ def get_user_groups(user_id):
         return flask.jsonify(groups)
     else:
         return flask.Response("User doesn't exist", 404)
+
+@api_v1_bp.route('/user/<int:user_id>/tos')
+@requires_some_admin
+def get_user_tos(user_id):
+    toses = UserTos.get_tos_by_user(user_id)
+    return flask.jsonify(toses)
 
 @api_v1_bp.route('/user/<int:user_id>/permissions')
 @auth_requires_admin
@@ -690,3 +733,135 @@ def temp_is_root_public(table_id, root_id):
 @auth_required
 def get_apps():
     return flask.jsonify(App.get_all_dict())
+
+@api_v1_bp.route(f'/tos/<int:tos_id>/accept', methods=['GET'])
+@auth_required
+def tos_accept_view(tos_id):
+    tos = Tos.get_by_id(tos_id)
+
+    if not tos:
+        return flask.Response(f"Terms of Service does not exist", 404)
+    
+    existing = UserTos.get(tos_id, flask.g.auth_user['id'])
+
+    if existing:
+        return flask.render_template('tos-msg.html', name=tos.name, msg="You have already accepted the Terms of Service")
+    else:
+        return flask.render_template('tos-form.html', name=tos.name, linkText=tos.linkText)
+
+@api_v1_bp.route(f'/tos/<int:tos_id>/accept', methods=['POST'])
+@auth_required
+def tos_accept_post(tos_id):
+    tos = Tos.get_by_id(tos_id)
+
+    if not tos:
+        return flask.Response(f"Terms of Service does not exist", 404)
+
+    existing = UserTos.get(tos_id, flask.g.auth_user['id'])
+
+    if existing:
+        return flask.render_template('tos-msg.html', name=tos.name, msg="You have already accepted the Terms of Service")
+
+    try:
+        UserTos.add(flask.g.auth_user['id'], tos_id)
+
+        redirect = flask.request.args.get('redirect')
+
+        if redirect:
+            return flask.redirect(redirect)
+        elif flask.request.args.get('postMessage') == 'true':
+            delete_token(flask.g.auth_user['id'], flask.g.auth_token)
+            user = User.get_by_id(flask.g.auth_user['id'])
+            token = user.generate_token(ex=DEFAULT_LOGIN_TOKEN_LENGTH)
+            app_urls = [app['url'] for app in App.get_all_dict()]
+            return generatePostMessageResponse(token, app_urls)
+        else:
+            return flask.render_template('tos-msg.html', name=tos.name, msg="Thank you for accepting the Terms of Service!")
+    except sqlalchemy.exc.IntegrityError as err:
+        return flask.Response("Error", 422)
+
+def missing_fields(l, fields):
+    return list(set(fields) - set(l.keys()))
+
+
+def generic_put(bp, name, model, prefix=""):
+    # local_bp = flask.Blueprint(f'{name}_bp', __name__, url_prefix=f'/{name}')
+
+    @bp.route(f'{prefix}/<int:model_id>', methods=['PUT'])
+    @requires_some_admin
+    def modify_route(model_id):
+        data = flask.request.json
+
+        print(f"data: {data}")
+
+        el = model.get_by_id(model_id)
+
+        if el:
+            el.update(data)
+            return flask.jsonify("success")
+        else:
+            return flask.Response(f"{name} doesn't exist", 404)
+
+    # api_v1_bp.register_blueprint(local_bp)
+
+
+def create_generic_routes(name, model, required_fields):
+    local_bp = flask.Blueprint(f'{name}_bp', __name__, url_prefix=f'/{name}')
+    api_v1_bp.register_blueprint(local_bp)
+
+    @local_bp.route('', methods=['GET'])
+    @auth_required
+    def get_all_route():    
+        groups = model.search_by_name(flask.request.args.get('name'))
+        return flask.jsonify([group.as_dict() for group in groups])
+
+    @local_bp.route('', methods=['POST'])
+    @requires_some_admin
+    def create_route():
+        data = flask.request.json or {}
+
+        missing = missing_fields(data, required_fields)
+
+        if len(missing):
+            return flask.Response(f"Missing fields: {', '.join(missing)}.", 400)
+
+        fields_in_arg_order = [data[x] for x in required_fields]
+
+        try:
+            model.add(*fields_in_arg_order)
+            return flask.jsonify("success")
+        except sqlalchemy.exc.IntegrityError as err:
+            return flask.Response(f"{name} already exists.", 422)
+
+    @local_bp.route('/<int:model_id>', methods=['GET'])
+    @requires_some_admin
+    def get_route(model_id):
+        el = model.get_by_id(model_id)
+
+        if el:
+            return flask.jsonify(el.as_dict())
+        else:
+            return flask.Response(f"{name} doesn't exist", 404)
+
+    generic_put(local_bp, name, model)
+
+    # @local_bp.route('/<int:model_id>', methods=['PUT'])
+    # @requires_some_admin
+    # def modify_route(model_id):
+    #     data = flask.request.json
+
+    #     el = model.get_by_id(model_id)
+
+    #     if el:
+    #         el.update(data)
+    #         return flask.jsonify("success")
+    #     else:
+    #         return flask.Response(f"{name} doesn't exist", 404)
+
+
+
+create_generic_routes("tos", Tos, ['name', 'linkText'])
+
+create_generic_routes("permission", Permission, [])
+
+generic_put(api_v1_bp, "dataset", Dataset, prefix="/dataset")#['name', 'tos_id'])
