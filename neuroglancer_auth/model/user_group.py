@@ -64,7 +64,7 @@ class UserGroup(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
-        user = User.get_by_id(self.user_id).update_cache()
+        User.get_by_id(self.user_id).update_cache()
 
     def update(self, data):
         if 'admin' in data:
