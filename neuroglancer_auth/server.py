@@ -709,9 +709,8 @@ def get_apps():
 def tos_accept_view(tos_id):
     tos = Tos.get_by_id(tos_id)
 
-    redirect_arg = flask.request.args.get('redirect')
-    if redirect_arg:
-        flask.session['redirect'] = redirect_arg
+    # temp, flask.session should be avoided because it can conflict with a login flow
+    flask.session['redirect'] = flask.request.args.get('redirect')
 
     if not tos:
         return flask.Response(f"Terms of Service does not exist", 404)
