@@ -18,12 +18,6 @@ import redis # used in the envvar config
 
 __version__ = '2.4.1'
 
-
-DEFAULT_ADMINS = [
-    ["chris@eyewire.org", "Chris Jordan", "seung"],
-    ["sven.dorkenwald@googlemail.com", "Sven Dorkenwald", "seung"]
-]
-
 def setup_app():
     app.config.from_envvar('AUTH_CONFIG_SETTINGS')
     Session(app)
@@ -36,21 +30,25 @@ def setup_app():
 
     with app.app_context():
         db.init_app(app)
-        # db.create_all()
         migrate.init_app(app, db)
 
     app.register_blueprint(version_bp)
     app.register_blueprint(api_v1_bp)
     app.register_blueprint(admin_site_bp)
 
-    @app.before_first_request
-    def initialize():
-        for email, name, pi in DEFAULT_ADMINS:
-            existing_user = User.get_by_email(email)
-
-            if not existing_user:
-                User.create_account(email, name, pi, admin=True, group_names=["default"])
-
-        APIKey.load_into_cache()
-
     return app
+
+@app.cli.command("initialize")
+def initialize():
+    DEFAULT_ADMINS = [
+        ["chris@eyewire.org", "Chris Jordan", "seung"],
+        ["sven.dorkenwald@googlemail.com", "Sven Dorkenwald", "seung"]
+    ]
+
+    for email, name, pi in DEFAULT_ADMINS:
+        existing_user = User.get_by_email(email)
+
+        if not existing_user:
+            User.create_account(email, name, pi, admin=True, group_names=["default"])
+
+    APIKey.load_into_cache()
