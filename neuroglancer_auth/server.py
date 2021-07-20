@@ -304,7 +304,7 @@ def get_user_missing_tos():
 
 @api_v1_bp.route('/user/token/<int:token_id>', methods=['DELETE'])
 @auth_required
-def delete_token(token_id):
+def delete_token_endpoint(token_id):
     token = APIKey.get_by_user_id_token_id(flask.g.auth_user['id'], token_id)
 
     if token:
