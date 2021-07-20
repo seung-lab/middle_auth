@@ -1344,9 +1344,7 @@ async function authFetch(input, init, retry = 1) {
 
 	addHeader('X-Requested-With', 'Fetch');
 	
-	if (token) {
-		addHeader('Authorization', `Bearer ${token}`);
-	}
+	addHeader('Authorization', `Bearer ${token}`);
 
 	let res = await fetch(input, options);
 
