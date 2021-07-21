@@ -6,14 +6,18 @@ from sqlalchemy.sql import func
 
 class APIKey(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
+    user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), unique=False, nullable=False)
     key = db.Column(db.String(32), unique=True, nullable=False)
+    created = db.Column(db.DateTime, server_default=func.now())
+    updated = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
 
     def as_dict(self):
         res = {
             "id": self.id,
             "user_id": self.user_id,
             "token": self.key,
+            "created": self.created,
+            "updated": self.updated,
         }
 
         return res
@@ -24,11 +28,11 @@ class APIKey(db.Model):
     
     @staticmethod
     def get_by_user_id(user_id):
-        return APIKey.query.filter_by(user_id=user_id)
+        return APIKey.query.filter_by(user_id=user_id).all()
 
     @staticmethod
     def get_by_user_id_token_id(user_id, token_id):
-        return APIKey.query.filter_by(user_id=user_id, id=token_id)
+        return APIKey.query.filter_by(user_id=user_id, id=token_id).first()
 
     # load api keys into cache if they don't already exist in redis
     # i.e. new deployment or some redis failure
@@ -41,9 +45,35 @@ class APIKey(db.Model):
             user = User.get_by_id(api_key.user_id)
             print(f"load_into_cache: {user.id} {api_key.user_id} {api_key.key}")
             maybe_insert_token(user.id, api_key.key, json.dumps(user.create_cache()), ex=None, force=True)
-    
+
+    @staticmethod
+    def refresh(user_id):
+        from .user import User
+        user = User.get_by_id(user_id)
+
+        token = user.generate_token()
+
+        entry = APIKey(user_id=user_id, key=token)
+        db.session.add(entry)
+        db.session.commit()
+
+        return token
+
     @staticmethod
     def generate(user_id):
+        from .user import User
+        user = User.get_by_id(user_id)
+
+        token = user.generate_token()
+
+        entry = APIKey(user_id=user_id, key=token)
+        db.session.add(entry)
+        db.session.commit()
+
+        return token
+
+    @staticmethod
+    def refresh(user_id): #deprecated
         from .user import User
         user = User.get_by_id(user_id)
 
