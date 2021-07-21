@@ -231,8 +231,18 @@ def get_users_by_filter():
         users = User.search_by_name(flask.request.args.get('name'))
     elif flask.request.args.get('from') or flask.request.args.get('to'):
         users = User.filter_by_created(flask.request.args.get('from'), flask.request.args.get('to'))
+    elif flask.request.args.get('page'):
+        page = int(flask.request.args.get('page', "1"))
+        per_page = int(flask.request.args.get('per_page', "20"))
+        
+        page_res = User.get_normal_accounts().paginate(page=page, per_page=per_page)
+
+        return flask.jsonify({
+            "pages": page_res.pages,
+            "items": [el.as_dict() for el in page_res.items],
+        })
     else:
-        users = User.get_normal_accounts()
+        users = User.get_normal_accounts().all()
     return flask.jsonify([user.as_dict() for user in users])
 
 @api_v1_bp.route('/username')
@@ -774,6 +784,10 @@ def generic_post(bp, name, model, prefix="", required_fields=[]):
             return flask.Response(f"Missing fields: {', '.join(missing)}.", 400)
 
         fields_in_arg_order = [data[x] for x in required_fields]
+
+        for field in required_fields:
+            if len(data[field]) == 0:
+                return flask.Response(f"{field} cannot be blank.", 400)
 
         try:
             el = model.add(*fields_in_arg_order)
