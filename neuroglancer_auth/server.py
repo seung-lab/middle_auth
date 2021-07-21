@@ -42,6 +42,7 @@ def version():
 
 api_v1_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/v1')
 admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/' + URL_PREFIX + '/admin')
+user_settings_bp = flask.Blueprint('user_settings_bp', __name__, url_prefix='/' + URL_PREFIX + '/settings')
 
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
@@ -231,8 +232,18 @@ def get_users_by_filter():
         users = User.search_by_name(flask.request.args.get('name'))
     elif flask.request.args.get('from') or flask.request.args.get('to'):
         users = User.filter_by_created(flask.request.args.get('from'), flask.request.args.get('to'))
+    elif flask.request.args.get('page'):
+        page = int(flask.request.args.get('page', "1"))
+        per_page = int(flask.request.args.get('per_page', "20"))
+        
+        page_res = User.get_normal_accounts().paginate(page=page, per_page=per_page)
+
+        return flask.jsonify({
+            "pages": page_res.pages,
+            "items": [el.as_dict() for el in page_res.items],
+        })
     else:
-        users = User.get_normal_accounts()
+        users = User.get_normal_accounts().all()
     return flask.jsonify([user.as_dict() for user in users])
 
 @api_v1_bp.route('/username')
@@ -279,13 +290,33 @@ def get_user_cache():
 def dict_response(els):
     return flask.jsonify([el.as_dict() for el in els])
 
-@api_v1_bp.route('/refresh_token')
 @api_v1_bp.route('/create_token')
 @api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
 @auth_required
 def create_token():
     key = APIKey.generate(flask.g.auth_user['id'])
     return flask.jsonify(key)
+
+@api_v1_bp.route('/refresh_token')
+@auth_required
+def refresh_token():
+    user_id = flask.g.auth_user['id']
+    keys = APIKey.get_by_user_id(user_id)
+    num_of_keys = len(keys)
+
+    print(f"num_of_keys {num_of_keys}")
+
+    if num_of_keys > 1:
+        return flask.Response("Refresh token does not work for accounts with more than one API Key", 400)
+
+    key = APIKey.refresh(flask.g.auth_user['id'])
+    return flask.jsonify(key)
+
+@user_settings_bp.route('/token')
+def user_settings_tokens():
+    tokens = APIKey.get_by_user_id(1)
+    tokens = [el.as_dict() for el in tokens]
+    return flask.render_template('tokens-list.html', tokens=tokens)
 
 @api_v1_bp.route('/user/token')
 @auth_required
@@ -512,7 +543,7 @@ def get_datasets_from_group_route(group_id):
 @requires_some_admin
 def get_users_for_group_route(group_id):
     # todo, we should check to see if the group is valid before checking for users
-    users = UserGroup.get_users(group_id)
+    users = UserGroup.get_member_list(group_id)
     return flask.jsonify(users)
 
 @api_v1_bp.route('/group/<int:group_id>/service_account', methods=['GET'])
@@ -618,7 +649,7 @@ def get_service_accounts_by_filter():
     elif flask.request.args.get('name'):
         service_accounts = User.sa_search_by_name(flask.request.args.get('name'))
     else:
-        service_accounts = User.get_service_accounts()
+        service_accounts = User.get_all_service_accounts()
     return flask.jsonify([sa.as_dict() for sa in service_accounts])
 
 @api_v1_bp.route('/service_account/<int:sa_id>')
@@ -774,6 +805,10 @@ def generic_post(bp, name, model, prefix="", required_fields=[]):
             return flask.Response(f"Missing fields: {', '.join(missing)}.", 400)
 
         fields_in_arg_order = [data[x] for x in required_fields]
+
+        for field in required_fields:
+            if data[field] == "":
+                return flask.Response(f"{field} cannot be blank.", 400)
 
         try:
             el = model.add(*fields_in_arg_order)
