@@ -26,11 +26,8 @@ def setup_app():
 
     app.wsgi_app = ProxyFix(app.wsgi_app)
 
-    migrate = Migrate()
-
-    with app.app_context():
-        db.init_app(app)
-        migrate.init_app(app, db)
+    db.init_app(app)
+    Migrate(app, db)
 
     app.register_blueprint(version_bp)
     app.register_blueprint(api_v1_bp)
