@@ -23,7 +23,7 @@ class GroupDatasetPermission(db.Model):
     def remove(group_id, dataset_id, permission_id):
         GroupDatasetPermission.query.filter_by(group_id=group_id, dataset_id=dataset_id, permission_id=permission_id).delete()
         db.session.commit()
-        group = Group.get_by_id(group_id).update_cache()
+        Group.get_by_id(group_id).update_cache()
 
     @staticmethod
     def get_groups_by_dataset(dataset_id):
