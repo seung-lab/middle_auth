@@ -7,7 +7,7 @@ from flask_cors import CORS
 from flaskext.markdown import Markdown
 from flask_migrate import Migrate
 
-from .server import version_bp, api_v1_bp, admin_site_bp
+from .server import version_bp, api_v1_bp, admin_site_bp, user_settings_bp
 from .model.base import db
 from .model.user import User
 from .model.api_key import APIKey
@@ -32,6 +32,7 @@ def setup_app():
     app.register_blueprint(version_bp)
     app.register_blueprint(api_v1_bp)
     app.register_blueprint(admin_site_bp)
+    app.register_blueprint(user_settings_bp)
 
     return app
 
