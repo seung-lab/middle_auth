@@ -220,7 +220,7 @@ input {
     padding: 5px;
 }
 
-input:invalid {
+input:invalid, textarea:invalid {
     box-shadow: 0 0 5px 1px red;
 }
 
@@ -323,4 +323,13 @@ div.requiresLoggedIn {
 
 .suggestion-item-data.member {
     opacity: 0.5;
+}
+
+.listControls {
+    display: flex;
+    justify-content: space-between;
+}
+
+.dataAppContainer > div > * {
+    width: 100%;
 }
