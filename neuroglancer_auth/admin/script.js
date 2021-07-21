@@ -10,12 +10,13 @@ const datasetDataApp = {
 		errors: [],
 		groups: [],
 		admins: [],
+		permissions: [],
 		allGroups: [],
 		availableGroups: [],
 		toses: [],
 		selectedGroup: '',
 		selectedPermission: '',
-		availablePermissions: permissionNames,
+		availablePermissions: [],
 		chosen: ''
 	}),
 	async beforeRouteUpdate (to, from, next) {
@@ -46,7 +47,10 @@ const datasetDataApp = {
 
 			const id = Number.parseInt(param_id);
 
+			this.availablePermissions = await authFetch(`${AUTH_URL}/permission`);
+
 			this.dataset = await authFetch(`${AUTH_URL}/dataset/${id}`);
+			this.permissions = await authFetch(`${AUTH_URL}/dataset/${id}/group`);
 			this.allGroups = await authFetch(`${AUTH_URL}/group`);
 			this.admins = await authFetch(`${AUTH_URL}/dataset/${id}/admin`);
 			await this.updateAvailableGroups();
@@ -188,7 +192,7 @@ const datasetDataApp = {
 				<div class="listContainer">
 					<div class="header"><span>Groups</span></div>
 					<div class="permissions list threeColumn">
-						<div v-for="group in groups">
+						<div v-for="group in permissions">
 							<router-link :to="{ name: 'groupData', params: { id: group.id }}">
 								{{ group.name }}
 							</router-link>
@@ -207,8 +211,7 @@ const datasetDataApp = {
 					</select>
 					<select v-model="selectedPermission">
 						<option disabled="disabled" value="">Select Permission</option>
-						<option value="1">View</option>
-						<option value="2">Edit</option>
+						<option v-for="permission in availablePermissions" :value="permission.id">{{permission.name}}</option>
 					</select>
 					<button @click="addGroupDataset">Add Group</button>
 				</div>
@@ -252,13 +255,13 @@ const groupDataApp = {
 		serviceAccounts: [],
 		admins: [],
 		nonAdmins: [],
-		datasets: [],
+		permissions: [],
 		availableDatasets: [],
 		allDatasets: [],
 		selectedUser: '',
 		selectedDataset: '',
 		selectedPermission: '',
-		availablePermissions: permissionNames,
+		availablePermissions: [],
 		chosen: ''
 	}),
 	async beforeRouteUpdate (to, from, next) {
@@ -285,12 +288,13 @@ const groupDataApp = {
 
 			const id = Number.parseInt(param_id);
 
-			let [group, users, serviceAccounts, datasets, availableDatasets] = await authFetch([
+			let [group, users, serviceAccounts, permissions, availableDatasets, availablePermissions] = await authFetch([
 				`${AUTH_URL}/group/${id}`,
 				`${AUTH_URL}/group/${id}/user`,
 				`${AUTH_URL}/group/${id}/service_account`,
 				`${AUTH_URL}/group/${id}/dataset`,
-				`${AUTH_URL}/dataset`
+				`${AUTH_URL}/dataset`,
+				`${AUTH_URL}/permission`,
 			]);
 
 			this.group = group;
@@ -299,10 +303,12 @@ const groupDataApp = {
 			this.serviceAccounts = serviceAccounts;
 			this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
 			this.updateNonAdmins();
-			this.datasets = datasets;
+			this.permissions = permissions;
 
 			this.allDatasets = availableDatasets;
 			this.updateAvailableDatasets();
+
+			this.availablePermissions = availablePermissions;
 
 			this.loading = false;
 		},
@@ -376,7 +382,7 @@ const groupDataApp = {
 				})
 			});
 		
-			this.datasets = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
+			this.permissions = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
 			this.updateAvailableDatasets();
 		},
 		updateAvailableDatasets() {
@@ -402,15 +408,15 @@ const groupDataApp = {
 			});
 
 			// not necessary but good to make sure that it registered
-			this.datasets = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
+			this.permissions = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
 			this.updateAvailableDatasets();
 		},
-		async removeDatasetPermission(dataset) {
-			await authFetch(`${AUTH_URL}/dataset/${dataset.id}/group/${this.group.id}/permission/${dataset.permission_id}`, {
+		async removeDatasetPermission(permission) {
+			await authFetch(`${AUTH_URL}/dataset/${permission.id}/group/${this.group.id}/permission/${permission.permission_id}`, {
 				method: 'DELETE'
 			});
 
-			this.datasets = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
+			this.permissions = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
 			this.updateAvailableDatasets();
 		},
 		async save() {
@@ -487,12 +493,12 @@ const groupDataApp = {
 			<div class="listContainer">
 				<div class="header"><span>Datasets</span></div>
 				<div class="datasets list threeColumn">
-					<div v-for="dataset in datasets">
-						<router-link :to="{ name: 'datasetData', params: { id: dataset.id }}">
-							{{ dataset.name }}
+					<div v-for="permission in permissions">
+						<router-link :to="{ name: 'datasetData', params: { id: permission.id }}">
+							{{ permission.name }}
 						</router-link>
-						<div class="datasetPermission">{{ dataset.permission }}</div>
-						<div class="deleteRow" @click="removeDatasetPermission(dataset)"></div>
+						<div class="datasetPermission">{{ permission.permission }}</div>
+						<div class="deleteRow" @click="removeDatasetPermission(permission.permission_id)"></div>
 					</div>
 				</div>
 			</div>
@@ -504,8 +510,7 @@ const groupDataApp = {
 				</select>
 				<select v-model="selectedPermission">
 					<option disabled="disabled" value="">Select Permission</option>
-					<option value="1">View</option>
-					<option value="2">Edit</option>
+					<option v-for="permission in availablePermissions" :value="permission.id">{{permission.name}}</option>
 				</select>
 				<button @click="addGroupDataset">Add Dataset</button>
 			</div>
@@ -884,6 +889,34 @@ const serviceAccountDataApp = {
 	`
 };
 
+Vue.component('myText', {
+	props: ['placeholder', 'label', 'name', 'value', 'required'],
+	template: `
+<div>
+	<label v-if="label">{{label}}</label>
+	<input type="text"
+				 :name="name"
+				 :value="value"
+				 @input="$emit('input',$event.target.value)"
+				 :placeholder="placeholder"
+				 :required="required">
+</div>`
+});
+
+Vue.component('myTextArea', {
+	props: ['placeholder', 'label', 'name', 'value', 'required'],
+	template: `
+<div>
+	<label v-if="label">{{label}}</label>
+	<textarea
+				 :name="name"
+				 :value="value"
+				 @input="$emit('input',$event.target.value)"
+				 :placeholder="placeholder"
+				 :required="required"></textarea>
+</div>`
+});
+
 const dataApp = {
 	data: () => ({
 		loading: true,
@@ -891,7 +924,9 @@ const dataApp = {
 		type: null,
 		typeName: null,
 		thing: null,
+		initial: null,
 		properties: {},
+		fields: [],
 		// users: [],
 		// serviceAccounts: [],
 		// admins: [],
@@ -913,6 +948,10 @@ const dataApp = {
 		await this.load(this.$route.params.id);
 	},
 	methods: {
+		updateForm(fieldName, value) {
+			this.$set(this.thing, fieldName, value);
+			this.$emit('input', this.thing);
+		},
 		async load(param_id) {
 			this.loading = true;
 			this.newEntry = param_id === 'create';
@@ -920,10 +959,7 @@ const dataApp = {
 			if (param_id === 'create') {
 				this.loading = false;
 
-				this.thing = {
-					name: '',
-					text: '',
-				};
+				this.thing = this.initial; //JSON.parse(JSON.stringify(init))
 
 				return;
 			}
@@ -935,17 +971,6 @@ const dataApp = {
 			]);
 
 			this.thing = thing;
-
-			// this.group = group;
-
-			// this.users = users;
-			// this.serviceAccounts = serviceAccounts;
-			// this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
-			// this.updateNonAdmins();
-			// this.datasets = datasets;
-
-			// this.allDatasets = availableDatasets;
-			// this.updateAvailableDatasets();
 
 			this.loading = false;
 		},
@@ -991,8 +1016,6 @@ const dataApp = {
 				});
 
 			}
-
-				// router.push('./')
 		}
 	},
 	template: `
@@ -1000,19 +1023,20 @@ const dataApp = {
 		<template v-if="loading">
 			<div>Loading...</div>
 		</template>
-		<template v-else-if="newEntry">
-			<div class="title">Create {{ typeName }}</div>
-			<input v-model="thing.name" placeholder="Name" required>
-			<textarea v-model="thing.text" placeholder="Text" required></textarea>
+		<template v-else="newEntry">
+			<div v-if="newEntry" class="title">Create {{ typeName }}</div>
+			<div v-else class="title">Edit {{ typeName }}</div>
 
-			<button @click="save">Create</button>
-		</template>
-		<template v-else>
-			<div class="title">Edit {{ typeName }}</div>
-			<input v-model="thing.name" placeholder="Name" required>
-			<textarea v-model="thing.text" placeholder="Text" required></textarea>
+			<component v-for="(field, index) in fields"
+				:key="index"
+				:is="field.fieldType"
+				:value="thing[field.name]"
+				@input="updateForm(field.name, $event)"
+				v-bind="field">
+			</component>
 
-			<button @click="save">Update</button>
+			<button v-if="newEntry" @click="save">Create</button>
+			<button v-else @click="save">Update</button>
 		</template>
 	</div>
 	`
@@ -1021,13 +1045,25 @@ const dataApp = {
 const tosDataApp = {
 	mixins: [dataApp],
 	data: () => ({
-		// url: '/user',
-		// searchKey: 'email',
-		// title: 'Users',
-		// displayedProps: ['name', 'email'],
-		// canCreate: true
+		fields: [
+			{name: "name", placeholder: "name", fieldType: "my-text", required: true},
+			{name: "text", placeholder: "textarea", fieldType: "my-text-area"}
+		],
+		initial: {name: '', text: ''},
 		type: 'tos',
 		typeName: 'Terms of Service',
+	})
+};
+
+const permissionDataApp = {
+	mixins: [dataApp],
+	data: () => ({
+		fields: [
+			{name: "name", placeholder: "name", fieldType: "my-text", required: true},
+		],
+		initial: {name: ''},
+		type: 'permission',
+		typeName: 'Permission',
 	})
 };
 
@@ -1040,21 +1076,37 @@ const listApp = {
 		searchKey: '',
 		title: '',
 		displayedProps: ['id'],
-		canCreate: false
+		canCreate: false,
+		page: 1,
+		pages: 1,
 	}),
+	watch: {
+		page: function () {
+			if (this.page === "") { return; }
+			this.refresh();
+		}
+	},
 	methods: {
 		refresh() {
-			console.log('refresh!');
+			this.loading = true;
 			const searchQuery = new URLSearchParams();
 
 			if (this.searchInput.length) {
 				searchQuery.set(this.searchKey, this.searchInput);
 			}
 
+			searchQuery.set('page', this.page);
+
 			const searchQueryString = searchQuery.toString();
 		
 			authFetch(`${AUTH_URL}${this.url}${searchQueryString ? '?' + searchQueryString : ''}`).then((rows) => {
-				this.rows = rows;
+				if (rows.pages !== undefined) {
+					this.rows = rows.items;
+					this.pages = rows.pages;
+				} else {
+					this.rows = rows;
+				}
+
 				this.loading = false;
 			});
 		}
@@ -1064,8 +1116,16 @@ const listApp = {
 	},
 	template: `
 	<div id="searchUsers" class="searchAndResults">
-	<div class="searchForm right">
-		<input v-model="searchInput" @keyup.enter="refresh" type="email" :placeholder="searchKey">
+	
+	<div class="listControls">
+		<div class="searchForm right">
+			<input v-model="searchInput" @keyup.enter="refresh" type="email" :placeholder="'search by ' + searchKey">
+		</div>
+
+		<div>
+			<input min="1" :max="pages" v-model="page" type="number">
+			<span>out of {{pages}}</span>
+		</div>
 	</div>
 
 	<div id="searchUserResults" class="listContainer block">
@@ -1225,6 +1285,17 @@ const tosListApp = {
 	})
 };
 
+const permissionListApp = {
+	mixins: [listApp],
+	data: () => ({
+		url: '/permission',
+		searchKey: 'name',
+		title: 'Permissions',
+		displayedProps: ['name'],
+		canCreate: true
+	})
+};
+
 const routes = [
 	{ path: '/user', name: 'userList', component: userListApp },
 	{ path: '/user/:id', name: 'userData', component: userDataApp },
@@ -1236,6 +1307,8 @@ const routes = [
 	{ path: '/dataset/:id', name: 'datasetData', component: datasetDataApp },
 	{ path: '/tos', name: 'tosList', component: tosListApp },
 	{ path: '/tos/:id', name: 'tosData', component: tosDataApp },
+	{ path: '/permission', name: 'permissionList', component: permissionListApp },
+	{ path: '/permission/:id', name: 'permissionData', component: permissionDataApp },
 	{ path: '/stats', name: 'userStats', component: userStatsApp },
 ];
 

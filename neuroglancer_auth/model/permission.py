@@ -1,7 +1,4 @@
 from .base import db
-from .dataset import Dataset
-
-from flask_sqlalchemy import event
 
 class Permission(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

@@ -33,6 +33,15 @@ class UserGroup(db.Model):
 
     @staticmethod
     def get_users(group_id):
+        users = db.session.query(User)\
+            .filter(UserGroup.user_id == User.id)\
+            .filter(UserGroup.group_id == group_id)\
+            .all()
+
+        return users
+
+    @staticmethod
+    def get_member_list(group_id):
         users = db.session.query(UserGroup.user_id, User.name, UserGroup.admin)\
             .filter(UserGroup.user_id == User.id)\
             .filter(UserGroup.group_id == group_id)\

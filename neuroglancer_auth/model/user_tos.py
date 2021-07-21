@@ -24,7 +24,13 @@ class UserTos(db.Model):
         db.session.add(el)
         db.session.commit()
 
-        User.get_by_id(user_id).update_cache()
+        user = User.get_by_id(user_id)
+        user.update_cache()
+        # service accounts use the parent user's tos record
+        service_accounts = user.get_service_accounts()
+
+        for sa in service_accounts:
+            sa.update_cache()
 
     @staticmethod
     def get_tos_by_user(user_id):
