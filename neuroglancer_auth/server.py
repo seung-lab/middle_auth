@@ -42,6 +42,7 @@ def version():
 
 api_v1_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/v1')
 admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/' + URL_PREFIX + '/admin')
+user_settings_bp = flask.Blueprint('user_settings_bp', __name__, url_prefix='/' + URL_PREFIX + '/settings')
 
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
@@ -300,13 +301,34 @@ def get_user_cache():
 def dict_response(els):
     return flask.jsonify([el.as_dict() for el in els])
 
-@api_v1_bp.route('/refresh_token')
 @api_v1_bp.route('/create_token')
 @api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
 @auth_required
 def create_token():
     key = APIKey.generate(flask.g.auth_user['id'])
     return flask.jsonify(key)
+
+@api_v1_bp.route('/refresh_token')
+@auth_required
+def refresh_token():
+    user_id = flask.g.auth_user['id']
+    keys = APIKey.get_by_user_id(user_id)
+    num_of_keys = len(keys)
+
+    print(f"num_of_keys {num_of_keys}")
+
+    if num_of_keys > 1:
+        return flask.Response("Refresh token does not work for accounts with more than one API Key", 400)
+
+    key = APIKey.refresh(flask.g.auth_user['id'])
+    return flask.jsonify(key)
+
+@user_settings_bp.route('/token')
+@auth_required
+def user_settings_tokens():
+    tokens = APIKey.get_by_user_id(flask.g.auth_user['id'])
+    tokens = [el.as_dict() for el in tokens]
+    return flask.render_template('tokens-list.html', tokens=tokens)
 
 @api_v1_bp.route('/user/token')
 @auth_required
