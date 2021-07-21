@@ -169,10 +169,10 @@ class User(db.Model):
 
     @staticmethod
     def get_normal_accounts():
-        return User.query.filter(User.parent_id.is_(None)).order_by(User.id.asc()).all()
+        return User.query.filter(User.parent_id.is_(None)).order_by(User.id.asc())
 
     @staticmethod
-    def get_service_accounts():
+    def get_all_service_accounts():
         return User.query.filter(User.parent_id.isnot(None)).order_by(User.id.asc()).all()
     
     @staticmethod
@@ -328,6 +328,9 @@ class User(db.Model):
 
         for token_bytes in tokens: # should only be one
             return token_bytes.decode('utf-8')
+
+    def get_service_accounts(self):
+        return User.query.filter_by(parent_id=self.id).all()
 
     def update_cache(self):
         user_json = json.dumps(self.create_cache())
