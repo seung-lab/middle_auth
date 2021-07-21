@@ -16,6 +16,8 @@ class Tos(db.Model):
             "id": self.id,
             "name": self.name,
             "text": self.text,
+            "created": self.created,
+            "updated": self.updated,
         }
 
         return res
