@@ -231,8 +231,18 @@ def get_users_by_filter():
         users = User.search_by_name(flask.request.args.get('name'))
     elif flask.request.args.get('from') or flask.request.args.get('to'):
         users = User.filter_by_created(flask.request.args.get('from'), flask.request.args.get('to'))
+    elif flask.request.args.get('page'):
+        page = int(flask.request.args.get('page', "1"))
+        per_page = int(flask.request.args.get('per_page', "20"))
+
+        page_res = User.get_normal_accounts().paginate(page=page, per_page=per_page)
+
+        return flask.jsonify({
+            "pages": page_res.pages,
+            "items": [el.as_dict() for el in page_res.items],
+        })
     else:
-        users = User.get_normal_accounts()
+        users = User.get_normal_accounts().all()
     return flask.jsonify([user.as_dict() for user in users])
 
 @api_v1_bp.route('/username')
@@ -512,7 +522,7 @@ def get_datasets_from_group_route(group_id):
 @requires_some_admin
 def get_users_for_group_route(group_id):
     # todo, we should check to see if the group is valid before checking for users
-    users = UserGroup.get_users(group_id)
+    users = UserGroup.get_member_list(group_id)
     return flask.jsonify(users)
 
 @api_v1_bp.route('/group/<int:group_id>/service_account', methods=['GET'])
@@ -618,7 +628,7 @@ def get_service_accounts_by_filter():
     elif flask.request.args.get('name'):
         service_accounts = User.sa_search_by_name(flask.request.args.get('name'))
     else:
-        service_accounts = User.get_service_accounts()
+        service_accounts = User.get_all_service_accounts()
     return flask.jsonify([sa.as_dict() for sa in service_accounts])
 
 @api_v1_bp.route('/service_account/<int:sa_id>')
@@ -774,6 +784,10 @@ def generic_post(bp, name, model, prefix="", required_fields=[]):
             return flask.Response(f"Missing fields: {', '.join(missing)}.", 400)
 
         fields_in_arg_order = [data[x] for x in required_fields]
+
+        for field in required_fields:
+            if data[field] == "":
+                return flask.Response(f"{field} cannot be blank.", 400)
 
         try:
             el = model.add(*fields_in_arg_order)

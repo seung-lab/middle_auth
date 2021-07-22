@@ -39,9 +39,4 @@ class Group(db.Model):
         users = UserGroup.get_users(self.id)
 
         for user in users:
-            User.user_get_by_id(user["id"]).update_cache()
-        
-        service_accounts = UserGroup.get_service_accounts(self.id)
-
-        for sa in service_accounts:
-            User.sa_get_by_id(sa["id"]).update_cache()
+            user.update_cache()
