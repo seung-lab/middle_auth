@@ -1,9 +1,14 @@
 <html>
     <head>
         <base target="_blank">
-        <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
-        <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
         <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+        <!-- Compiled and minified CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+        <!-- Compiled and minified JavaScript -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
         <style>
             body {
                 max-width: 600px;
@@ -15,45 +20,39 @@
                 letter-spacing: var(--mdc-typography-body2-letter-spacing, 0.0178571429em);
             }
 
-            .danger {
-              --mdc-theme-primary: #B00020;
-            }
 
-            .mdc-list {
-              border: 1px solid gray;
-            }
-
-            #tokensList .mdc-list-item {
-              justify-content: space-between;
-            }
 
             #createToken {
               margin-bottom: 10px;
             }
+
+            .collection .collection-item .secondary-content {
+              position: absolute;
+              top: 16px;
+              right: 16px;
+            }
+
+            .collection .collection-item > *:first-child {
+              font-size: larger;
+            }
         </style>
     </head>
     <body>
-      
-      <button id="createToken" class="mdc-button mdc-button--unelevated">
-        <div class="mdc-button__ripple"></div>
-        <span class="mdc-button__label">Create new token</span>
-      </button>
 
-      <ul id="tokensList" class="mdc-list">
-      {% for token in tokens %}
-      <li class="mdc-list-item" tabindex="0">
-        <span class="mdc-list-item__ripple"></span>
-        <span class="mdc-list-item__text">token: {{token.token}} - created: {{token.created.strftime('%Y-%m-%d')}}</span>
-        <button data-token-id="{{token.id}}" class="deleteToken mdc-button mdc-button--unelevated danger">
-            <div class="mdc-button__ripple"></div>
-            <span class="mdc-button__label">Delete</span>
-        </button>
-      </li>
-      {%- endfor %}
+      <button id="createToken" class="btn waves-effect waves-light" type="submit" name="action">Create new token</button>
+
+      <ul id="tokensList" class="collection">
+        {% for token in tokens %}
+        <li class="collection-item">
+          <div>token: {{token.token}}</div>
+          <div class="grey-text text-darken-1">created: {{token.created.strftime('%Y-%m-%d')}}</div>
+          <a class="deleteToken secondary-content waves-effect waves-light btn-small red darken-2">Delete</a>
+        </li>
+        {%- endfor %}
       </ul>
     </body>
     <script>
-      const deleteButtons = document.querySelectorAll('#tokensList button.deleteToken');
+      const deleteButtons = document.querySelectorAll('#tokensList a.deleteToken');
       for (const deleteButton of deleteButtons) {
         deleteButton.addEventListener('click', async (el) => {
           const tokenId = parseInt(el.currentTarget.dataset.tokenId);
@@ -79,11 +78,5 @@
 
         location.reload();
       });
-
-      const MDCRipple = mdc.ripple.MDCRipple;
-
-      const button = new MDCRipple(document.querySelector('.mdc-button'));
-      const MDCList = mdc.list.MDCList;
-      const list = new MDCList(document.querySelector('.mdc-list'));
     </script>
 </html>
