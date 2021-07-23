@@ -315,9 +315,10 @@ def refresh_token():
 @user_settings_bp.route('/token')
 @auth_required
 def user_settings_tokens():
+    user = User.get_by_id(flask.g.auth_user['id'])
     tokens = APIKey.get_by_user_id(flask.g.auth_user['id'])
     tokens = [el.as_dict() for el in tokens]
-    return flask.render_template('tokens-list.html', tokens=tokens)
+    return flask.render_template('tokens-list.html', tokens=tokens, user=user)
 
 @api_v1_bp.route('/user/token')
 @auth_required
