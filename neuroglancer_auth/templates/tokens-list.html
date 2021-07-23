@@ -1,59 +1,90 @@
 <html>
     <head>
         <base target="_blank">
-        <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
-        <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
         <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+        <!-- Compiled and minified CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+        <!-- Compiled and minified JavaScript -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
         <style>
             body {
-                max-width: 600px;
-                margin: auto;
-                padding: 20px;
                 font-family: Roboto,sans-serif;
                 -webkit-font-smoothing: antialiased;
                 color: var(--mdc-theme-text-primary-on-background, rgba(0, 0, 0, 0.87));
                 letter-spacing: var(--mdc-typography-body2-letter-spacing, 0.0178571429em);
             }
 
-            .danger {
-              --mdc-theme-primary: #B00020;
+            body > * {
+              padding: 20px;
             }
 
-            .mdc-list {
-              border: 1px solid gray;
-            }
-
-            #tokensList .mdc-list-item {
-              justify-content: space-between;
+            #mainContent {
+              max-width: 600px;
+              margin: auto;
             }
 
             #createToken {
               margin-bottom: 10px;
             }
+
+            .collection .collection-item {
+              position: relative;
+            }
+
+            .collection .collection-item .secondary-content {
+              position: absolute;
+              top: 16px;
+              right: 16px;
+            }
+
+            .collection .collection-item > *:first-child {
+              font-size: larger;
+            }
+
+            #topBar {
+              text-align: right;
+              border-bottom: 1px solid #e0e0e0;
+            }
+
+            #topBar > div {
+              display: grid;
+              justify-content: end;
+              align-items: center;
+              grid-template-columns: max-content min-content;
+            }
         </style>
     </head>
     <body>
-      
-      <button id="createToken" class="mdc-button mdc-button--unelevated">
-        <div class="mdc-button__ripple"></div>
-        <span class="mdc-button__label">Create new token</span>
-      </button>
 
-      <ul id="tokensList" class="mdc-list">
-      {% for token in tokens %}
-      <li class="mdc-list-item" tabindex="0">
-        <span class="mdc-list-item__ripple"></span>
-        <span class="mdc-list-item__text">token: {{token.token}} - created: {{token.created.strftime('%Y-%m-%d')}}</span>
-        <button data-token-id="{{token.id}}" class="deleteToken mdc-button mdc-button--unelevated danger">
-            <div class="mdc-button__ripple"></div>
-            <span class="mdc-button__label">Delete</span>
-        </button>
-      </li>
-      {%- endfor %}
-      </ul>
+      <div id="topBar"><div><span>{{user.name}} - {{user.email}}</span><a class="logout waves-effect waves-teal btn-flat">Logout</a></div></div>
+
+      <div id="mainContent">
+        <button id="createToken" class="btn waves-effect waves-light" type="submit" name="action">Create new token</button>
+
+        <ul id="tokensList" class="collection">
+          {% for token in tokens %}
+          <li class="collection-item">
+            <div>token: {{token.token}}</div>
+            <div class="grey-text text-darken-1">created: {{token.created.strftime('%Y-%m-%d')}}</div>
+            <a data-token-id="{{token.id}}" class="deleteToken secondary-content waves-effect waves-light btn-small red darken-2">Delete</a>
+          </li>
+          {%- endfor %}
+        </ul>
+      </div>
     </body>
     <script>
-      const deleteButtons = document.querySelectorAll('#tokensList button.deleteToken');
+      async function maFetch(url, method='GET') {
+        return await fetch(url, {
+          method: method,
+          credentials: 'same-origin'
+        });
+      }
+
+
+      const deleteButtons = document.querySelectorAll('#tokensList a.deleteToken');
       for (const deleteButton of deleteButtons) {
         deleteButton.addEventListener('click', async (el) => {
           const tokenId = parseInt(el.currentTarget.dataset.tokenId);
@@ -61,10 +92,7 @@
           const confirmRes = confirm(`Are you sure you want to delete this token?`);
 
           if (confirmRes) {
-            const res = await fetch(`../api/v1/user/token/${tokenId}`, {
-              method: 'DELETE',
-              credentials: 'same-origin'
-            });
+            const res = await maFetch(`../api/v1/user/token/${tokenId}`, 'DELETE');
             location.reload();
           }
         });
@@ -72,18 +100,13 @@
 
 
       document.getElementById('createToken').addEventListener('click', async () => {
-        const res = await fetch(`../api/v1/user/token`, {
-          method: 'POST',
-          credentials: 'same-origin'
-        });
-
+        const res = await maFetch(`../api/v1/user/token`, 'POST');
         location.reload();
       });
 
-      const MDCRipple = mdc.ripple.MDCRipple;
-
-      const button = new MDCRipple(document.querySelector('.mdc-button'));
-      const MDCList = mdc.list.MDCList;
-      const list = new MDCList(document.querySelector('.mdc-list'));
+      document.querySelector('a.logout').addEventListener('click', async () => {
+        const res = await maFetch(`../api/v1/logout`);
+        location.reload();
+      });
     </script>
 </html>
