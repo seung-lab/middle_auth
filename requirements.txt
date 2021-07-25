@@ -9,7 +9,7 @@ Flask-Cors
 psycopg2
 sqlalchemy
 flask-sqlalchemy
-middle-auth-client==3.6.4
+middle-auth-client==3.14.0
 yarl
 Flask-Markdown
 Flask-Migrate
