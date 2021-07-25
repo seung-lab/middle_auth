@@ -7,7 +7,7 @@ import uuid
 import json
 from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
 import sqlalchemy
-from furl import furl
+from yarl import URL
 
 from .model.user import User
 from .model.api_key import APIKey, delete_token, delete_all_temp_tokens_for_user
@@ -127,7 +127,7 @@ DEFAULT_LOGIN_TOKEN_LENGTH = 7 * 24 * 60 * 60 # 7 days
 
 def redirect_with_args(url, args):
     query_params = {arg: flask.request.args.get(arg) for arg in args if flask.request.args.get(arg) is not None}    
-    return flask.redirect(furl(url).add(query_params=query_params).url, code=302)
+    return flask.redirect(str(URL(url) % query_params), code=302)
 
 def generatePostMessageResponse(token, app_urls):
     return f"""<script type="text/javascript">
@@ -144,10 +144,10 @@ def finish_auth_flow(user, template_name=None, template_context={}):
     programmatic_access = flask.request.headers.get('X-Requested-With')
 
     if redirect:
-        resp = flask.redirect(furl(redirect)
-            .add({TOKEN_NAME: token, 'middle_auth_url': STICKY_AUTH_URL})
-            .add({'token': token}) # deprecated
-            .url, code=302)
+        resp = flask.redirect(str(URL(redirect)
+            % {TOKEN_NAME: token, 'middle_auth_url': STICKY_AUTH_URL}
+            % {'token': token} # deprecated
+        ), code=302)
         resp.set_cookie(TOKEN_NAME, token, secure=True, httponly=True) # set cookie for middle auth server, useful if they need to accept TOS
         return resp
     elif programmatic_access:
@@ -176,7 +176,7 @@ def oauth2callback():
 
     try:
         flow.fetch_token(authorization_response=authorization_response)
-    except oauth2.rfc6749.errors.InvalidGrantError as err:
+    except (oauth2.rfc6749.errors.InvalidGrantError, oauth2.rfc6749.errors.MismatchingStateError) as err:
         print("OAuth Error: {0}".format(err))
         return flask.jsonify("authorization error")
 
@@ -294,7 +294,9 @@ def dict_response(els):
 @api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
 @auth_required
 def create_token():
-    key = APIKey.generate(flask.g.auth_user['id'])
+    data = flask.request.json or {}
+
+    key = APIKey.generate(flask.g.auth_user['id'], data.get('name'))
     return flask.jsonify(key)
 
 @api_v1_bp.route('/refresh_token')
@@ -304,15 +306,13 @@ def refresh_token():
     keys = APIKey.get_by_user_id(user_id)
     num_of_keys = len(keys)
 
-    print(f"num_of_keys {num_of_keys}")
-
     if num_of_keys > 1:
         return flask.Response("Refresh token does not work for accounts with more than one API Key", 400)
 
     key = APIKey.refresh(flask.g.auth_user['id'])
     return flask.jsonify(key)
 
-@user_settings_bp.route('/token')
+@user_settings_bp.route('/tokens')
 @auth_required
 def user_settings_tokens():
     user = User.get_by_id(flask.g.auth_user['id'])
