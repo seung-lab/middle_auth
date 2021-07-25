@@ -1,0 +1,241 @@
+{% macro relativeTime(dt) -%}
+{% set delta = now - dt %}
+{% set seconds = delta.total_seconds() %}
+{% set minutes = seconds / 60 %}
+{% set hours = minutes / 60 %}
+{% set days = hours / 24 %}
+{% if minutes < 1 %}
+<span>{{seconds|int}} seconds ago</span>
+{% elif hours < 1 %}
+<span>{{minutes|int}} minutes ago</span>
+{% elif days < 1 %}
+<span>{{hours|int}} hours ago</span>
+{% else %}
+<span>{{days|int}} days ago</span>
+{% endif %}
+{%- endmacro %}
+
+<html translate="no">
+    <head>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+        <!-- Compiled and minified CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+        <!-- Compiled and minified JavaScript -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js" integrity="sha512-CryKbMe7sjSCDPl18jtJI5DR5jtkUWxPXWaLCst6QjH8wxDexfRJic2WRmRXmstr2Y8SxDDWuBO6CQC6IE4KTA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+        <style>
+            body {
+                font-family: Roboto,sans-serif;
+                -webkit-font-smoothing: antialiased;
+                color: var(--mdc-theme-text-primary-on-background, rgba(0, 0, 0, 0.87));
+                letter-spacing: var(--mdc-typography-body2-letter-spacing, 0.0178571429em);
+            }
+
+            #mainContent {
+              max-width: 600px;
+              margin: auto;
+              padding: 30px;
+            }
+
+            #createToken {
+              margin-bottom: 10px;
+            }
+
+            .collection .collection-item {
+              position: relative;
+            }
+
+            .collection .collection-item .secondary-content {
+              position: absolute;
+              top: 8px;
+              right: 8px;
+            }
+
+            .collection .collection-item > *:first-child {
+              font-size: larger;
+              max-width: 90%;
+            }
+
+            #topBar {
+              border-bottom: 1px solid #e0e0e0;
+              padding: 20px;
+            }
+
+            #topBar > div {
+              display: grid;
+              align-items: center;
+              grid-template-columns: max-content auto max-content min-content;
+            }
+
+            #topBar > div > *:first-child {
+              font-size: larger;
+            }
+
+            body > #mainContent > * {
+              display: flex;
+              row-gap: 10px;
+              flex-direction: column;
+              align-items: flex-start;
+            }
+
+            #tokensList, #createTokenInput {
+              width: 100%;
+            }
+
+            body:not(.createToken) > #mainContent > #createTokenContainer {
+              display: none;
+            }
+
+            body.createToken > #mainContent > #tokensListContainer {
+              display: none;
+            }
+
+            #backButton {
+              margin-left: -18px;
+            }
+
+            .title {
+              display: flex;
+              align-items: center;
+              width: 100%;
+              font-size: x-large;
+              margin-bottom: 20px;
+            }
+
+            #tokensListContainer .title {
+              justify-content: space-between;
+            }
+
+            .dates {
+              display: flex;
+              justify-content: space-between;
+            }
+        </style>
+    </head>
+    <body>
+
+      <div id="topBar"><div><span>Middle Auth</span><div></div><span>{{user.name}} - {{user.email}}</span><a class="logout waves-effect waves-teal btn-flat">Logout</a></div></div>
+
+      <div id="mainContent">
+        
+        <form id="createTokenContainer">
+          <div class="title"><a id="backButton" class="secondary-content btn-flat waves-effect"><i class="material-icons">arrow_back</i></a><span>Create New Token</span></div>
+          <div id="createTokenInput" class="input-field">
+            <input placeholder="what is it used for?" id="description" type="text" class="validate" required maxlength="120">
+            <label for="description">Description</label>
+          </div>
+
+          <button id="createToken" class="btn waves-effect waves-light">Create</button>
+        </form>
+
+        <div id="tokensListContainer">
+          <div class="title"><span>Tokens</span><button id="showCreateToken" class="btn waves-effect waves-light">Create new token</button></div>
+          <ul id="tokensList" class="collection">
+            {% for token in tokens %}
+            <li class="collection-item">
+              <div><span>{{token.description or 'unknown'}}</span> — <a data-token="{{token.token}}" data-description="{{token.description}}" class="download waves-effect btn-flat"><i class="material-icons right">file_download</i>download JSON</a></div>
+              <div><span>token: {{token.token}}</span></div>
+              <div class="dates grey-text text-darken-1">
+                <span>created: {{token.created.strftime('%Y-%m-%d')}}</span>
+                {% if token.last_used %}
+                <span>last used: {{relativeTime(token.last_used)}}</span>
+                {% else %}
+                <span>unused</span>
+                {% endif %}
+              </div>
+              <a data-token-id="{{token.id}}" class="deleteToken secondary-content btn-flat waves-effect"><i class="material-icons">delete</i></a>
+            </li>
+            {% else %}
+            <li class="collection-item">You have no tokens</li>
+            {%- endfor %}
+          </ul>
+        </div>
+      </div>
+    </body>
+    <script>
+      const downloadJSON = (json, filename) => {
+        const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+      }
+
+      async function maFetch(url, method='GET', body=null) {
+        const init = {
+          method: method,
+          credentials: 'same-origin'
+        }
+
+        if (body) {
+          init.headers = {'Content-Type': 'application/json'};
+          init.body = JSON.stringify(body);
+        }
+        
+        return await fetch(url, init);
+      }
+
+
+      const deleteButtons = document.querySelectorAll('#tokensList a.deleteToken');
+      for (const button of deleteButtons) {
+        button.addEventListener('click', async (el) => {
+          const tokenId = parseInt(el.currentTarget.dataset.tokenId);
+
+          const confirmRes = confirm(`Are you sure you want to delete this token?`);
+
+          if (confirmRes) {
+            const res = await maFetch(`../api/v1/user/token/${tokenId}`, 'DELETE');
+            if (res.status === 200) {
+              location.reload();
+            } else {
+              alert((await res.json()).message);
+            }
+          }
+        });
+      }
+
+      const downloadButtons = document.querySelectorAll('#tokensList a.download');
+      for (const button of downloadButtons) {
+        button.addEventListener('click', async (el) => {
+          const tokenValue = el.currentTarget.dataset.token;
+          const description = el.currentTarget.dataset.description;
+
+          downloadJSON({
+            "token": tokenValue,
+            "description": description || 'unknown',
+          }, 'chunkedgraph-secret.json');
+        });
+      }
+
+      document.getElementById('backButton').addEventListener('click', async () => {
+        document.body.classList.toggle('createToken', false);
+      });
+
+      document.getElementById('showCreateToken').addEventListener('click', async () => {
+        document.body.classList.toggle('createToken', true);
+      });
+
+      document.getElementById('createTokenContainer').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const res = await maFetch(`../api/v1/user/token`, 'POST', {
+          description: document.querySelector('#createTokenInput > input').value
+        });
+        if (res.status === 200) {
+          location.reload();
+        } else {
+          alert((await res.json()).message);
+        }
+      });
+
+      document.querySelector('a.logout').addEventListener('click', async () => {
+        const res = await maFetch(`../api/v1/logout`);
+        location.reload();
+      });
+    </script>
+</html>
