@@ -305,7 +305,9 @@ def dict_response(els):
 @api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
 @auth_required
 def create_token():
-    key = APIKey.generate(flask.g.auth_user['id'])
+    data = flask.request.json or {}
+
+    key = APIKey.generate(flask.g.auth_user['id'], data.get('name'))
     return flask.jsonify(key)
 
 @api_v1_bp.route('/refresh_token')
@@ -315,15 +317,13 @@ def refresh_token():
     keys = APIKey.get_by_user_id(user_id)
     num_of_keys = len(keys)
 
-    print(f"num_of_keys {num_of_keys}")
-
     if num_of_keys > 1:
         return flask.Response("Refresh token does not work for accounts with more than one API Key", 400)
 
     key = APIKey.refresh(flask.g.auth_user['id'])
     return flask.jsonify(key)
 
-@user_settings_bp.route('/token')
+@user_settings_bp.route('/tokens')
 @auth_required
 def user_settings_tokens():
     user = User.get_by_id(flask.g.auth_user['id'])

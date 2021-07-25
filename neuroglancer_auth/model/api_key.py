@@ -6,6 +6,7 @@ from sqlalchemy.sql import func
 
 class APIKey(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(120), unique=False, nullable=True)
     user_id = db.Column('user_id', db.Integer, db.ForeignKey("user.id"), unique=False, nullable=False)
     key = db.Column(db.String(32), unique=True, nullable=False)
     created = db.Column(db.DateTime, server_default=func.now())
@@ -16,6 +17,7 @@ class APIKey(db.Model):
             "id": self.id,
             "user_id": self.user_id,
             "token": self.key,
+            "name": self.name,
             "created": self.created,
             "updated": self.updated,
         }
@@ -28,7 +30,7 @@ class APIKey(db.Model):
     
     @staticmethod
     def get_by_user_id(user_id):
-        return APIKey.query.filter_by(user_id=user_id).all()
+        return APIKey.query.filter_by(user_id=user_id).order_by(APIKey.id.desc()).all()
 
     @staticmethod
     def get_by_user_id_token_id(user_id, token_id):
@@ -60,13 +62,13 @@ class APIKey(db.Model):
         return token
 
     @staticmethod
-    def generate(user_id):
+    def generate(user_id, name=None):
         from .user import User
         user = User.get_by_id(user_id)
 
         token = user.generate_token()
 
-        entry = APIKey(user_id=user_id, key=token)
+        entry = APIKey(user_id=user_id, key=token, name=name)
         db.session.add(entry)
         db.session.commit()
 
