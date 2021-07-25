@@ -294,7 +294,9 @@ def dict_response(els):
 @api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
 @auth_required
 def create_token():
-    key = APIKey.generate(flask.g.auth_user['id'])
+    data = flask.request.json or {}
+
+    key = APIKey.generate(flask.g.auth_user['id'], data.get('name'))
     return flask.jsonify(key)
 
 @api_v1_bp.route('/refresh_token')
@@ -312,7 +314,7 @@ def refresh_token():
     key = APIKey.refresh(flask.g.auth_user['id'])
     return flask.jsonify(key)
 
-@user_settings_bp.route('/token')
+@user_settings_bp.route('/tokens')
 @auth_required
 def user_settings_tokens():
     user = User.get_by_id(flask.g.auth_user['id'])
