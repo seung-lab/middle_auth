@@ -1,6 +1,5 @@
 <html>
     <head>
-        <base target="_blank">
         <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 
         <!-- Compiled and minified CSS -->
@@ -17,13 +16,10 @@
                 letter-spacing: var(--mdc-typography-body2-letter-spacing, 0.0178571429em);
             }
 
-            body > * {
-              padding: 20px;
-            }
-
             #mainContent {
               max-width: 600px;
               margin: auto;
+              padding: 30px;
             }
 
             #createToken {
@@ -42,40 +38,93 @@
 
             .collection .collection-item > *:first-child {
               font-size: larger;
+              max-width: 90%;
             }
 
             #topBar {
-              text-align: right;
               border-bottom: 1px solid #e0e0e0;
+              padding: 20px;
             }
 
             #topBar > div {
               display: grid;
-              justify-content: end;
               align-items: center;
-              grid-template-columns: max-content min-content;
+              grid-template-columns: max-content auto max-content min-content;
+            }
+
+            #topBar > div > *:first-child {
+              font-size: larger;
+            }
+
+            body > #mainContent > * {
+              display: flex;
+              row-gap: 10px;
+              flex-direction: column;
+              align-items: flex-start;
+            }
+
+            #tokensList, #createTokenInput {
+              width: 100%;
+            }
+
+            body:not(.createToken) > #mainContent > #createTokenContainer {
+              display: none;
+            }
+
+            body.createToken > #mainContent > #tokensListContainer {
+              display: none;
+            }
+
+            #backButton {
+              margin-left: -18px;
+            }
+
+            .title {
+              display: flex;
+              align-items: center;
+              width: 100%;
+              font-size: x-large;
+              margin-bottom: 20px;
+            }
+
+            #tokensListContainer .title {
+              justify-content: space-between;
             }
         </style>
     </head>
     <body>
 
-      <div id="topBar"><div><span>{{user.name}} - {{user.email}}</span><a class="logout waves-effect waves-teal btn-flat">Logout</a></div></div>
+      <div id="topBar"><div><span>Middle Auth</span><div></div><span>{{user.name}} - {{user.email}}</span><a class="logout waves-effect waves-teal btn-flat">Logout</a></div></div>
 
       <div id="mainContent">
-        <button id="createToken" class="btn waves-effect waves-light" type="submit" name="action">Create new token</button>
+        
+        <form id="createTokenContainer">
+          <div class="title"><a id="backButton" class="secondary-content btn-flat waves-effect"><i class="material-icons">arrow_back</i></a><span>Create New Token</span></div>
+          <div id="createTokenInput" class="input-field">
+            <input placeholder="what is it used for?" id="name" type="text" class="validate" required maxlength="120">
+            <label for="name">Name</label>
+          </div>
 
-        <ul id="tokensList" class="collection">
-          {% for token in tokens %}
-          <li class="collection-item">
-            <div><span>unnamed</span> — <a data-token="{{token.token}}" class="download waves-effect btn-flat"><i class="material-icons right">file_download</i>download</a></div>
-            <div><span>token: {{token.token}}</span></div>
-            <div class="grey-text text-darken-1">
-              <span>created: {{token.created.strftime('%Y-%m-%d')}}</span>
-            </div>
-            <a data-token-id="{{token.id}}" class="deleteToken secondary-content btn-flat waves-effect"><i class="material-icons">delete</i></a>
-          </li>
-          {%- endfor %}
-        </ul>
+          <button id="createToken" class="btn waves-effect waves-light">Create</button>
+        </form>
+
+        <div id="tokensListContainer">
+          <div class="title"><span>Tokens</span><button id="showCreateToken" class="btn waves-effect waves-light">Create new token</button></div>
+          <ul id="tokensList" class="collection">
+            {% for token in tokens %}
+            <li class="collection-item">
+              <div><span>{{token.name or 'unnamed'}}</span> — <a data-token="{{token.token}}" class="download waves-effect btn-flat"><i class="material-icons right">file_download</i>download</a></div>
+              <div><span>token: {{token.token}}</span></div>
+              <div class="grey-text text-darken-1">
+                <span>created: {{token.created.strftime('%Y-%m-%d')}}</span>
+              </div>
+              <a data-token-id="{{token.id}}" class="deleteToken secondary-content btn-flat waves-effect"><i class="material-icons">delete</i></a>
+            </li>
+            {% else %}
+            <li class="collection-item">You have no tokens</li>
+            {%- endfor %}
+          </ul>
+        </div>
       </div>
     </body>
     <script>
@@ -90,11 +139,18 @@
         document.body.removeChild(anchor);
       }
 
-      async function maFetch(url, method='GET') {
-        return await fetch(url, {
+      async function maFetch(url, method='GET', body=null) {
+        const init = {
           method: method,
           credentials: 'same-origin'
-        });
+        }
+
+        if (body) {
+          init.headers = {'Content-Type': 'application/json'};
+          init.body = JSON.stringify(body);
+        }
+        
+        return await fetch(url, init);
       }
 
 
@@ -123,8 +179,19 @@
         });
       }
 
-      document.getElementById('createToken').addEventListener('click', async () => {
-        const res = await maFetch(`../api/v1/user/token`, 'POST');
+      document.getElementById('backButton').addEventListener('click', async () => {
+        document.body.classList.toggle('createToken', false);
+      });
+
+      document.getElementById('showCreateToken').addEventListener('click', async () => {
+        document.body.classList.toggle('createToken', true);
+      });
+
+      document.getElementById('createTokenContainer').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const res = await maFetch(`../api/v1/user/token`, 'POST', {
+          name: document.querySelector('#createTokenInput > input').value
+        });
         location.reload();
       });
 
