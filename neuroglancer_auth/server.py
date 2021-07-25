@@ -3,12 +3,13 @@ import google_auth_oauthlib.flow
 from oauthlib import oauth2
 import googleapiclient.discovery
 import json
-from middle_auth_client import auth_required, auth_requires_admin
+from middle_auth_client import auth_required, auth_requires_admin, setPermissionLookupOverride
+
 import sqlalchemy
 from yarl import URL
 
 from .model.user import User
-from .model.api_key import APIKey, delete_token, delete_all_temp_tokens_for_user
+from .model.api_key import APIKey, delete_token, delete_all_temp_tokens_for_user, get_redis_cache
 from .model.dataset_admin import DatasetAdmin
 from .model.group import Group
 from .model.user_group import UserGroup
@@ -27,6 +28,34 @@ import os
 from functools import wraps
 
 __version__ = '2.18.0'
+
+def permissionLookUp(token):
+    print("permissionLookUp looking up redis")
+    cached_user_data = get_redis_cache(token)
+
+    print(f"cached_user_data: {cached_user_data}")
+
+    if cached_user_data:
+        api_key = APIKey.get_by_key(token)
+        if api_key:
+            print(f"is api key, updating last used: {cached_user_data}")
+            api_key.update_last_used()
+
+    return cached_user_data
+
+    # user_id = get_user_id_from_token(token)
+
+    # if user_id:
+    #     print(f"user_id: {user_id}")
+    #     res = User.get_by_id(user_id).create_cache()
+
+    #     print(f"cache: {res}")
+    #     return res
+    # else:
+    #     print(f"no user_id: {user_id}")
+
+
+setPermissionLookupOverride(permissionLookUp)
 
 TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
 URL_PREFIX = os.environ.get('URL_PREFIX', 'auth')
@@ -318,13 +347,35 @@ def get_user_cache():
 def dict_response(els):
     return flask.jsonify([el.as_dict() for el in els])
 
-@api_v1_bp.route('/refresh_token')
 @api_v1_bp.route('/create_token')
 @api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
 @auth_required
 def create_token():
-    key = APIKey.generate(flask.g.auth_user['id'])
+    data = flask.request.json or {}
+
+    key = APIKey.generate(flask.g.auth_user['id'], data.get('description'))
     return flask.jsonify(key)
+
+@api_v1_bp.route('/refresh_token') #deprecated
+@auth_required
+def refresh_token():
+    user_id = flask.g.auth_user['id']
+    keys = APIKey.get_by_user_id(user_id)
+    num_of_keys = len(keys)
+
+    if num_of_keys > 1:
+        return flask.Response("Refresh token does not work for accounts with more than one API Key", 400)
+
+    key = APIKey.refresh(flask.g.auth_user['id'])
+    return flask.jsonify(key)
+
+@user_settings_bp.route('/tokens')
+@auth_required
+def user_settings_tokens():
+    user = User.get_by_id(flask.g.auth_user['id'])
+    tokens = APIKey.get_by_user_id(flask.g.auth_user['id'])
+    tokens = [el.as_dict() for el in tokens]
+    return flask.render_template('tokens-list.html', tokens=tokens, user=user)
 
 @api_v1_bp.route('/user/token')
 @auth_required
