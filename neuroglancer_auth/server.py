@@ -145,8 +145,8 @@ def finish_auth_flow(user, template_name=None, template_context={}):
 
     if redirect:
         resp = flask.redirect(furl(redirect)
-            .add({TOKEN_NAME: token, 'middle_auth_url': STICKY_AUTH_URL})
-            .add({'token': token}) # deprecated
+            .set({TOKEN_NAME: token, 'middle_auth_url': STICKY_AUTH_URL})
+            .set({'token': token}) # deprecated
             .url, code=302)
         resp.set_cookie(TOKEN_NAME, token, secure=True, httponly=True) # set cookie for middle auth server, useful if they need to accept TOS
         return resp
@@ -294,7 +294,9 @@ def dict_response(els):
 @api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
 @auth_required
 def create_token():
-    key = APIKey.generate(flask.g.auth_user['id'])
+    data = flask.request.json or {}
+
+    key = APIKey.generate(flask.g.auth_user['id'], data.get('name'))
     return flask.jsonify(key)
 
 @api_v1_bp.route('/refresh_token')
@@ -304,15 +306,13 @@ def refresh_token():
     keys = APIKey.get_by_user_id(user_id)
     num_of_keys = len(keys)
 
-    print(f"num_of_keys {num_of_keys}")
-
     if num_of_keys > 1:
         return flask.Response("Refresh token does not work for accounts with more than one API Key", 400)
 
     key = APIKey.refresh(flask.g.auth_user['id'])
     return flask.jsonify(key)
 
-@user_settings_bp.route('/token')
+@user_settings_bp.route('/tokens')
 @auth_required
 def user_settings_tokens():
     user = User.get_by_id(flask.g.auth_user['id'])
