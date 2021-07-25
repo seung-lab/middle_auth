@@ -1,6 +1,6 @@
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
-from middle_auth_client import auth_required
+from .dec import auth_required
 import flask
 import json
 import os
