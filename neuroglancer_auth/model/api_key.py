@@ -79,7 +79,18 @@ def maybe_insert_token(user_id, token, value, ex=None, force=False):
     # nx = Only set the key if it does not already exist
     not_dupe = r.set("token_" + token, value, nx=True, ex=ex)
 
+    print(f"maybe_insert_token {user_id} {token}")
+
     if not_dupe or force: # force is temporary fix since delete_all_tokens was deleting api_keys
+        print(f"r.sadd {user_id} {token}")
+        if ex is None:
+            api_key_user_id = APIKey.get_by_key(token).user_id
+
+            if api_key_user_id == user_id:
+                print("sadd is good")
+            else:
+                print("sadd is bad")
+
         r.sadd(tokens_key(user_id), token)
 
     return not_dupe
