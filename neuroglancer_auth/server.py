@@ -344,6 +344,12 @@ def user_debug_redis(user_id):
     else:
         return flask.Response("User doesn't exist", 404)
 
+@api_v1_bp.route('/debug_load_into_cache')
+@auth_requires_admin
+def debug_load_into_cache():
+    APIKey.load_into_cache()
+    return flask.jsonify("success")
+
 @api_v1_bp.route('/user/<int:user_id>/update_cache')
 @auth_requires_admin
 def user_update_cache(user_id):

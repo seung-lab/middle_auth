@@ -1,6 +1,6 @@
 """tos
 
-Revision ID: 795501136c51
+Revision ID: 725f95b1886f
 Revises: 2276d0c90076
 Create Date: 2021-06-29 23:17:20.690810
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '795501136c51'
+revision = '725f95b1886f'
 down_revision = '2276d0c90076'
 branch_labels = None
 depends_on = None
