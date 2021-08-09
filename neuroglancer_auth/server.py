@@ -149,11 +149,11 @@ def finish_auth_flow(user, template_name=None, template_context={}):
             .url, code=302)
         resp.set_cookie(TOKEN_NAME, token, secure=True, httponly=True) # set cookie for middle auth server, useful if they need to accept TOS
         return resp
-    elif programmatic_access:
-        app_urls = [app['url'] for app in App.get_all_dict()]
-        return generatePostMessageResponse(token, app_urls)
     elif template_name is not None:
         return flask.render_template(template_name, **template_context)
+    elif programmatic_access or True:
+        app_urls = [app['url'] for app in App.get_all_dict()]
+        return generatePostMessageResponse(token, app_urls)
     else:
         return "success"
 
