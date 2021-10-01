@@ -833,3 +833,50 @@ def delete_account_route(user_id):
 
     User.delete_user_account(user_id)
     return flask.jsonify("success")
+
+SSO_SECRET = os.environ.get('SSO_SECRET', "")
+
+import base64
+import binascii
+import hashlib
+import hmac
+import urllib.parse
+
+@api_v1_bp.route('/sso', methods=['GET'])
+@auth_required
+def get_sso():
+    def make_hmac(msg):
+        return hmac.new(SSO_SECRET.encode(), msg, digestmod=hashlib.sha256).digest()
+
+    in_sso = flask.request.args.get('sso', '')
+    in_sig = flask.request.args.get('sig', '')
+
+    valid_sig = make_hmac(in_sso.encode())
+
+    # recommended to use the compare_digest() function instead of the == operator
+    # to reduce the vulnerability to timing attacks
+    if not hmac.compare_digest(binascii.unhexlify(in_sig), valid_sig):
+        return flask.jsonify({
+            "error": "invalid signature"
+        }), 400
+
+    sso_parse = urllib.parse.parse_qs(base64.b64decode(in_sso).decode())
+    nonce = sso_parse['nonce'][0]
+    return_sso_url = sso_parse['return_sso_url'][0]
+
+    out_sso = base64.b64encode(urllib.parse.urlencode({
+        "require_activation": "false",
+        "external_id": flask.g.auth_user['id'],
+        "username": flask.g.auth_user['name'],
+        "email": flask.g.auth_user['email'],
+        "nonce": nonce
+    }).encode())
+
+    out_payload = {
+        'sso': out_sso.decode(),
+        'sig': binascii.hexlify(make_hmac(out_sso)).decode(),
+    }
+
+    redir_url = return_sso_url + '?' + urllib.parse.urlencode(out_payload)
+
+    return flask.redirect(redir_url, code=302)
