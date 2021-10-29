@@ -46,6 +46,21 @@ admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/' + URL_
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
 
+def requires_view_user_data(f):
+    @wraps(f)
+    @auth_required
+    def decorated_function(*args, **kwargs):
+        if (flask.g.auth_user['admin']
+            or DatasetAdmin.is_dataset_admin_any(flask.g.auth_user['id'])
+            or UserGroup.is_group_admin_any(flask.g.auth_user['id'])
+            or User.sa_get_by_id(flask.g.auth_user['id'])):
+            return f(*args, **kwargs)
+        else:
+            resp = flask.Response("Requires view user data permissions.", 403)
+            return resp
+
+    return decorated_function
+
 def requires_dataset_admin(f):
     @wraps(f)
     @auth_required
@@ -215,7 +230,7 @@ def logout_all():
     return flask.jsonify("success")
 
 @api_v1_bp.route('/user')
-@requires_some_admin
+@requires_view_user_data
 def get_users_by_filter():
     users = None
 
@@ -321,7 +336,7 @@ def delete_token_endpoint(token_id):
 
 
 @api_v1_bp.route('/user/<int:user_id>')
-@requires_some_admin
+@requires_view_user_data
 def get_user(user_id):
     user = User.user_get_by_id(user_id)
 
