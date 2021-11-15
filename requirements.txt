@@ -9,6 +9,6 @@ psycopg2
 sqlalchemy
 flask-sqlalchemy
 middle-auth-client==3.6.4
-furl
+yarl
 Flask-Markdown
 Flask-Migrate
