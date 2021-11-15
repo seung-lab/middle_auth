@@ -1,0 +1,197 @@
+<html translate="no">
+    <head>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+        <!-- Compiled and minified CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+        <!-- Compiled and minified JavaScript -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+        <style>
+            body {
+                font-family: Roboto,sans-serif;
+                -webkit-font-smoothing: antialiased;
+                color: var(--mdc-theme-text-primary-on-background, rgba(0, 0, 0, 0.87));
+                letter-spacing: var(--mdc-typography-body2-letter-spacing, 0.0178571429em);
+            }
+
+            #mainContent {
+              max-width: 600px;
+              margin: auto;
+              padding: 30px;
+            }
+
+            #topBar {
+              border-bottom: 1px solid #e0e0e0;
+              padding: 20px;
+            }
+
+            #topBar > div {
+              display: grid;
+              align-items: center;
+              grid-template-columns: max-content auto max-content min-content;
+            }
+
+            #topBar > div > *:first-child {
+              font-size: larger;
+            }
+
+            #choiceContainer {
+              row-gap: 10px;
+              flex-direction: column;
+              align-items: center;
+            }
+
+            body:not(.createToken) > #mainContent > #createTokenContainer {
+              display: none;
+            }
+
+            body.createToken > #mainContent > #tokensListContainer {
+              display: none;
+            }
+
+            #backButton {
+              margin-left: -18px;
+            }
+
+            .title {
+              display: flex;
+              align-items: center;
+              width: 100%;
+              font-size: x-large;
+              margin-bottom: 20px;
+            }
+
+            #tokensListContainer .title {
+              justify-content: space-between;
+            }
+
+            #choiceContainer > .input-field {
+              width: 100%;
+            }
+
+            #choiceContainer {
+              display: grid;
+              grid-template-columns: min-content auto;
+            }
+
+            {# #mainContent.custom #choiceContainer > * {
+              cursor: pointer;
+            }
+
+            #mainContent:not(.custom) #choiceContainer > * > * {
+              cursor: pointer;
+            } #}
+
+            #mainContent:not(.custom) #customNameContainer, #mainContent:not(.custom) #customNameContainer  > * {
+              cursor: pointer;
+            }
+
+            #mainContent:not(.custom) #customNameContainer {
+              opacity: 0.3;
+            }
+            
+
+            #googleNameLabel {
+              font-size: 1rem;
+              color: var(--mdc-theme-text-primary-on-background, rgba(0, 0, 0, 0.87));
+            }
+
+            #mainContent.custom #googleNameLabel {
+              opacity: 0.3;
+              cursor: pointer;
+            }
+
+            .note {
+              font-size: 0.9rem;
+            }
+
+            #customNameContainer > .helper-text {
+              color: #F44336;
+            }
+        </style>
+    </head>
+    <body>
+
+
+      <div id="mainContent">
+        <h4>Choose Username</h4>
+        <form id="form" action="choose_username" method="POST" class="formGroup" target="_self">
+          <div id="choiceContainer">
+            <label>
+              <input id="useGoogleRadio" name="name" type="radio" value="google" {% if prior is none %}checked{% endif %} />
+              <span></span>
+            </label>
+            <label id="googleNameLabel">
+              <span>Use name provided from Google - ({{user.name}})</span><br/>
+              <span class="note">Strongly recommended for professional researchers</span>
+            </label>
+
+            <label>
+              <input name="name" id="customRadio" type="radio" value="custom" {% if failure %}checked{% endif %} {% if prior %}checked{% endif %} />
+              <span></span>
+            </label>
+
+            <div id="customNameContainer" class="input-field">
+              <input id="customName" name="customName" type="text" class="validate" required minlength="2" maxlength="120" {% if prior %}value="{{prior}}"{% endif %}>
+              <label for="customName">Use Custom Name</label>
+              {% if failure %}<span id="nameTakenText" class="helper-text" >{{failure}}</span>{% endif %}
+            </div>
+          </div>
+
+          <button id="submit" class="btn waves-effect waves-light">Continue</button>
+        </form>
+      </div>
+    </body>
+    <script>
+      document.getElementById('form').action += new URL(location).search; // keep query string so neuroglancer can indicate the preferred response type
+
+      const form = document.getElementById('form');
+
+      const customRadio = document.getElementById('customRadio');
+      const useGoogleRadio = document.getElementById('useGoogleRadio');
+
+      const customNameInput = document.getElementById('customName');
+
+      document.getElementById('customNameContainer').addEventListener('click', () => {
+        customRadio.checked = true;
+        handleCustom();
+      });
+
+      document.getElementById('googleNameLabel').addEventListener('click', (e) => {
+        useGoogleRadio.checked = true;
+        handleCustom();
+      });
+
+      const handleCustom = () => {
+        mainContent.classList.toggle('custom', customRadio.checked);
+        customNameInput.disabled = !customRadio.checked;
+
+        if (customRadio.checked) {
+          customNameInput.focus();
+        }
+      };
+
+      mainContent.addEventListener('change', handleCustom);
+
+      handleCustom();
+
+      {% if prior %}
+
+      {% endif %}
+
+
+      {# {% if failure %}
+        const currentInputLength = customNameInput.value.length;
+        customNameInput.setSelectionRange(currentInputLength, currentInputLength);
+
+        const nameTakenText = document.getElementById('nameTakenText');
+
+        customNameInput.addEventListener('input', () => {
+          console.log('changed!');
+          nameTakenText.style.visibility = 'hidden';
+        });
+      {% endif %} #}
+    </script>
+</html>

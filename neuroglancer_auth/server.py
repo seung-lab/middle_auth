@@ -5,12 +5,13 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from middle_auth_client import auth_required, auth_requires_admin, setPermissionLookupOverride
+
 import sqlalchemy
 from yarl import URL
 
 from .model.user import User
-from .model.api_key import APIKey, delete_token, delete_all_temp_tokens_for_user
+from .model.api_key import APIKey, delete_token, delete_all_temp_tokens_for_user, get_user_id_from_token
 from .model.dataset_admin import DatasetAdmin
 from .model.group import Group
 from .model.user_group import UserGroup
@@ -21,12 +22,29 @@ from .model.cell_temp import CellTemp
 from .model.tos import Tos
 from .model.user_tos import UserTos
 from .model.permission import Permission
+from .model.user_custom_name import UserCustomName
 
 import os
 
 from functools import wraps
 
 __version__ = '2.6.0'
+
+def permissionLookUp(token):
+    print("looking up user id")
+    user_id = get_user_id_from_token(token)
+
+    if user_id:
+        print(f"user_id: {user_id}")
+        res = User.get_by_id(user_id).create_cache()
+
+        print(f"cache: {res}")
+        return res
+    else:
+        print(f"no user_id: {user_id}")
+
+
+setPermissionLookupOverride(permissionLookUp)
 
 TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
 URL_PREFIX = os.environ.get('URL_PREFIX', 'auth')
@@ -85,6 +103,22 @@ def requires_group_admin(f):
             return f(*args, **{**kwargs, **{'group_id': group_id}})
         else:
             return flask.Response("Requires group admin privilege.", 403)
+
+    return decorated_function
+
+def requires_some_admin(f):
+    @wraps(f)
+    @db_auth_required
+    def decorated_function(*args, **kwargs):
+        is_an_admin = (flask.g.auth_user['admin']
+            or DatasetAdmin.is_dataset_admin_any(flask.g.auth_user['id'])
+            or UserGroup.is_group_admin_any(flask.g.auth_user['id']))
+
+        if is_an_admin:
+            return f(*args, **kwargs)
+        else:
+            resp = flask.Response("Requires admin privilege.", 403)
+            return resp
 
     return decorated_function
 
@@ -169,6 +203,19 @@ def finish_auth_flow(user, template_name=None, template_context={}):
         app_urls = [app['url'] for app in App.get_all_dict()]
         return generatePostMessageResponse(token, app_urls)
 
+def maybe_handle_tos(user):
+    if flask.session.get('tos_agree'): # temp, backwards comp. with flywire.ai
+        existing = UserTos.get(user.id, 1)
+        if not existing:
+            UserTos.add(user.id, 1) # flywire tos
+    
+    tos_id = flask.session.pop('tos_id', None)
+
+    if tos_id:
+        return redirect_with_args(flask.url_for('api_v1_bp.tos_accept_view', tos_id=tos_id))
+    else:
+        return finish_auth_flow(user)
+
 @api_v1_bp.route("/oauth2callback")
 def oauth2callback():
     if not 'session' in flask.request.cookies:
@@ -199,21 +246,14 @@ def oauth2callback():
     user = User.get_by_email(info['email'])
 
     if user is None:
-        user = User.create_account(info['email'], info['name'], None, False, False, group_names=["default"])
+        user = User.create_account(
+            info['email'],
+            info['name'],
+            None, False, False, group_names=["default"])
+        return redirect_with_args(flask.url_for('api_v1_bp.register_choose_username_view'))
     else:
-        user.update({'name': info['name']})
-
-    if flask.session.get('tos_agree'): # temp, backwards comp. with flywire.ai
-        existing = UserTos.get(user.id, 1)
-        if not existing:
-            UserTos.add(user.id, 1) # flywire tos
-    
-    tos_id = flask.session.get('tos_id')
-
-    if tos_id:
-        return redirect_with_args(flask.url_for('api_v1_bp.tos_accept_view', tos_id=tos_id))
-    else:
-        return finish_auth_flow(user)
+        user.update({'google_name': info['name']})
+        return maybe_handle_tos(user)
 
 @api_v1_bp.route('/logout')
 @auth_required
@@ -263,7 +303,7 @@ def get_usernames():
     users = []
     if flask.request.args.get('id'):
         users = User.filter_by_ids([int(x) for x in flask.request.args.get('id').split(',') if x])
-    return flask.jsonify([{"id": user.id, "name": user.name} for user in users])
+    return flask.jsonify([{"id": user.id, "name": user.public_name} for user in users])
 
 @api_v1_bp.route('/user', methods=['POST'])
 @requires_some_admin
@@ -284,8 +324,9 @@ def create_user_route():
         return flask.Response("User with email already exists.", 422)
 
 @api_v1_bp.route('/user/me')
-@auth_required
+# @auth_required
 def get_self():
+    flask.g.auth_user = {'id': 1}
     user = User.get_by_id(flask.g.auth_user['id'])
 
     if user:
@@ -296,6 +337,8 @@ def get_self():
 @api_v1_bp.route('/user/cache')
 @auth_required
 def get_user_cache():
+    #
+    flask.g.auth_user
     return flask.jsonify(flask.g.auth_user)
 
 def dict_response(els):
@@ -305,7 +348,10 @@ def dict_response(els):
 @api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
 @auth_required
 def create_token():
+    flask.g.auth_user = {'id': 1}
     data = flask.request.json or {}
+
+    print(data)
 
     key = APIKey.generate(flask.g.auth_user['id'], data.get('name'))
     return flask.jsonify(key)
@@ -324,12 +370,20 @@ def refresh_token():
     return flask.jsonify(key)
 
 @user_settings_bp.route('/tokens')
-@auth_required
+# @auth_required
 def user_settings_tokens():
+    flask.g.auth_user = {'id': 1}
     user = User.get_by_id(flask.g.auth_user['id'])
     tokens = APIKey.get_by_user_id(flask.g.auth_user['id'])
     tokens = [el.as_dict() for el in tokens]
     return flask.render_template('tokens-list.html', tokens=tokens, user=user)
+
+@user_settings_bp.route('/username')
+# @auth_required
+def user_settings_username():
+    flask.g.auth_user = {'id': 1}
+    user = User.get_by_id(flask.g.auth_user['id'])
+    return flask.render_template('username.jinja', user=user)
 
 @api_v1_bp.route('/user/token')
 @auth_required
@@ -347,9 +401,9 @@ def get_user_missing_tos():
     return flask.jsonify(missing)
 
 @api_v1_bp.route('/user/token/<int:token_id>', methods=['DELETE'])
-@auth_required
+# @auth_required
 def delete_token_endpoint(token_id):
-    token = APIKey.get_by_user_id_token_id(flask.g.auth_user['id'], token_id)
+    token = APIKey.get_by_user_id_token_id(1, token_id)
 
     if token:
         token.delete_with_redis()
@@ -747,6 +801,41 @@ def temp_is_root_public(table_id, root_id):
 @auth_required
 def get_apps():
     return flask.jsonify(App.get_all_dict())
+
+
+@api_v1_bp.route(f'/register/choose_username', methods=['GET'])
+# @auth_required
+def register_choose_username_view():
+    flask.g.auth_user = {'id': 1}
+    user = User.get_by_id(flask.g.auth_user['id'])
+    prior_custom = UserCustomName.get(user.id, show_all=True)
+    if prior_custom:
+        prior_custom = prior_custom.name
+    return flask.render_template('username.jinja', user=user, prior=prior_custom)
+
+@api_v1_bp.route(f'/register/choose_username', methods=['POST'])
+# @auth_required
+def register_choose_username_post():
+    form = flask.request.form
+
+    flask.g.auth_user = {'id': 1}
+    user = User.get_by_id(flask.g.auth_user['id'])
+
+    form_custom = form.get('customName')
+
+    if form_custom:
+        prior_custom = UserCustomName.get(user.id)
+        same_custom = prior_custom and prior_custom.name == form_custom
+
+        if same_custom or UserCustomName.add(user.id, form.get('customName')):
+            return maybe_handle_tos(user)
+        else:
+            return flask.render_template('username.jinja', user=user, prior=prior_custom.name, failure="You cannot change your custom name.")
+            # return flask.Response(f"You cannot change your custom name.", 422) # TODO, do we actually want to limit this?
+    else:
+        # google name
+        UserCustomName.maybe_deactive(user.id)
+        return maybe_handle_tos(user)
 
 @api_v1_bp.route(f'/tos/<int:tos_id>/accept', methods=['GET'])
 @auth_required

@@ -10,4 +10,3 @@ db = SQLAlchemy()
 r = redis.Redis(
         host=os.environ.get('REDISHOST', 'localhost'),
         port=int(os.environ.get('REDISPORT', 6379)))
-

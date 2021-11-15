@@ -11,6 +11,7 @@ class APIKey(db.Model):
     key = db.Column(db.String(32), unique=True, nullable=False)
     created = db.Column(db.DateTime, server_default=func.now())
     updated = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
+    last_used = db.Column(db.DateTime, nullable=True)
 
     def as_dict(self):
         res = {
@@ -20,12 +21,17 @@ class APIKey(db.Model):
             "name": self.name,
             "created": self.created,
             "updated": self.updated,
+            "last_used": self.last_used,
         }
 
         return res
 
     @staticmethod
     def get_by_key(key):
+        return APIKey.query.filter_by(key=key).first()
+    
+    @staticmethod
+    def set_last_used(key):
         return APIKey.query.filter_by(key=key).first()
     
     @staticmethod
@@ -147,3 +153,16 @@ def insert_and_generate_unique_token(user_id, value, ex=None):
         token = secrets.token_hex(16)
         if maybe_insert_token(user_id, token, value, ex):
             return token
+
+def get_user_id_from_token(token):
+    redis_res = r.get("token_" + token)
+
+    if redis_res:
+        redis_res = json.loads(redis_res.decode('utf-8'))
+        is_new_format = type(redis_res) == int
+        return redis_res if is_new_format else redis_res['id']
+    else:
+        api_key = APIKey.get_by_key(token)
+
+        if api_key:
+            return api_key.user_id
