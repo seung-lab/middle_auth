@@ -186,7 +186,7 @@ def oauth2callback():
 
     try:
         flow.fetch_token(authorization_response=authorization_response)
-    except oauth2.rfc6749.errors.InvalidGrantError as err:
+    except (oauth2.rfc6749.errors.InvalidGrantError, oauth2.rfc6749.errors.MismatchingStateError) as err:
         print("OAuth Error: {0}".format(err))
         return flask.jsonify("authorization error")
 
