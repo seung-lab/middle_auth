@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, blueprints
 
 app = Flask(__name__)
 
@@ -7,7 +7,7 @@ from flask_cors import CORS
 from flaskext.markdown import Markdown
 from flask_migrate import Migrate
 
-from .server import version_bp, api_v1_bp, admin_site_bp
+from .server import blueprints
 from .model.base import db
 from .model.user import User
 from .model.api_key import APIKey
@@ -23,16 +23,11 @@ def setup_app():
     Session(app)
     CORS(app, expose_headers=['WWW-Authenticate', 'X-Requested-With'])
     Markdown(app)
-
     app.wsgi_app = ProxyFix(app.wsgi_app)
-
     db.init_app(app)
     Migrate(app, db)
-
-    app.register_blueprint(version_bp)
-    app.register_blueprint(api_v1_bp)
-    app.register_blueprint(admin_site_bp)
-
+    for bp in blueprints:
+        app.register_blueprint(bp)
     return app
 
 @app.cli.command("initialize")
