@@ -21,6 +21,7 @@ from .model.cell_temp import CellTemp
 from .model.tos import Tos
 from .model.user_tos import UserTos
 from .model.permission import Permission
+from .model.user_custom_name import UserCustomName
 
 import os
 
@@ -168,6 +169,19 @@ def finish_auth_flow(user, template_name=None, template_context={}):
         app_urls = [app['url'] for app in App.get_all_dict()]
         return generatePostMessageResponse(token, app_urls)
 
+def maybe_handle_tos(user):
+    if flask.session.get('tos_agree'): # temp, backwards comp. with flywire.ai
+        existing = UserTos.get(user.id, 1)
+        if not existing:
+            UserTos.add(user.id, 1) # flywire tos
+    
+    tos_id = flask.session.pop('tos_id', None)
+
+    if tos_id:
+        return redirect_with_args(flask.url_for('api_v1_bp.tos_accept_view', tos_id=tos_id))
+    else:
+        return finish_auth_flow(user)
+
 @api_v1_bp.route("/oauth2callback")
 def oauth2callback():
     if not 'session' in flask.request.cookies:
@@ -198,21 +212,14 @@ def oauth2callback():
     user = User.get_by_email(info['email'])
 
     if user is None:
-        user = User.create_account(info['email'], info['name'], None, False, False, group_names=["default"])
+        user = User.create_account(
+            info['email'],
+            info['name'],
+            None, False, False, group_names=["default"])
+        return redirect_with_args(flask.url_for('api_v1_bp.register_choose_username_view'))
     else:
-        user.update({'name': info['name']})
-
-    if flask.session.get('tos_agree'): # temp, backwards comp. with flywire.ai
-        existing = UserTos.get(user.id, 1)
-        if not existing:
-            UserTos.add(user.id, 1) # flywire tos
-    
-    tos_id = flask.session.get('tos_id')
-
-    if tos_id:
-        return redirect_with_args(flask.url_for('api_v1_bp.tos_accept_view', tos_id=tos_id))
-    else:
-        return finish_auth_flow(user)
+        user.update({'google_name': info['name']})
+        return maybe_handle_tos(user)
 
 @api_v1_bp.route('/logout')
 @auth_required
@@ -262,7 +269,7 @@ def get_usernames():
     users = []
     if flask.request.args.get('id'):
         users = User.filter_by_ids([int(x) for x in flask.request.args.get('id').split(',') if x])
-    return flask.jsonify([{"id": user.id, "name": user.name} for user in users])
+    return flask.jsonify([{"id": user.id, "name": user.public_name} for user in users])
 
 @api_v1_bp.route('/user', methods=['POST'])
 @requires_some_admin
@@ -283,8 +290,9 @@ def create_user_route():
         return flask.Response("User with email already exists.", 422)
 
 @api_v1_bp.route('/user/me')
-@auth_required
+# @auth_required
 def get_self():
+    flask.g.auth_user = {'id': 1}
     user = User.get_by_id(flask.g.auth_user['id'])
 
     if user:
@@ -724,6 +732,47 @@ def temp_is_root_public(table_id, root_id):
 @auth_required
 def get_apps():
     return flask.jsonify(App.get_all_dict())
+
+@api_v1_bp.before_request
+def api_v1_bp_before_request_debug():
+    print("api_v1_bp_before_request_debug")
+    print(flask.session)
+
+@api_v1_bp.route(f'/debug', methods=['GET'])
+def debug_route():
+    return "hi"
+
+@api_v1_bp.route(f'/register/choose_username', methods=['GET'])
+@auth_required
+def register_choose_username_view():
+    user = User.get_by_id(flask.g.auth_user['id'])
+    prior_custom = UserCustomName.get(user.id, show_all=True)
+    if prior_custom:
+        prior_custom = prior_custom.name
+    return flask.render_template('username.jinja', user=user, prior=prior_custom)
+
+@api_v1_bp.route(f'/register/choose_username', methods=['POST'])
+@auth_required
+def register_choose_username_post():
+    form = flask.request.form
+
+    user = User.get_by_id(flask.g.auth_user['id'])
+
+    form_custom = form.get('customName')
+
+    if form_custom:
+        prior_custom = UserCustomName.get(user.id)
+        same_custom = prior_custom and prior_custom.name == form_custom
+
+        if same_custom or UserCustomName.add(user.id, form.get('customName')):
+            return maybe_handle_tos(user)
+        else:
+            return flask.render_template('username.jinja', user=user, prior=prior_custom.name, failure="You cannot change your custom name.")
+            # return flask.Response(f"You cannot change your custom name.", 422) # TODO, do we actually want to limit this?
+    else:
+        # google name
+        UserCustomName.maybe_deactive(user.id)
+        return maybe_handle_tos(user)
 
 @api_v1_bp.route(f'/tos/<int:tos_id>/accept', methods=['GET'])
 @auth_required
