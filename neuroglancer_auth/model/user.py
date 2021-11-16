@@ -23,7 +23,7 @@ class User(db.Model):
             "service_account": self.is_service_account,
             "parent_id": self.parent_id,
             "read_only": self.read_only,
-            "name": self.name,
+            "name": self.public_name,
             "email": self.email,
             "admin": self.admin,
             "created": self.created,
@@ -38,6 +38,15 @@ class User(db.Model):
             res["parent"] = parent.as_dict()
 
         return res
+
+    @property
+    def public_name(self):
+        # move to DatasetAdmin
+        from .user_custom_name import UserCustomName
+
+        custom_name = UserCustomName.get(self.id)
+
+        return custom_name.name if custom_name else self.name
 
     def debug_redis(self):
         tokens = r.smembers(self.tokens_key)
@@ -312,8 +321,9 @@ class User(db.Model):
 
         return {
             'id': self.id,
+            "parent_id": self.parent_id,
             "service_account": self.parent_id is not None,
-            'name': self.name,
+            'name': self.public_name,
             'email': self.email,
             'admin': self.admin,
             'groups': [x['name'] for x in self.get_groups()],
