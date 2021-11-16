@@ -1314,8 +1314,8 @@ const mainApp = new Vue({
 		}
 	},
 	methods: {
-		login() {
-			authFetch(`${AUTH_URL}/user/me`).then((userData) => {
+		login(force=false) {
+			authFetch(`${AUTH_URL}/user/me${force ? 'middle_auth_token=null' : ''}`).then((userData) => {
 				this.loggedInUser = userData;
 			});
 		},
