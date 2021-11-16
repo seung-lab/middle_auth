@@ -13,7 +13,7 @@
             <div id="menuBar">
                 <div class="title">Admin Panel</div>
                 <div v-if="loggedInUser === null" id="loggedOutUserBar">
-                    <button @click="login" id="loginBtn">Login</button>
+                    <button @click="login(true)" id="loginBtn">Login</button>
                 </div>
                 <div v-if="loggedInUser" id="loggedInUserBar">
                     <router-link :to="{ name: 'userData', params: { id: loggedInUser.id }}">
