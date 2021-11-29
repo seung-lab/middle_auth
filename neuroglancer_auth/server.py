@@ -787,7 +787,6 @@ def tos_accept_view(tos_id):
 
     if not tos:
         return flask.Response(f"Terms of Service does not exist", 404)
-    ,
     if existing:
         return flask.render_template('msg.jinja', title=f"{tos.name}'s Terms of Service", msg="You have already accepted the Terms of Service")
     else:
