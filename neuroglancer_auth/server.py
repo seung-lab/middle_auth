@@ -781,12 +781,12 @@ def register_choose_username_post():
 @auth_required
 def tos_accept_view(tos_id):
     tos = Tos.get_by_id(tos_id)
-
     # temp, flask.session should be avoided because it can conflict with a login flow
     flask.session['redirect'] = flask.request.args.get('redirect')
-
     if not tos:
         return flask.Response(f"Terms of Service does not exist", 404)
+    user_id = flask.g.auth_user['id']
+    existing = UserTos.get(user_id, tos_id)
     if existing:
         return flask.render_template('msg.jinja', title=f"{tos.name}'s Terms of Service", msg="You have already accepted the Terms of Service")
     else:
@@ -796,14 +796,10 @@ def tos_accept_view(tos_id):
 @auth_required
 def tos_accept_post(tos_id):
     tos = Tos.get_by_id(tos_id)
-
     if not tos:
         return flask.Response(f"Terms of Service does not exist", 404)
-
     user_id = flask.g.auth_user['id']
-
     existing = UserTos.get(user_id, tos_id)
-
     if existing:
         return flask.render_template('msg.jinja', title=f"{tos.name}'s Terms of Service", msg="You have already accepted the Terms of Service")
 
