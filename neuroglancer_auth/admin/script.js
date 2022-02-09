@@ -611,13 +611,6 @@ const userDataApp = {
 				router.push({ name: 'userData', params: { id: user.id }});
 			}
 		},
-		async deleteUser() { // cant use delete because it conflicts with javascript keyword
-			await authFetch(`${AUTH_URL}/user/${this.user.id}`, {
-				method: 'DELETE'
-			});
-
-			router.push({ name: 'userList' });
-		},
 		async update() {
 			await authFetch(`${AUTH_URL}/user/${this.user.id}`, {
 				method: 'PUT',
@@ -696,9 +689,6 @@ const userDataApp = {
 				<option v-for="group in availableGroups" v-bind:value="group.id">{{ group.name }}</option>
 			</select>
 			<button @click="joinGroup">Join Group</button>
-		</div>
-		<div>
-			<button @click="deleteUser">Delete User</button>
 		</div>
 	</template>
 	</div>
