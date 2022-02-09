@@ -16,7 +16,7 @@ from .model.api_key import APIKey
 from werkzeug.middleware.proxy_fix import ProxyFix
 import redis # used in the envvar config
 
-__version__ = '2.7.3'
+__version__ = '2.8.0'
 
 def setup_app():
     app.config.from_envvar('AUTH_CONFIG_SETTINGS')
