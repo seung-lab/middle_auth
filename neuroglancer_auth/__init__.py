@@ -32,12 +32,9 @@ def setup_app():
 
 @app.cli.command("initialize")
 def initialize():
-    DEFAULT_ADMINS = [
-        ["chris@eyewire.org", "Chris Jordan", "seung"],
-        ["sven.dorkenwald@googlemail.com", "Sven Dorkenwald", "seung"]
-    ]
+    default_admins = app.config.get('DEFAULT_ADMINS', [])
 
-    for email, name, pi in DEFAULT_ADMINS:
+    for email, name, pi in default_admins:
         existing_user = User.get_by_email(email)
 
         if not existing_user:
