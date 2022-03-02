@@ -906,7 +906,12 @@ def redis_get(key):
     key_type = r.type(key).decode('utf-8')
     if key_type == "string":
         import pickle
-        out = pickle.loads(r.get(key))
+        out = None
+        val = r.get(key)
+        try:
+            out = pickle.loads(val)
+        except:
+            out = val.decode('utf-8')
         return flask.jsonify(out)
     elif key_type ==  "set":
         return flask.jsonify([x.decode('utf-8') for x in r.smembers(key)])
