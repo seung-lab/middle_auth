@@ -911,7 +911,7 @@ def redis_get(key):
         try:
             out = pickle.loads(val)
         except:
-            out = val.decode('utf-8')
+            out = json.loads(val.decode('utf-8'))
         return flask.jsonify(out)
     elif key_type ==  "set":
         return flask.jsonify([x.decode('utf-8') for x in r.smembers(key)])
@@ -919,3 +919,8 @@ def redis_get(key):
         return flask.Response("key does not exist", 404)
     else:
         return flask.Response(f"key_type: {key_type}")
+
+@api_v1_bp.route('/redis/<key>/ttl')
+@auth_requires_admin
+def redis_ttl(key):
+    return flask.jsonify(r.ttl(key))
