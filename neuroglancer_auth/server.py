@@ -892,3 +892,25 @@ def delete_account_route(user_id):
 
     User.delete_user_account(user_id)
     return flask.jsonify("success")
+
+from .model.base import r
+
+@api_v1_bp.route('/redis')
+@auth_requires_admin
+def redis_list():
+    return flask.jsonify([x.decode('utf-8') for x in r.keys()])
+
+@api_v1_bp.route('/redis/<key>')
+@auth_requires_admin
+def redis_get(key):
+    key_type = r.type(key).decode('utf-8')
+    if key_type == "string":
+        import pickle
+        out = pickle.loads(r.get(key))
+        return flask.jsonify(out)
+    elif key_type ==  "set":
+        return flask.jsonify([x.decode('utf-8') for x in r.smembers(key)])
+    elif key_type == "none":
+        return flask.Response("key does not exist", 404)
+    else:
+        return flask.Response(f"key_type: {key_type}")
