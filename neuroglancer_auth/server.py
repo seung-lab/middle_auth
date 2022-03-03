@@ -44,10 +44,13 @@ def version():
     return "neuroglance_auth -- version " + __version__
 
 api_v1_bp = flask.Blueprint('api_v1_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/v1')
+authorize_bp = flask.Blueprint('authorize_bp', __name__, url_prefix='/' + URL_PREFIX + '/api/v1')
 admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/' + URL_PREFIX + '/admin')
 user_settings_bp = flask.Blueprint('user_settings_bp', __name__, url_prefix='/' + URL_PREFIX + '/settings')
 
 blueprints = [version_bp, api_v1_bp, admin_site_bp, user_settings_bp]
+
+sticky_blueprints = [version_bp, api_v1_bp, admin_site_bp, user_settings_bp, authorize_bp]
 
 CLIENT_SECRETS_FILE = os.environ['AUTH_OAUTH_SECRET']
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
@@ -109,7 +112,7 @@ def requires_some_admin(f):
 
     return decorated_function
 
-@api_v1_bp.route("/authorize", methods=['GET', 'POST'])
+@authorize_bp.route("/authorize", methods=['GET', 'POST'])
 def authorize():
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES)
@@ -184,13 +187,13 @@ def maybe_handle_tos(user, token, template_name=None, template_context={}):
     else:
         return finish_auth_flow(token, template_name, template_context)
 
-@api_v1_bp.route("/oauth2callback")
+@authorize_bp.route("/oauth2callback")
 def oauth2callback():
     if not 'session' in flask.request.cookies:
         return flask.Response("Invalid Request, are third-party cookies enabled?", 400)
 
     if not 'state' in flask.session:
-        return flask.Response("Invalid Request", 400)
+        return flask.Response("Your session has expired.", 400)
 
     state = flask.session['state']
 
@@ -777,7 +780,7 @@ def register_choose_username_post():
             prior_custom.toggleActive(False)
         return maybe_handle_tos(user, flask.g.auth_token, 'msg.jinja', {"title": "User Settings Updated", "msg": "Your username was reset to the one associated with your Google Account"})
 
-@api_v1_bp.route(f'/tos/<int:tos_id>/accept', methods=['GET'])
+@authorize_bp.route(f'/tos/<int:tos_id>/accept', methods=['GET'])
 @auth_required
 def tos_accept_view(tos_id):
     tos = Tos.get_by_id(tos_id)
@@ -792,7 +795,7 @@ def tos_accept_view(tos_id):
     else:
         return flask.render_template('tos-form.html', name=tos.name, text=tos.text)
 
-@api_v1_bp.route(f'/tos/<int:tos_id>/accept', methods=['POST'])
+@authorize_bp.route(f'/tos/<int:tos_id>/accept', methods=['POST'])
 @auth_required
 def tos_accept_post(tos_id):
     tos = Tos.get_by_id(tos_id)

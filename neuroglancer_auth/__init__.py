@@ -7,7 +7,7 @@ from flask_cors import CORS
 from flaskext.markdown import Markdown
 from flask_migrate import Migrate
 
-from .server import blueprints
+from .server import blueprints, sticky_blueprints
 from .model.base import db
 from .model.user import User
 from .model.api_key import APIKey
@@ -26,7 +26,10 @@ def setup_app():
     app.wsgi_app = ProxyFix(app.wsgi_app)
     db.init_app(app)
     Migrate(app, db)
-    for bp in blueprints:
+
+    bps = sticky_blueprints if app.config.get('STICKY_AUTH',  False) else blueprints
+
+    for bp in bps:
         app.register_blueprint(bp)
     return app
 
