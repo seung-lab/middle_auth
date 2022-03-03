@@ -116,7 +116,7 @@ def requires_some_admin(f):
 def authorize():
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES)
-    flow.redirect_uri = flask.url_for('api_v1_bp.oauth2callback', _external=True, _scheme='https')
+    flow.redirect_uri = flask.url_for('authorize_bp.oauth2callback', _external=True, _scheme='https')
     authorization_url, state = flow.authorization_url(
         # Enable offline access so that you can refresh an access token without
         # re-prompting the user for permission. Recommended for web server apps.
@@ -183,7 +183,7 @@ def maybe_handle_tos(user, token, template_name=None, template_context={}):
     tos_id = flask.session.pop('tos_id', None)
 
     if tos_id:
-        return redirect_with_args(flask.url_for('api_v1_bp.tos_accept_view', tos_id=tos_id), token)
+        return redirect_with_args(flask.url_for('authorize_bp.tos_accept_view', tos_id=tos_id), token)
     else:
         return finish_auth_flow(token, template_name, template_context)
 
@@ -199,7 +199,7 @@ def oauth2callback():
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
-    flow.redirect_uri = flask.url_for('api_v1_bp.oauth2callback', _external=True)
+    flow.redirect_uri = flask.url_for('authorize_bp.oauth2callback', _external=True)
 
     authorization_response = flask.request.url
 
@@ -229,7 +229,7 @@ def oauth2callback():
     token = user.generate_token(ex=DEFAULT_LOGIN_TOKEN_DURATION)
 
     if new_account:
-        return redirect_with_args(flask.url_for('api_v1_bp.register_choose_username_view'), token)
+        return redirect_with_args(flask.url_for('user_settings_bp.register_choose_username_view'), token)
     else:
         return maybe_handle_tos(user, token)
 
