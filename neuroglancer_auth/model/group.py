@@ -1,11 +1,11 @@
 from .base import db
-from .dataset import Dataset
-
-from flask_sqlalchemy import event
 
 class Group(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
+
+    def __repr__(self):
+        return self.name
 
     def as_dict(self):
         return {
