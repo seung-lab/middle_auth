@@ -13,3 +13,4 @@ middle-auth-client==3.6.4
 yarl
 Flask-Markdown
 Flask-Migrate
+Flask-Admin
