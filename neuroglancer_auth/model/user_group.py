@@ -1,6 +1,5 @@
 from .base import db
 from .user import User
-from .group import Group
 
 class UserGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

@@ -12,6 +12,7 @@ from .model.base import db
 from .model.user import User
 from .model.api_key import APIKey
 
+from .flask_admin import setup_admin
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 import redis # used in the envvar config
@@ -26,6 +27,7 @@ def setup_app():
     app.wsgi_app = ProxyFix(app.wsgi_app)
     db.init_app(app)
     Migrate(app, db)
+    setup_admin(app, db)
 
     bps = sticky_blueprints if app.config.get('STICKY_AUTH',  False) else blueprints
 
