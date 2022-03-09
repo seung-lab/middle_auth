@@ -1,6 +1,6 @@
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
-from middle_auth_client import auth_required
+from .decorators import auth_required
 from flask import redirect, url_for, g
 from neuroglancer_auth.model.cell_temp import CellTemp
 
