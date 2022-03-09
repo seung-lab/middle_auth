@@ -5,7 +5,7 @@ import googleapiclient.discovery
 import urllib
 import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, users_share_common_group
+from .decorators import auth_required, auth_requires_admin, users_share_common_group
 import sqlalchemy
 from yarl import URL
 
@@ -927,12 +927,6 @@ def redis_get(key):
 @auth_requires_admin
 def redis_ttl(key):
     return flask.jsonify(r.ttl(key))
-
-@api_v1_bp.route('/redis/<key>/ttl')
-@auth_requires_admin
-def redis_ttl(key):
-    return flask.jsonify(r.ttl(key))
-
 
 @api_v1_bp.route("/shared")
 @auth_required
