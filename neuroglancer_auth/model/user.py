@@ -23,7 +23,7 @@ class User(db.Model):
         return self.name
 
     groups = relationship("Group", secondary='user_group', backref=db.backref('users', lazy='dynamic'))
-    associations = relationship("Association", secondary='user_association', backref=db.backref('users', lazy='dynamic'))
+    affiliations = relationship("Affiliation", secondary='user_affiliation', backref=db.backref('users', lazy='dynamic'))
 
     def as_dict(self):
         res = {

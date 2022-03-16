@@ -6,22 +6,13 @@ from neuroglancer_auth.model.cell_temp import CellTemp
 
 from .model.user import User
 from .model.group import Group
-from .model.association import Association, UserAssociation
+from .model.affiliation import Affiliation, UserAffiliation
 from .model.tos import Tos
 from .model.permission import Permission
 from .model.dataset import Dataset
 from .model.cell_temp import CellTemp
 
-from sqlalchemy import inspect
-
-
 class SuperAdminView(ModelView):
-   column_hide_backrefs = False
-
-   @property
-   def column_list(self):
-      return [c_attr.key for c_attr in inspect(self.model).mapper.column_attrs]
-
    @auth_required
    def is_accessible(self):
       return g.auth_user['admin']
@@ -45,8 +36,8 @@ def setup_admin(app, db):
     admin = Admin(app, name="middle auth admin", index_view=MyAdminIndexView(url='/sticky_auth/flask_admin'))
     admin.add_view(SuperAdminView(User, db.session))
     admin.add_view(SuperAdminView(Group, db.session))
-    admin.add_view(SuperAdminView(Association, db.session))
-    admin.add_view(SuperAdminView(UserAssociation, db.session))
+    admin.add_view(SuperAdminView(Affiliation, db.session))
+    admin.add_view(SuperAdminView(UserAffiliation, db.session))
     admin.add_view(SuperAdminView(Dataset, db.session))
     admin.add_view(SuperAdminView(Permission, db.session))
     admin.add_view(SuperAdminView(Tos, db.session))
