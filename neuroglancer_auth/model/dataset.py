@@ -5,6 +5,9 @@ class Dataset(db.Model):
     name = db.Column(db.String(120), unique=True, nullable=False)
     tos_id = db.Column('tos_id', db.Integer, db.ForeignKey("tos.id"), nullable=True)
 
+    def __repr__(self):
+        return self.name
+
     def as_dict(self):
         return {
             "id": self.id,
