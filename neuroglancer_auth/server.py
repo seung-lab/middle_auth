@@ -22,6 +22,7 @@ from .model.tos import Tos
 from .model.user_tos import UserTos
 from .model.permission import Permission
 from .model.user_custom_name import UserCustomName
+from .model.table_mapping import ServiceTable
 
 import os
 
@@ -895,6 +896,15 @@ def delete_account_route(user_id):
 
     User.delete_user_account(user_id)
     return flask.jsonify("success")
+
+@api_v1_bp.route('/service/<service>/table/<table>/dataset')
+@auth_required
+def get_dataset_for_service_table_route(service, table):
+    dataset = ServiceTable.get_dataset_by_service_table(service, table)
+    if dataset:
+        return flask.jsonify(dataset)
+    else:
+        return flask.Response("No dataset for given service and table names", 404)
 
 from .model.base import r
 
