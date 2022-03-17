@@ -11,6 +11,7 @@ from .model.tos import Tos
 from .model.permission import Permission
 from .model.dataset import Dataset
 from .model.cell_temp import CellTemp
+from .model.table_mapping import ServiceTable
 
 class SuperAdminView(ModelView):
    @auth_required
@@ -42,4 +43,5 @@ def setup_admin(app, db):
     admin.add_view(SuperAdminView(Permission, db.session))
     admin.add_view(SuperAdminView(Tos, db.session))
     admin.add_view(SuperAdminView(CellTemp, db.session))
+    admin.add_view(SuperAdminView(ServiceTable, db.session))
     return admin
