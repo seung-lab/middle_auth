@@ -42,4 +42,5 @@ def setup_admin(app, db):
     admin.add_view(SuperAdminView(Permission, db.session))
     admin.add_view(SuperAdminView(Tos, db.session))
     admin.add_view(SuperAdminView(CellTemp, db.session))
+    admin.add_view(SuperAdminView(ServiceTable, db.session))
     return admin
