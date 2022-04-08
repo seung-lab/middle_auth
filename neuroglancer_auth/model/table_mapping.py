@@ -9,8 +9,6 @@ class ServiceTable(db.Model):
     service_name = db.Column(db.String(120), nullable=False)
     table_name = db.Column(db.String(120), nullable=False)
     dataset_id = db.Column('dataset_id', db.Integer, db.ForeignKey("dataset.id"), nullable=False)
-    contact_name = db.Column(db.String(120), unique=False, nullable=False)
-    contact_email = db.Column(db.String(120), unique=False, nullable=False)
 
     __table_args__ = (db.UniqueConstraint("service_name", "table_name"),)
 
