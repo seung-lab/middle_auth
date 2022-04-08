@@ -49,7 +49,7 @@ authorize_bp = flask.Blueprint('authorize_bp', __name__, url_prefix='/' + URL_PR
 admin_site_bp = flask.Blueprint('admin_site_bp', __name__, url_prefix='/' + URL_PREFIX + '/admin')
 user_settings_bp = flask.Blueprint('user_settings_bp', __name__, url_prefix='/' + URL_PREFIX + '/settings')
 
-blueprints = [version_bp, api_v1_bp, admin_site_bp, user_settings_bp]
+blueprints = [version_bp, api_v1_bp, admin_site_bp]
 
 sticky_blueprints = [version_bp, api_v1_bp, admin_site_bp, user_settings_bp, authorize_bp]
 
