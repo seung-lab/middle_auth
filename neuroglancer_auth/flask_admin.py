@@ -14,6 +14,8 @@ from .model.cell_temp import CellTemp
 from .model.table_mapping import ServiceTable
 
 class SuperAdminView(ModelView):
+   can_export = True
+
    @auth_required
    def is_accessible(self):
       return g.auth_user['admin']
