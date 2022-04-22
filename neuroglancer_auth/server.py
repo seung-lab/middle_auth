@@ -65,7 +65,13 @@ user_settings_bp = flask.Blueprint(
 
 blueprints = [version_bp, api_v1_bp, admin_site_bp]
 
-sticky_blueprints = [version_bp, admin_site_bp, user_settings_bp, authorize_bp]
+sticky_blueprints = [
+    version_bp,
+    admin_site_bp,
+    user_settings_bp,
+    authorize_bp,
+    api_v1_bp,
+]
 
 CLIENT_SECRETS_FILE = os.environ["AUTH_OAUTH_SECRET"]
 SCOPES = [
