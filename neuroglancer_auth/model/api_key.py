@@ -38,10 +38,11 @@ class APIKey(db.Model):
         api_keys = APIKey().query.all()
 
         for api_key in api_keys:
-            user = User.get_by_id(api_key.user_id)
-            print(f"load_into_cache: {user.id} {api_key.user_id} {api_key.key}")
-            maybe_insert_token(user.id, api_key.key, json.dumps(user.create_cache()), ex=None, force=True)
-    
+            if not r.get("token_" + api_key.key):
+                user = User.get_by_id(api_key.user_id)
+                print(f"load_into_cache: {user.id} {api_key.user_id} {api_key.key}")
+                maybe_insert_token(user.id, api_key.key, json.dumps(user.create_cache()), ex=None)
+
     @staticmethod
     def generate(user_id):
         from .user import User
@@ -75,11 +76,11 @@ class APIKey(db.Model):
         db.session.delete(self)
         db.session.commit()
 
-def maybe_insert_token(user_id, token, value, ex=None, force=False):
+def maybe_insert_token(user_id, token, value, ex=None):
     # nx = Only set the key if it does not already exist
     not_dupe = r.set("token_" + token, value, nx=True, ex=ex)
 
-    if not_dupe or force: # force is temporary fix since delete_all_tokens was deleting api_keys
+    if not_dupe:
         r.sadd(tokens_key(user_id), token)
 
     return not_dupe
