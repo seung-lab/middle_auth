@@ -42,6 +42,8 @@ class APIKey(db.Model):
                 user = User.get_by_id(api_key.user_id)
                 print(f"load_into_cache: {user.id} {api_key.user_id} {api_key.key}")
                 maybe_insert_token(user.id, api_key.key, json.dumps(user.create_cache()), ex=None)
+            else:
+                print(f"ignoring {api_key.user_id} {api_key.key}")
 
     @staticmethod
     def generate(user_id):

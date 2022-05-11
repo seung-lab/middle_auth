@@ -933,6 +933,12 @@ def redis_get(key):
     else:
         return flask.Response(f"key_type: {key_type}")
 
+@api_v1_bp.route('/redis/<int:user_id>/delete/<key>')
+@auth_requires_admin
+def redis_delete(user_id, key):
+    delete_token(user_id, key)
+
+
 @api_v1_bp.route('/redis/<key>/ttl')
 @auth_requires_admin
 def redis_ttl(key):
