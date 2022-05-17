@@ -10,6 +10,9 @@ class App(db.Model):
             "url": self.url,
         }
 
+    def __repr__(self):
+        return self.url
+
     @staticmethod
     def get_all_dict():
         return [app.as_dict() for app in App.query.order_by(App.id.asc()).all()]

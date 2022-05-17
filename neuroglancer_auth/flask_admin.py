@@ -2,8 +2,8 @@ from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
 from middle_auth_client import auth_required
 from flask import redirect, url_for, g
-from neuroglancer_auth.model.cell_temp import CellTemp
-
+from .model.app import App
+from .model.cell_temp import CellTemp
 from .model.user import User
 from .model.group import Group
 from .model.affiliation import Affiliation, UserAffiliation
@@ -46,4 +46,5 @@ def setup_admin(app, db):
     admin.add_view(SuperAdminView(Tos, db.session))
     admin.add_view(SuperAdminView(CellTemp, db.session))
     admin.add_view(SuperAdminView(ServiceTable, db.session))
+    admin.add_view(SuperAdminView(App, db.session))
     return admin
