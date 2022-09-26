@@ -25,25 +25,25 @@ class User(db.Model):
     groups = relationship("Group", secondary='user_group', backref=db.backref('users', lazy='dynamic'))
     affiliations = relationship("Affiliation", secondary='user_affiliation', backref=db.backref('users', lazy='dynamic'))
 
-    def as_dict(self):
+    def as_dict(self, full=False):
         res = {
             "id": self.id,
             "service_account": self.is_service_account,
-            "parent_id": self.parent_id,
-            "read_only": self.read_only,
             "name": self.public_name,
             "email": self.email,
-            "admin": self.admin,
             "created": self.created,
-            "pi": self.pi,
-            "gdpr_consent": self.gdpr_consent,
-            "admin_datasets": self.get_datasets_adminning()
         }
 
-        if self.is_service_account:
-            parent = self.parent
-            res["token"] = self.get_service_account_token()
-            res["parent"] = parent.as_dict()
+        if full:
+            res["gdpr_consent"] = self.gdpr_consent
+            res["admin_datasets"] = self.get_datasets_adminning()
+            res["pi"] = self.pi
+            res["admin"] = self.admin
+
+            if self.is_service_account:
+                res["read_only"]: self.read_only
+                res["parent_id"] = self.parent_id
+                res["parent"] = self.parent.as_dict()
 
         return res
 

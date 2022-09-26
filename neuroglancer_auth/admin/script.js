@@ -703,7 +703,8 @@ const serviceAccountDataApp = {
 		groups: [],
 		availableGroups: [],
 		allGroups: [],
-		selectedGroup: ''
+		selectedGroup: '',
+		token: null,
 	}),
 	async beforeRouteUpdate (to, from, next) {
 		await this.load(to.params.id);
@@ -785,6 +786,14 @@ const serviceAccountDataApp = {
 
 			router.push({ name: 'serviceAccountList' });
 		},
+		async getToken() {
+			this.token = await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}/token`, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json'
+				}
+			});
+		},
 		async joinGroup() {
 			await authFetch(`${AUTH_URL}/group/${this.selectedGroup}/service_account`, {
 				method: 'POST',
@@ -822,7 +831,8 @@ const serviceAccountDataApp = {
 		<div class="title">Edit Service Account</div>
 		<div>
 			<div class="name">{{ serviceAccount.name }}</div>
-			<div class="token">{{ serviceAccount.token }}</div>
+			<div v-if="token" class="token">{{ token }}</div>
+			<button v-else @click="getToken">View Token</button>
 			<div class="read_only"><input v-model="serviceAccount.read_only" type="checkbox"></div>
 			<button @click="update">Save</button>
 		</div>
