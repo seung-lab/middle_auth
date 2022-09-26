@@ -295,7 +295,7 @@ def get_users_by_filter():
         users = User.search_by_name(flask.request.args.get('name'))
     elif flask.request.args.get('from') or flask.request.args.get('to'):
         users = User.filter_by_created(flask.request.args.get('from'), flask.request.args.get('to'))
-    elif flask.request.args.get('page'):
+    else:
         page = int(flask.request.args.get('page', "1"))
         per_page = int(flask.request.args.get('per_page', "20"))
 
@@ -305,9 +305,8 @@ def get_users_by_filter():
             "pages": page_res.pages,
             "items": [el.as_dict() for el in page_res.items],
         })
-    else:
-        users = User.get_normal_accounts().all()
-    return flask.jsonify([user.as_dict() for user in users])
+    full_response = flask.g.auth_user['admin'] or flask.g.auth_user['service_account']
+    return flask.jsonify([user.as_dict(full_response) for user in users])
 
 @api_v1_bp.route('/username')
 @auth_required
@@ -331,7 +330,7 @@ def create_user_route():
 
     try:
         user = User.create_account(data['email'], data['name'], None, False, False, group_names=["default"])
-        return flask.jsonify(user.as_dict())
+        return flask.jsonify(user.as_dict(True))
     except sqlalchemy.exc.IntegrityError as err:
         return flask.Response("User with email already exists.", 422)
 
@@ -341,7 +340,7 @@ def get_self():
     user = User.get_by_id(flask.g.auth_user['id'])
 
     if user:
-        return flask.jsonify(user.as_dict())
+        return flask.jsonify(user.as_dict(True))
     else:
         return flask.Response("Error finding user", 500)
 
@@ -393,8 +392,10 @@ def delete_token_endpoint(token_id):
 def get_user(user_id):
     user = User.user_get_by_id(user_id)
 
+    full_response = flask.g.auth_user['admin'] or flask.g.auth_user['service_account']
+
     if user:
-        return flask.jsonify(user.as_dict())
+        return flask.jsonify(user.as_dict(full_response))
     else:
         return flask.Response("User doesn't exist", 404)
 
@@ -701,7 +702,17 @@ def get_sa(sa_id):
     sa = User.sa_get_by_id(sa_id)
 
     if sa and sa.is_service_account:
-        return flask.jsonify(sa.as_dict())
+        return flask.jsonify(sa.as_dict(True))
+    else:
+        return flask.Response("Service account doesn't exist", 404)
+
+@api_v1_bp.route('/service_account/<int:sa_id>/token')
+@auth_requires_admin
+def get_sa_token(sa_id):
+    sa = User.sa_get_by_id(sa_id)
+
+    if sa and sa.is_service_account:
+        return flask.jsonify(sa.get_service_account_token())
     else:
         return flask.Response("Service account doesn't exist", 404)
 
