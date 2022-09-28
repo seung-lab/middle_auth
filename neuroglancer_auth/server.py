@@ -263,7 +263,9 @@ def oauth2callback():
     token = user.generate_token(ex=DEFAULT_LOGIN_TOKEN_DURATION)
 
     if new_account:
-        return redirect_with_args(flask.url_for('user_settings_bp.register_choose_username_view'), token)
+        return redirect_with_args(flask.url_for('user_settings_bp.register_choose_username_view'), token, {
+            'new_account': 'true'
+        })
     else:
         return maybe_handle_tos(user, token)
 
@@ -809,21 +811,29 @@ def register_choose_username_post():
 
     form_custom = form.get('customName')
     prior_custom = UserCustomName.get(user.id, show_all=True)
+    new_account = flask.request.args.get('new_account') == 'true'
+
+    template_context = {
+        "title": "User Settings Updated"
+    }
 
     if form_custom:
         same_custom = prior_custom and prior_custom.name == form_custom
-
-        if same_custom or UserCustomName.add(user.id, form_custom):
+        # new name and user had previously chosen a custom name
+        if not same_custom and not UserCustomName.add(user.id, form_custom):
+            return flask.render_template('username.jinja', user=user, prior=prior_custom.name, failure="You cannot change your custom name.")
+        else:
             if same_custom:
                 prior_custom.toggleActive(True)
-
-            return maybe_handle_tos(user, flask.g.auth_token, 'msg.jinja', {"title": "User Settings Updated", "msg": f"Your username was changed to {form_custom}"})
-        else:
-            return flask.render_template('username.jinja', user=user, prior=prior_custom.name, failure="You cannot change your custom name.")
+            template_context['msg'] = f"Your username was changed to {form_custom}"
     else: # google name
         if prior_custom:
             prior_custom.toggleActive(False)
-        return maybe_handle_tos(user, flask.g.auth_token, 'msg.jinja', {"title": "User Settings Updated", "msg": "Your username was reset to the one associated with your Google Account"})
+        template_context['msg'] = "Your username was reset to the one associated with your Google Account"
+
+    # don't show template during new account flow
+    template_name = None if new_account else 'msg.jinja'
+    return maybe_handle_tos(user, flask.g.auth_token, template_name, template_context)
 
 @authorize_bp.route(f'/tos/<int:tos_id>/accept', methods=['GET'])
 @auth_required
