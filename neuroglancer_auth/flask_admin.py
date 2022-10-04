@@ -19,36 +19,14 @@ from .model.table_mapping import ServiceTable
 
 TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
 
-def get_user_in_flask():
-    if hasattr(flask.g, 'auth_token'):
-        return
-
-    cookie_name = TOKEN_NAME
-    token = flask.request.cookies.get(cookie_name)
-    auth_header = flask.request.headers.get('authorization')
-    query_param_token = flask.request.args.get(TOKEN_NAME)
-    if query_param_token:
-        token = query_param_token
-    auth_header = flask.request.headers.get('authorization')
-    if auth_header:
-        if not auth_header.startswith('Bearer '):
-            return
-        else:  # auth header takes priority
-            token = auth_header.split(' ')[1]  # remove schema
-    cached_user_data = r.get("token_" + token) if token else None
-    if cached_user_data:
-        cached_user_data = json.loads(cached_user_data.decode('utf-8'))
-    if cached_user_data:
-        flask.g.auth_user = cached_user_data
-        flask.g.auth_token = token
-
 class SuperAdminView(ModelView):
     can_export = True
 
     def is_accessible(self):
-        get_user_in_flask()
-        auth_user = flask.g.get('auth_user', None)
-        return auth_user and auth_user['admin']
+        @auth_required
+        def helper():
+            return True
+        return helper() and flask.g.get('auth_user', {}).get('admin', False)
 
     def inaccessible_callback(self, name, **kwargs):
         # redirect to login page if user doesn't have access
