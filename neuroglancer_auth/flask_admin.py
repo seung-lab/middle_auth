@@ -1,7 +1,11 @@
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
 from middle_auth_client import auth_required
-from flask import redirect, url_for, g
+import flask
+import json
+import os
+
+from .model.base import r
 from .model.app import App
 from .model.cell_temp import CellTemp
 from .model.user import User
@@ -13,26 +17,30 @@ from .model.dataset import Dataset
 from .model.cell_temp import CellTemp
 from .model.table_mapping import ServiceTable
 
-class SuperAdminView(ModelView):
-   can_export = True
+TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
 
-   @auth_required
-   def is_accessible(self):
-      return g.auth_user['admin']
-         
-   def inaccessible_callback(self, name, **kwargs):
-      # redirect to login page if user doesn't have access
-      return redirect(url_for('admin.index'))
+class SuperAdminView(ModelView):
+    can_export = True
+
+    def is_accessible(self):
+        @auth_required
+        def helper():
+            print("new helper funcntion")
+            return True
+        return helper() and flask.g.get('auth_user', {}).get('admin', False)
+
+    def inaccessible_callback(self, name, **kwargs):
+        # redirect to login page if user doesn't have access
+        return flask.redirect(flask.url_for('admin.index'))
 
 # Create customized index view class that handles login & registration
 class MyAdminIndexView(AdminIndexView):
-     @expose('/', methods=["GET"])
-     @auth_required
-     def index(self):
-          return super(MyAdminIndexView, self).index()
+    @expose('/', methods=["GET"])
+    @auth_required
+    def index(self):
+        return super(MyAdminIndexView, self).index()
 
-     @auth_required
-     def is_accessible(self):
+    def is_accessible(self):
         return True
 
 def setup_admin(app, db):
