@@ -310,6 +310,17 @@ def get_self():
     else:
         return flask.Response("Error finding user", 500)
 
+@api_v1_bp.route('/user/affitest')
+@auth_required
+def get_affitest():
+    user = User.get_by_id(flask.g.auth_user['id'])
+
+    if user:
+        print("user.affiliations", user.affiliations)
+        return flask.jsonify(user.affiliations)
+    else:
+        return flask.Response("Error finding user", 500)
+
 @api_v1_bp.route('/user/cache')
 @auth_required
 def get_user_cache():

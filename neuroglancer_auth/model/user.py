@@ -26,15 +26,13 @@ class User(db.Model):
     affiliations = relationship("Affiliation", secondary='user_affiliation', backref=db.backref('users', lazy='dynamic'))
 
     def as_dict(self, full=False):
-        from .affiliation import UserAffiliation
-
         res = {
             "id": self.id,
             "service_account": self.is_service_account,
             "name": self.public_name,
             "created": self.created,
             "pi": self.pi,
-            "affiliations": [ua.as_dict() for ua in UserAffiliation.query.filter_by(user_id=self.id)],
+            "affiliations": self.user_affiliations,
         }
 
         if full:
@@ -49,6 +47,11 @@ class User(db.Model):
                 res["parent"] = self.parent.as_dict()
 
         return res
+
+    @property
+    def user_affiliations(self):
+        from .affiliation import UserAffiliation
+        return [ua.as_dict() for ua in UserAffiliation.query.filter_by(user_id=self.id)],
 
     @property
     def public_name(self):
@@ -336,6 +339,8 @@ class User(db.Model):
             'name': self.public_name,
             'email': self.email,
             'admin': self.admin,
+            'pi': self.pi,
+            'affiliations': self.user_affiliations,
             'groups': [x['name'] for x in self.get_groups()],
             'permissions': {x['name']: max(map(permission_to_level, x['permissions'])) for x in permissions},
             'permissions_v2': {x['name']: x['permissions'] for x in permissions},
