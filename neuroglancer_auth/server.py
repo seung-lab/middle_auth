@@ -136,7 +136,8 @@ def requires_some_admin(f):
     def decorated_function(*args, **kwargs):
         is_an_admin = (flask.g.auth_user['admin']
             or DatasetAdmin.is_dataset_admin_any(flask.g.auth_user['id'])
-            or UserGroup.is_group_admin_any(flask.g.auth_user['id']))
+            or UserGroup.is_group_admin_any(flask.g.auth_user['id'])
+            or flask.g.auth_user['service_account'])
 
         if is_an_admin:
             return f(*args, **kwargs)
@@ -285,7 +286,7 @@ def logout_all():
     return flask.jsonify("success")
 
 @api_v1_bp.route('/user')
-@requires_view_user_data
+@auth_required
 def get_users_by_filter():
     users = None
 
@@ -390,7 +391,7 @@ def delete_token_endpoint(token_id):
 
 
 @api_v1_bp.route('/user/<int:user_id>')
-@requires_view_user_data
+@auth_required
 def get_user(user_id):
     user = User.user_get_by_id(user_id)
 
@@ -471,7 +472,7 @@ def get_user_tos(user_id):
     return flask.jsonify(toses)
 
 @api_v1_bp.route('/user/<int:user_id>/permissions')
-@auth_requires_admin
+@requires_some_admin
 def get_user_permissions(user_id):
     user = User.user_get_by_id(user_id)
 
@@ -646,7 +647,7 @@ def add_user_to_group_route(group_id):
         return flask.Response("Missing user_id.", 400)
 
 @api_v1_bp.route('/group/<int:group_id>/user/<int:user_id>', methods=['PUT'])
-@auth_requires_admin
+@requires_group_admin
 def modify_user_in_group_route(group_id, user_id):
     data = flask.request.json
 
