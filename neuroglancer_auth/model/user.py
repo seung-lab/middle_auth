@@ -26,19 +26,22 @@ class User(db.Model):
     affiliations = relationship("Affiliation", secondary='user_affiliation', backref=db.backref('users', lazy='dynamic'))
 
     def as_dict(self, full=False):
+        from .affiliation import UserAffiliation
+
         res = {
             "id": self.id,
             "service_account": self.is_service_account,
             "name": self.public_name,
-            "email": self.email,
             "created": self.created,
+            "pi": self.pi,
+            "affiliations": [ua.as_dict() for ua in UserAffiliation.query.filter_by(user_id=self.id)],
         }
 
         if full:
             res["gdpr_consent"] = self.gdpr_consent
             res["admin_datasets"] = self.get_datasets_adminning()
-            res["pi"] = self.pi
             res["admin"] = self.admin
+            res["email"] = self.email
 
             if self.is_service_account:
                 res["read_only"]: self.read_only
@@ -224,7 +227,7 @@ class User(db.Model):
     @staticmethod
     def search_by_name(name):
         return User.query.filter(User.parent_id.is_(None)).filter(User.name.ilike(f'%{name}%')).all()
-    
+
     @staticmethod
     def sa_search_by_name(name):
         return User.query.filter(User.parent_id.isnot(None)).filter(User.name.ilike(f'%{name}%')).all()

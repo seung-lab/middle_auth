@@ -2,10 +2,8 @@ import flask
 import google_auth_oauthlib.flow
 from oauthlib import oauth2
 import googleapiclient.discovery
-import urllib
-import uuid
 import json
-from middle_auth_client import auth_required, auth_requires_admin, auth_requires_permission
+from middle_auth_client import auth_required, auth_requires_admin
 import sqlalchemy
 from yarl import URL
 
@@ -69,41 +67,6 @@ def make_api_error(http_status, api_code, msg=None, data=None):
     response.status_code = http_status
     return response
 
-def requires_view_user_data(f):
-    @wraps(f)
-    @auth_required
-    def decorated_function(*args, **kwargs):
-        if (flask.g.auth_user['admin']
-            or DatasetAdmin.is_dataset_admin_any(flask.g.auth_user['id'])
-            or UserGroup.is_group_admin_any(flask.g.auth_user['id'])
-            or User.sa_get_by_id(flask.g.auth_user['id'])):
-            return f(*args, **kwargs)
-
-        if flask.request.args.get('id') or flask.request.view_args.get('user_id'):
-            shared_excluded_groups = flask.current_app.config.get("AUTH_SHARED_EXCLUDED_GROUPS", [])
-            me = User.get_by_id(flask.g.auth_user['id'])
-            my_groups = {group['id'] for group in me.get_groups() if group['name'] not in shared_excluded_groups}
-
-            user_id = flask.request.view_args.get('user_id')
-            user_ids = [user_id] if user_id else [int(x) for x in flask.request.args.get('id').split(',') if x and x.isdigit()]
-            users = User.filter_by_ids(user_ids)
-            bad_users = []
-            for user in users:
-                target_groups = {group['id'] for group in user.get_groups() if group['name'] not in shared_excluded_groups}
-                if len(my_groups & target_groups) == 0:
-                    bad_users.append(user.id)
-            if len(bad_users) == 0:
-                return f(*args, **kwargs)
-            else:
-                bad_users_str = ', '.join(str(i) for i in bad_users)
-                return make_api_error(403,
-                    "missing_permission",
-                    msg = f"Missing permissions to view data for following users: {bad_users_str}")
-
-        resp = flask.Response("Requires view user data permissions.", 403)
-        return resp
-    return decorated_function
-
 def requires_dataset_admin(f):
     @wraps(f)
     @auth_required
@@ -136,7 +99,8 @@ def requires_some_admin(f):
     def decorated_function(*args, **kwargs):
         is_an_admin = (flask.g.auth_user['admin']
             or DatasetAdmin.is_dataset_admin_any(flask.g.auth_user['id'])
-            or UserGroup.is_group_admin_any(flask.g.auth_user['id']))
+            or UserGroup.is_group_admin_any(flask.g.auth_user['id'])
+            or flask.g.auth_user['service_account'])
 
         if is_an_admin:
             return f(*args, **kwargs)
@@ -285,7 +249,7 @@ def logout_all():
     return flask.jsonify("success")
 
 @api_v1_bp.route('/user')
-@requires_view_user_data
+@auth_required
 def get_users_by_filter():
     users = None
 
@@ -390,7 +354,7 @@ def delete_token_endpoint(token_id):
 
 
 @api_v1_bp.route('/user/<int:user_id>')
-@requires_view_user_data
+@auth_required
 def get_user(user_id):
     user = User.user_get_by_id(user_id)
 
@@ -471,7 +435,7 @@ def get_user_tos(user_id):
     return flask.jsonify(toses)
 
 @api_v1_bp.route('/user/<int:user_id>/permissions')
-@auth_requires_admin
+@requires_some_admin
 def get_user_permissions(user_id):
     user = User.user_get_by_id(user_id)
 
@@ -646,7 +610,7 @@ def add_user_to_group_route(group_id):
         return flask.Response("Missing user_id.", 400)
 
 @api_v1_bp.route('/group/<int:group_id>/user/<int:user_id>', methods=['PUT'])
-@auth_requires_admin
+@requires_group_admin
 def modify_user_in_group_route(group_id, user_id):
     data = flask.request.json
 

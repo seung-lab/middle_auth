@@ -15,6 +15,14 @@ class UserAffiliation(db.Model):
     user = relationship("User", overlaps="affiliations,users")
     affiliation = relationship("Affiliation", overlaps="affiliations,users")
 
+    def as_dict(self):
+        return {
+            "id": self.affiliation_id,
+            "name": self.affiliation.name,
+            "start": self.start,
+            "end": self.end,
+        }
+
 class Affiliation(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
