@@ -19,8 +19,8 @@ class UserAffiliation(db.Model):
         return {
             "id": self.affiliation_id,
             "name": self.affiliation.name,
-            "start": self.start,
-            "end": self.end,
+            "start": self.start.isoformat(),
+            "end": self.end.isoformat(),
         }
 
 class Affiliation(db.Model):
