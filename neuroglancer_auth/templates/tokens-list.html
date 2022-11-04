@@ -16,7 +16,7 @@
 {% set useTime = hours %}
 {% set timeString = "hour" %}
 {% endif %}
-{% if useTime > 1 %}
+{% if useTime >= 2 %}
 {% set timeString = timeString + "s" %}
 {% endif %}
 <span>{{useTime|int}} {{timeString}} ago</span>
