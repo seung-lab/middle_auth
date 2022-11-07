@@ -332,12 +332,33 @@ def dict_response(els):
     return flask.jsonify([el.as_dict() for el in els])
 
 @api_v1_bp.route('/create_token')
-@api_v1_bp.route('/user/token', methods=['POST']) # should it be a post if there is no input data?
-@auth_required
 def create_token():
-    data = flask.request.json or {}
+    print("hello we got here")
+    return "hi"
+
+@api_v1_bp.route('/create_token_other')
+def create_token_other():
+    print("hello we got here")
+    return "hi"
+
+@api_v1_bp.route('/create_token_old')
+def create_token_old():
+    print("hello we got here")
+    data = flask.request.get_json(False, True) or {}
+    print("cp2")
 
     key = APIKey.generate(flask.g.auth_user['id'], data.get('description'))
+    print("cp3")
+    return flask.jsonify(key)
+
+@api_v1_bp.route('/create_token_j')
+def create_token_j():
+    print("hello we got here")
+    data = {}
+    print("cp2")
+
+    key = APIKey.generate(1, data.get('description'))
+    print("cp3")
     return flask.jsonify(key)
 
 @api_v1_bp.route('/refresh_token') #deprecated
