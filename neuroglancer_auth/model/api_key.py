@@ -57,14 +57,20 @@ class APIKey(db.Model):
 
     @staticmethod
     def generate(user_id, description=None):
+        print("inside generate")
         from .user import User
         user = User.get_by_id(user_id)
 
         token = user.generate_token()
 
+        print("cp5")
+
         entry = APIKey(user_id=user_id, key=token, description=description)
+        print("cp66")
         db.session.add(entry)
         db.session.commit()
+
+        print("cp -8")
 
         return token
 
