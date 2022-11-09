@@ -60,6 +60,10 @@ class APIKey(db.Model):
         from .user import User
         user = User.get_by_id(user_id)
 
+        print(f"baaa")
+
+        print(f"user_id: {user_id}")
+
         token = user.generate_token()
 
         entry = APIKey(user_id=user_id, key=token, description=description)
