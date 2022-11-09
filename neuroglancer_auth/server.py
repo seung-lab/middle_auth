@@ -3,7 +3,7 @@ import google_auth_oauthlib.flow
 from oauthlib import oauth2
 import googleapiclient.discovery
 import json
-from middle_auth_client import auth_required, auth_requires_admin, setPermissionLookupOverride
+from middle_auth_client import auth_required, auth_requires_admin, setPermissionLookupOverride, make_api_error
 
 import sqlalchemy
 from yarl import URL
@@ -338,6 +338,19 @@ def create_token():
     data = flask.request.get_json(False, True) or {}
     key = APIKey.generate(flask.g.auth_user['id'], data.get('description'))
     return flask.jsonify(key)
+
+@api_v1_bp.route('/user/token/<key>/ttl')
+@auth_required
+def user_token_ttl(key):
+    request_user_id = flask.g.auth_user['id']
+    cached_user_data = get_redis_cache(key)
+    if cached_user_data:
+        cached_user_id = cached_user_data['id']
+        if cached_user_id == request_user_id:
+            ttl = r.ttl("token_" + key)
+            return flask.jsonify(ttl)
+    return make_api_error(404, "invalid_token",
+        msg="Token does not exist or is not asociated with your account.")
 
 @api_v1_bp.route('/refresh_token') #deprecated
 @auth_required
