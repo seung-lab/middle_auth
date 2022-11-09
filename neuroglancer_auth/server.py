@@ -30,6 +30,19 @@ from functools import wraps
 
 __version__ = '2.19.2'
 
+def make_api_error(http_status, api_code, msg=None, data=None):
+    res = {"error": api_code}
+
+    if msg is not None:
+        res["message"] = msg
+
+    if data is not None:
+        res["data"] = data
+
+    response = flask.jsonify(res)
+    response.status_code = http_status
+    return response
+
 def permissionLookUp(token):
     cached_user_data = get_redis_cache(token)
     if cached_user_data:
@@ -338,6 +351,24 @@ def create_token():
     data = flask.request.get_json(False, True) or {}
     key = APIKey.generate(flask.g.auth_user['id'], data.get('description'))
     return flask.jsonify(key)
+
+@api_v1_bp.route('/redis/<key>/ttl')
+@api_v1_bp.route('/user/token/<key>/ttl')
+@auth_required
+def redis_ttl(key):
+    is_admin = flask.g.auth_user['admin']
+    request_user_id = flask.g.auth_user['id']
+    cached_user_data = get_redis_cache(key)
+    if cached_user_data:
+        print(f"request_user_id: {request_user_id}")
+        print(f"cached_user_data: {cached_user_data}")
+        cached_user_id = cached_user_data['id']
+        if is_admin or cached_user_id == request_user_id:
+            ttl = r.ttl(key)
+            if ttl != -2:
+                return flask.jsonify(r.ttl(key))
+    return make_api_error(404, "invalid_token",
+        msg="Token does not exist or is not asociated with your account.")
 
 @api_v1_bp.route('/refresh_token') #deprecated
 @auth_required
@@ -984,8 +1015,3 @@ def redis_get(key):
         return flask.Response("key does not exist", 404)
     else:
         return flask.Response(f"key_type: {key_type}")
-
-@api_v1_bp.route('/redis/<key>/ttl')
-@auth_requires_admin
-def redis_ttl(key):
-    return flask.jsonify(r.ttl(key))
