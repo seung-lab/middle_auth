@@ -797,6 +797,15 @@ def temp_table_has_public(table_id):
 def temp_is_root_public(table_id, root_id):
     return flask.jsonify(CellTemp.is_public(table_id, root_id))
 
+@api_v1_bp.route('/table/<table_id>/root_all_public', methods=['POST'])
+@auth_required
+def temp_are_roots_public(table_id):
+    data = flask.request.json or []
+    if type(data) is list and len(data) > 0:
+        return flask.jsonify(CellTemp.all_public(table_id, data))
+    else:
+        return make_api_error(400, "missing_root_ids")
+
 @api_v1_bp.route('/app', methods=['GET'])
 @auth_required
 def get_apps():
