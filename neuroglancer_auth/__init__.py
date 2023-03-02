@@ -17,7 +17,7 @@ from .flask_admin import setup_admin
 from werkzeug.middleware.proxy_fix import ProxyFix
 import redis # used in the envvar config
 
-__version__ = '2.22.1'
+__version__ = '2.22.2'
 
 def setup_app():
     app.config.from_envvar('AUTH_CONFIG_SETTINGS')
