@@ -792,7 +792,7 @@ def get_sa_permissions(sa_id):
 def temp_table_has_public(table_id):
     return flask.jsonify(CellTemp.table_has_public(table_id))
 
-@api_v1_bp.rout('/table/<table_id>/get_public_roots')
+@api_v1_bp.route('/table/<table_id>/get_public_roots')
 @auth_required
 def get_public_roots(table_id):
     return flask.jsonify(CellTemp.get_public_roots(table_id))
