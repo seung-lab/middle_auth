@@ -16,7 +16,7 @@ from .model.permission import Permission
 from .model.dataset import Dataset
 from .model.cell_temp import CellTemp
 from .model.table_mapping import ServiceTable
-from wtforms.fields import QuerySelectField
+from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from sqlalchemy import inspect
 
 
