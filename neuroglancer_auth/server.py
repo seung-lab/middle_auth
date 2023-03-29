@@ -28,7 +28,7 @@ import datetime
 
 from functools import wraps
 
-__version__ = '2.22.2'
+__version__ = '2.22.3'
 
 def permissionLookUp(token):
     cached_user_data = get_redis_cache(token)
