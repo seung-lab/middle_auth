@@ -16,7 +16,9 @@ from .model.permission import Permission
 from .model.dataset import Dataset
 from .model.cell_temp import CellTemp
 from .model.table_mapping import ServiceTable
-from wtforms.fields import SelectField
+from wtforms.fields import QuerySelectField
+from sqlalchemy import inspect
+
 
 TOKEN_NAME = os.environ.get("TOKEN_NAME", "middle_auth_token")
 
@@ -25,12 +27,22 @@ class SuperAdminView(ModelView):
     can_export = True
     column_hide_backrefs = False
 
-    def scaffold_form(self):
-        form_class = super(SuperAdminView, self).scaffold_form()
-        for column in self.model.__table__.columns:
-            if column.foreign_keys:
-                relation_name = column.name[:-3]
-                setattr(form_class, relation_name, SelectField(relation_name))
+    def scaffold_list_form(self, widget=None, validators=None):
+        form_class = super(SuperAdminView, self).scaffold_list_form(widget, validators)
+
+        model_mapper = inspect(self.model)
+        for relationship in model_mapper.relationships:
+            remote_model = relationship.mapper.class_
+            if hasattr(remote_model, "query"):
+                column_name = relationship.key
+                setattr(
+                    form_class,
+                    column_name,
+                    QuerySelectField(
+                        column_name, query_factory=lambda: remote_model.query.all()
+                    ),
+                )
+
         return form_class
 
     def is_accessible(self):
