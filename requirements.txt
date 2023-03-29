@@ -39,7 +39,7 @@ flask-migrate==4.0.4
     # via -r requirements.in
 flask-session==0.4.0
     # via -r requirements.in
-flask-sqlalchemy==3.0.3
+flask-sqlalchemy==2.5.1
     # via
     #   -r requirements.in
     #   flask-migrate
@@ -133,15 +133,13 @@ six==1.16.0
     #   google-auth
     #   google-auth-httplib2
     #   orderedmultidict
-sqlalchemy==2.0.7
+sqlalchemy==1.4.47
     # via
     #   -r requirements.in
     #   alembic
     #   flask-sqlalchemy
 typing-extensions==4.5.0
-    # via
-    #   alembic
-    #   sqlalchemy
+    # via alembic
 uritemplate==3.0.1
     # via google-api-python-client
 urllib3==1.26.15
