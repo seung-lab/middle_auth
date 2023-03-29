@@ -23,7 +23,6 @@ TOKEN_NAME = os.environ.get("TOKEN_NAME", "middle_auth_token")
 
 class SuperAdminView(ModelView):
     can_export = True
-    column_hide_backrefs = False
 
     def is_accessible(self):
         @auth_required
