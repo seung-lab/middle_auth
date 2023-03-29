@@ -16,6 +16,7 @@ from .model.permission import Permission
 from .model.dataset import Dataset
 from .model.cell_temp import CellTemp
 from .model.table_mapping import ServiceTable
+from wtforms.fields import SelectField
 
 TOKEN_NAME = os.environ.get("TOKEN_NAME", "middle_auth_token")
 
@@ -23,6 +24,14 @@ TOKEN_NAME = os.environ.get("TOKEN_NAME", "middle_auth_token")
 class SuperAdminView(ModelView):
     can_export = True
     column_hide_backrefs = False
+
+    def scaffold_form(self):
+        form_class = super(SuperAdminView, self).scaffold_form()
+        for column in self.model.__table__.columns:
+            if column.foreign_keys:
+                relation_name = column.name[:-3]
+                setattr(form_class, relation_name, SelectField(relation_name))
+        return form_class
 
     def is_accessible(self):
         @auth_required
