@@ -1,0 +1,16 @@
+redis
+hiredis
+google_auth==1.35.0
+google_auth_oauthlib==0.4.1
+google-api-python-client==1.8.0
+Flask
+Flask-Session
+Flask-Cors
+psycopg2
+SQLAlchemy<2.0
+Flask-SQLAlchemy<3.0
+middle-auth-client==3.15.0
+yarl
+Flask-Markdown
+Flask-Migrate
+Flask-Admin

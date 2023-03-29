@@ -17,7 +17,9 @@ from .model.dataset import Dataset
 from .model.cell_temp import CellTemp
 from .model.table_mapping import ServiceTable
 
-TOKEN_NAME = os.environ.get('TOKEN_NAME', "middle_auth_token")
+
+TOKEN_NAME = os.environ.get("TOKEN_NAME", "middle_auth_token")
+
 
 class SuperAdminView(ModelView):
     can_export = True
@@ -26,15 +28,17 @@ class SuperAdminView(ModelView):
         @auth_required
         def helper():
             return True
-        return helper() and flask.g.get('auth_user', {}).get('admin', False)
+
+        return helper() and flask.g.get("auth_user", {}).get("admin", False)
 
     def inaccessible_callback(self, name, **kwargs):
         # redirect to login page if user doesn't have access
-        return flask.redirect(flask.url_for('admin.index'))
+        return flask.redirect(flask.url_for("admin.index"))
+
 
 # Create customized index view class that handles login & registration
 class MyAdminIndexView(AdminIndexView):
-    @expose('/', methods=["GET"])
+    @expose("/", methods=["GET"])
     @auth_required
     def index(self):
         return super(MyAdminIndexView, self).index()
@@ -42,8 +46,13 @@ class MyAdminIndexView(AdminIndexView):
     def is_accessible(self):
         return True
 
+
 def setup_admin(app, db):
-    admin = Admin(app, name="middle auth admin", index_view=MyAdminIndexView(url='/sticky_auth/flask_admin'))
+    admin = Admin(
+        app,
+        name="middle auth admin",
+        index_view=MyAdminIndexView(url="/sticky_auth/flask_admin"),
+    )
     admin.add_view(SuperAdminView(User, db.session))
     admin.add_view(SuperAdminView(Group, db.session))
     admin.add_view(SuperAdminView(Affiliation, db.session))
