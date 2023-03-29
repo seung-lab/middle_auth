@@ -16,8 +16,6 @@ from .model.permission import Permission
 from .model.dataset import Dataset
 from .model.cell_temp import CellTemp
 from .model.table_mapping import ServiceTable
-from wtforms.ext.sqlalchemy.fields import QuerySelectField
-from sqlalchemy import inspect
 
 
 TOKEN_NAME = os.environ.get("TOKEN_NAME", "middle_auth_token")
@@ -26,24 +24,6 @@ TOKEN_NAME = os.environ.get("TOKEN_NAME", "middle_auth_token")
 class SuperAdminView(ModelView):
     can_export = True
     column_hide_backrefs = False
-
-    def scaffold_list_form(self, widget=None, validators=None):
-        form_class = super(SuperAdminView, self).scaffold_list_form(widget, validators)
-
-        model_mapper = inspect(self.model)
-        for relationship in model_mapper.relationships:
-            remote_model = relationship.mapper.class_
-            if hasattr(remote_model, "query"):
-                column_name = relationship.key
-                setattr(
-                    form_class,
-                    column_name,
-                    QuerySelectField(
-                        column_name, query_factory=lambda: remote_model.query.all()
-                    ),
-                )
-
-        return form_class
 
     def is_accessible(self):
         @auth_required
@@ -55,6 +35,10 @@ class SuperAdminView(ModelView):
     def inaccessible_callback(self, name, **kwargs):
         # redirect to login page if user doesn't have access
         return flask.redirect(flask.url_for("admin.index"))
+
+
+class ServiceTableView(SuperAdminView):
+    form_columns = ("service_name", "table_name", "dataset")
 
 
 # Create customized index view class that handles login & registration
@@ -82,6 +66,6 @@ def setup_admin(app, db):
     admin.add_view(SuperAdminView(Permission, db.session))
     admin.add_view(SuperAdminView(Tos, db.session))
     admin.add_view(SuperAdminView(CellTemp, db.session))
-    admin.add_view(SuperAdminView(ServiceTable, db.session))
+    admin.add_view(ServiceTableView(ServiceTable, db.session))
     admin.add_view(SuperAdminView(App, db.session))
     return admin
