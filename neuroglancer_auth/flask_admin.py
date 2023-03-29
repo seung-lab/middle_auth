@@ -37,10 +37,6 @@ class SuperAdminView(ModelView):
         return flask.redirect(flask.url_for("admin.index"))
 
 
-class ServiceTableView(SuperAdminView):
-    form_columns = ("service_name", "table_name", "dataset")
-
-
 # Create customized index view class that handles login & registration
 class MyAdminIndexView(AdminIndexView):
     @expose("/", methods=["GET"])
@@ -66,6 +62,6 @@ def setup_admin(app, db):
     admin.add_view(SuperAdminView(Permission, db.session))
     admin.add_view(SuperAdminView(Tos, db.session))
     admin.add_view(SuperAdminView(CellTemp, db.session))
-    admin.add_view(ServiceTableView(ServiceTable, db.session))
+    admin.add_view(SuperAdminView(ServiceTable, db.session))
     admin.add_view(SuperAdminView(App, db.session))
     return admin
