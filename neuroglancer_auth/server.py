@@ -164,10 +164,11 @@ def redirect_with_args(url, token=None, args={}):
         resp.set_cookie(TOKEN_NAME, token, secure=True, httponly=True)
     return resp
 
-def generatePostMessageResponse(token, app_urls):
+def generatePostMessageResponse(msg):
+    msg = json.dumps(msg)
     return f"""<script type="text/javascript">
         if (window.opener) {{
-            window.opener.postMessage({{token: "{token}", app_urls: {app_urls}}}, "*");
+            window.opener.postMessage({msg}, "*");
         }}
         </script>"""
 
@@ -183,7 +184,7 @@ def finish_auth_flow(token, template_name=None, template_context={}):
         return flask.render_template(template_name, **template_context)
     else:
         app_urls = [app['url'] for app in App.get_all_dict()]
-        return generatePostMessageResponse(token, app_urls)
+        return generatePostMessageResponse({'token': token, 'app_urls': app_urls})
 
 def maybe_handle_tos(user, token, template_name=None, template_context={}):
     if flask.session.pop('tos_agree', None): # temp, backwards comp. with flywire.ai
@@ -888,7 +889,11 @@ def tos_accept_post(tos_id):
 
     try:
         UserTos.add(user_id, tos_id)
-        return finish_auth_flow(flask.g.auth_token, 'msg.html', {"title": f"{tos.name}'s Terms of Service", "msg": "Thank you for accepting the Terms of Service!"})
+        is_neuroglancer = flask.request.args.get('client') == 'ng'
+        if is_neuroglancer:
+            return generatePostMessageResponse("success")
+        else:
+            return finish_auth_flow(flask.g.auth_token, 'msg.html', {"title": f"{tos.name}'s Terms of Service", "msg": "Thank you for accepting the Terms of Service!"})
     except sqlalchemy.exc.IntegrityError as err:
         return flask.Response("Error", 422)
 
