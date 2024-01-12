@@ -60,6 +60,7 @@
         </form>
     </body>
     <script>
+        document.getElementById('form').action += new URL(document.URL).search;
         const MDCRipple = mdc.ripple.MDCRipple;
         const MDCCheckbox = mdc.checkbox.MDCCheckbox;
         const MDCFormField = mdc.formField.MDCFormField;
