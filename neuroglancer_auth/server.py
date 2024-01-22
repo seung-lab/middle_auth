@@ -173,8 +173,7 @@ def generatePostMessageResponse(msg):
         </script>"""
 
 def finish_auth_flow(token, template_name=None, template_context={}):
-    redirect = flask.session.pop('redirect', None)
-
+    redirect = flask.request.args.get('redirect')
     if redirect:
         return redirect_with_args(redirect, token, {
             TOKEN_NAME: token, 'middle_auth_url': STICKY_AUTH_URL,
@@ -186,16 +185,23 @@ def finish_auth_flow(token, template_name=None, template_context={}):
         app_urls = [app['url'] for app in App.get_all_dict()]
         return generatePostMessageResponse({'token': token, 'app_urls': app_urls})
 
-def maybe_handle_tos(user, token, template_name=None, template_context={}):
-    if flask.session.pop('tos_agree', None): # temp, backwards comp. with flywire.ai
-        existing = UserTos.get(user.id, 1)
-        if not existing:
-            UserTos.add(user.id, 1) # flywire tos
+def redirect_to_next_missing(missing_tos_ids, token):
+    first, rest = missing_tos_ids[0], missing_tos_ids[1:]
+    tos_args = {
+        'flow': 'auth'
+    }
+    if len(rest):
+        tos_args['remaining_tos'] = ','.join(missing_tos_ids)
     
-    tos_id = flask.session.pop('tos_id', None)
+    tos_args['redirect'] = flask.request.args.get('redirect') or flask.session.pop('redirect', None)
 
-    if tos_id:
-        return redirect_with_args(flask.url_for('authorize_bp.tos_accept_view', tos_id=tos_id), token)
+    return redirect_with_args(flask.url_for('authorize_bp.tos_accept_view', tos_id=first), token, tos_args)
+
+
+def maybe_handle_tos(user, token, template_name=None, template_context={}):                
+    missing_tos_ids = [str(tos.tos_id) for tos in user.datasets_missing_tos()]
+    if len(missing_tos_ids):
+        return redirect_to_next_missing(missing_tos_ids, token)
     else:
         return finish_auth_flow(token, template_name, template_context)
 
@@ -864,9 +870,8 @@ def register_choose_username_post():
 @authorize_bp.route(f'/tos/<int:tos_id>/accept', methods=['GET'])
 @auth_required
 def tos_accept_view(tos_id):
+    # TODO, make sure this is a terms of service that they are associated with
     tos = Tos.get_by_id(tos_id)
-    # temp, flask.session should be avoided because it can conflict with a login flow
-    flask.session['redirect'] = flask.request.args.get('redirect')
     if not tos:
         return flask.Response(f"Terms of Service does not exist", 404)
     user_id = flask.g.auth_user['id']
@@ -886,14 +891,18 @@ def tos_accept_post(tos_id):
     existing = UserTos.get(user_id, tos_id)
     if existing:
         return flask.render_template('msg.jinja', title=f"{tos.name}'s Terms of Service", msg="You have already accepted the Terms of Service")
-
     try:
         UserTos.add(user_id, tos_id)
-        is_neuroglancer = flask.request.args.get('client') == 'ng'
-        if is_neuroglancer:
-            return generatePostMessageResponse("success")
-        else:
-            return finish_auth_flow(flask.g.auth_token, 'msg.html', {"title": f"{tos.name}'s Terms of Service", "msg": "Thank you for accepting the Terms of Service!"})
+        remaining_tos_arg = flask.request.args.get('remaining_tos', '')
+        remaining_tos = [int(x) for x in remaining_tos_arg.split(',')]
+        if len(remaining_tos):
+            return redirect_to_next_missing(remaining_tos)
+        template_name = None
+        template_context = None
+        if flask.request.args.get('flow') != 'auth':
+            template_name = 'msg.html'
+            template_context = {"title": f"{tos.name}'s Terms of Service", "msg": "Thank you for accepting the Terms of Service!"}
+        return finish_auth_flow(flask.g.auth_token, template_name, template_context)
     except sqlalchemy.exc.IntegrityError as err:
         return flask.Response("Error", 422)
 
