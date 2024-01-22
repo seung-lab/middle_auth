@@ -12,6 +12,7 @@ from .model.user import User
 from .model.group import Group
 from .model.affiliation import Affiliation, UserAffiliation
 from .model.tos import Tos
+from .model.user_tos import UserTos
 from .model.permission import Permission
 from .model.dataset import Dataset
 from .model.cell_temp import CellTemp
@@ -60,6 +61,7 @@ def setup_admin(app, db):
     admin.add_view(SuperAdminView(Dataset, db.session))
     admin.add_view(SuperAdminView(Permission, db.session))
     admin.add_view(SuperAdminView(Tos, db.session))
+    admin.add_view(SuperAdminView(UserTos, db.session))
     admin.add_view(SuperAdminView(CellTemp, db.session))
     admin.add_view(SuperAdminView(ServiceTable, db.session))
     admin.add_view(SuperAdminView(App, db.session))

@@ -32,7 +32,7 @@
     <body>
         <h2>{{ name }}'s Terms of Service</h1>
         <span>Before you can access {{ name }}, you need to accept its Terms of Service.</span>
-        <form id="form" action="accept" method="POST" class="formGroup" target="_self">
+        <form id="form" method="POST" class="formGroup" target="_self">
             <div class="mdc-form-field">
                 <div class="mdc-checkbox">
                   <input type="checkbox"
@@ -60,7 +60,6 @@
         </form>
     </body>
     <script>
-        document.getElementById('form').action += new URL(document.URL).search;
         const MDCRipple = mdc.ripple.MDCRipple;
         const MDCCheckbox = mdc.checkbox.MDCCheckbox;
         const MDCFormField = mdc.formField.MDCFormField;
