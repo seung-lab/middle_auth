@@ -893,7 +893,7 @@ def tos_accept_post(tos_id):
     try:
         UserTos.add(user_id, tos_id)
         remaining_tos_arg = flask.request.args.get('remaining_tos', '')
-        remaining_tos = [int(x) for x in remaining_tos_arg.split(',')]
+        remaining_tos = [int(x) for x in filter(lambda x : x, remaining_tos_arg.split(','))]
         if len(remaining_tos):
             return redirect_to_next_missing(remaining_tos)
         template_name = None
