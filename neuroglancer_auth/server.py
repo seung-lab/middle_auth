@@ -185,7 +185,7 @@ def finish_auth_flow(token, template_name=None, template_context={}):
         app_urls = [app['url'] for app in App.get_all_dict()]
         return generatePostMessageResponse({'token': token, 'app_urls': app_urls})
 
-def redirect_to_next_missing(missing_tos_ids, token):
+def redirect_to_next_missing(missing_tos_ids, token=None):
     print("redirect_to_next_missing", missing_tos_ids)
     first, rest = missing_tos_ids[0], missing_tos_ids[1:]
     tos_args = {
