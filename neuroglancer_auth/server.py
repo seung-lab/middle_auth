@@ -192,7 +192,7 @@ def redirect_to_next_missing(missing_tos_ids, token):
         'flow': 'auth'
     }
     if len(rest):
-        tos_args['remaining_tos'] = ','.join(missing_tos_ids)
+        tos_args['remaining_tos'] = ','.join([str(x) for x in missing_tos_ids])
     
     tos_args['redirect'] = flask.request.args.get('redirect') or flask.g.get('redirect')
 
