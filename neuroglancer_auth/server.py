@@ -172,7 +172,7 @@ def generatePostMessageResponse(msg):
         </script>"""
 
 def finish_auth_flow(token, template_name=None, template_context={}):
-    redirect = flask.request.args.get('redirect')
+    redirect = flask.request.args.get('redirect') or flask.g.get('redirect')
     if redirect:
         return redirect_with_args(redirect, token, {
             TOKEN_NAME: token, 'middle_auth_url': STICKY_AUTH_URL,
@@ -192,7 +192,7 @@ def redirect_to_next_missing(missing_tos_ids, token):
     if len(rest):
         tos_args['remaining_tos'] = ','.join(missing_tos_ids)
     
-    tos_args['redirect'] = flask.request.args.get('redirect') or flask.session.pop('redirect', None)
+    tos_args['redirect'] = flask.request.args.get('redirect') or flask.g.get('redirect')
 
     return redirect_with_args(flask.url_for('authorize_bp.tos_accept_view', tos_id=first), token, tos_args)
 
@@ -213,6 +213,8 @@ def oauth2callback():
         return flask.Response("Your session has expired.", 400)
 
     state = flask.session['state']
+
+    flask.g.redirect = flask.session.pop('redirect', None)
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
