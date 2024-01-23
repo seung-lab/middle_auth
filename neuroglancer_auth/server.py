@@ -157,7 +157,8 @@ def authorize():
         return flask.redirect(authorization_url, code=302)
 
 def redirect_with_args(url, token=None, args={}):
-    # query_params = {arg: flask.request.args.get(arg) for arg in args if flask.request.args.get(arg) is not None}   
+    print("redirect_with_args", url, args)
+    # query_params = {arg: flask.request.args.get(arg) for arg in args if flask.request.args.get(arg) is not None}
     resp = flask.redirect(str(URL(url) % args), code=302)
     if token is not None:
         resp.set_cookie(TOKEN_NAME, token, secure=True, httponly=True)
@@ -195,11 +196,13 @@ def redirect_to_next_missing(missing_tos_ids, token):
     
     tos_args['redirect'] = flask.request.args.get('redirect') or flask.g.get('redirect')
 
+    print("first", first)
+    print("tos_args", tos_args)
     return redirect_with_args(flask.url_for('authorize_bp.tos_accept_view', tos_id=first), token, tos_args)
 
 
 def maybe_handle_tos(user, token, template_name=None, template_context={}):                
-    missing_tos_ids = [str(tos['tos_id']) for tos in user.datasets_missing_tos()]
+    missing_tos_ids = [tos['tos_id'] for tos in user.datasets_missing_tos()]
     if len(missing_tos_ids):
         return redirect_to_next_missing(missing_tos_ids, token)
     else:
