@@ -138,7 +138,6 @@ def authorize():
 
     flask.session['state'] = state
     flask.session['redirect'] = flask.request.args.get('redirect')
-    flask.session['tos_id'] = flask.request.args.get('tos_id')
 
     if flask.request.method == 'POST':
         flask.session['tos_agree'] = flask.request.form.get('tos_agree') == 'true'
@@ -199,7 +198,7 @@ def redirect_to_next_missing(missing_tos_ids, token):
 
 
 def maybe_handle_tos(user, token, template_name=None, template_context={}):                
-    missing_tos_ids = [str(tos.tos_id) for tos in user.datasets_missing_tos()]
+    missing_tos_ids = [str(tos['tos_id']) for tos in user.datasets_missing_tos()]
     if len(missing_tos_ids):
         return redirect_to_next_missing(missing_tos_ids, token)
     else:
