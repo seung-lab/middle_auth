@@ -204,7 +204,7 @@ def redirect_to_next_missing(missing_tos_ids, token):
 
 
 def maybe_handle_tos(user, token, template_name=None, template_context={}):                
-    missing_tos_ids = [tos['tos_id'] for tos in user.datasets_missing_tos()]
+    missing_tos_ids = list({tos['tos_id'] for tos in user.datasets_missing_tos()})
     if len(missing_tos_ids):
         return redirect_to_next_missing(missing_tos_ids, token)
     else:
