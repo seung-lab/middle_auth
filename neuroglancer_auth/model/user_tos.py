@@ -3,6 +3,7 @@ from .base import db
 from .tos import Tos
 
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 class UserTos(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -11,6 +12,10 @@ class UserTos(db.Model):
     created = db.Column(db.DateTime, server_default=func.now())
     updated = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
     __table_args__ = (db.UniqueConstraint("user_id", "tos_id"),)
+
+    #  these relationships are only added for flask_admin
+    user = relationship("User", overlaps="tos,users")
+    affiliation = relationship("Tos", overlaps="tos,users")
 
     @staticmethod
     def get(user_id, tos_id):
