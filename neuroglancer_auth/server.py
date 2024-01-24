@@ -192,7 +192,7 @@ def redirect_to_next_missing(missing_tos_ids, token=None):
         'flow': 'auth'
     }
     if len(rest):
-        tos_args['remaining_tos'] = ','.join([str(x) for x in missing_tos_ids])
+        tos_args['remaining_tos'] = ','.join([str(x) for x in rest])
 
     redirect = flask.request.args.get('redirect') or flask.g.get('redirect')
     if redirect:
@@ -884,6 +884,10 @@ def tos_accept_view(tos_id):
     user_id = flask.g.auth_user['id']
     existing = UserTos.get(user_id, tos_id)
     if existing:
+        remaining_tos_arg = flask.request.args.get('remaining_tos', '')
+        remaining_tos = [int(x) for x in filter(lambda x : x, remaining_tos_arg.split(','))]
+        if len(remaining_tos):
+            return redirect_to_next_missing(remaining_tos)
         return flask.render_template('msg.jinja', title=f"{tos.name}'s Terms of Service", msg="You have already accepted the Terms of Service")
     else:
         return flask.render_template('tos-form.html', name=tos.name, text=tos.text)
