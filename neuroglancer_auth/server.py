@@ -157,7 +157,6 @@ def authorize():
         return flask.redirect(authorization_url, code=302)
 
 def redirect_with_args(url, token=None, args={}):
-    print("redirect_with_args", url, args)
     # query_params = {arg: flask.request.args.get(arg) for arg in args if flask.request.args.get(arg) is not None}
     resp = flask.redirect(str(URL(url) % args), code=302)
     if token is not None:
@@ -186,20 +185,15 @@ def finish_auth_flow(token, template_name=None, template_context={}):
         return generatePostMessageResponse({'token': token, 'app_urls': app_urls})
 
 def redirect_to_next_missing(missing_tos_ids, token=None):
-    print("redirect_to_next_missing", missing_tos_ids)
     first, rest = missing_tos_ids[0], missing_tos_ids[1:]
     tos_args = {
         'flow': 'auth'
     }
     if len(rest):
         tos_args['remaining_tos'] = ','.join([str(x) for x in rest])
-
     redirect = flask.request.args.get('redirect') or flask.g.get('redirect')
     if redirect:
         tos_args['redirect'] = redirect
-
-    print("first", first)
-    print("tos_args", tos_args)
     return redirect_with_args(flask.url_for('authorize_bp.tos_accept_view', tos_id=first), token, tos_args)
 
 
@@ -220,7 +214,7 @@ def oauth2callback():
 
     state = flask.session['state']
 
-    flask.g.redirect = flask.session.pop('redirect', None)
+    redirect = flask.g.redirect = flask.session.pop('redirect', None)
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
@@ -254,9 +248,12 @@ def oauth2callback():
     token = user.generate_token(ex=DEFAULT_LOGIN_TOKEN_DURATION)
 
     if new_account:
-        return redirect_with_args(flask.url_for('user_settings_bp.register_choose_username_view'), token, {
+        new_acc_args = {
             'new_account': 'true'
-        })
+        }
+        if redirect:
+            new_acc_args['redirect'] = redirect
+        return redirect_with_args(flask.url_for('user_settings_bp.register_choose_username_view'), token, new_acc_args)
     else:
         return maybe_handle_tos(user, token)
 
