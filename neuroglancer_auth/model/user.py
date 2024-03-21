@@ -293,7 +293,7 @@ class User(db.Model):
         return [{'dataset_id': dataset_id, 'dataset_name': dataset_name, 'tos_id': tos_id, 'tos_name': tos_name}
             for dataset_id, dataset_name, tos_id, tos_name in query.distinct()]
 
-    def _get_permissions(self):
+    def _get_permissions(self, ignore_tos=False):
         # messy dependencies, not sure if it should be moved
         from .group_dataset_permission import GroupDatasetPermission
         from .permission import Permission
@@ -308,8 +308,10 @@ class User(db.Model):
             .join(Permission, Permission.id == GroupDatasetPermission.permission_id)\
             .join(Dataset, Dataset.id == GroupDatasetPermission.dataset_id)\
             .join(UserTos, (UserTos.tos_id == Dataset.tos_id) & (UserTos.user_id == tos_user_id), isouter=True)\
-            .filter((Dataset.tos_id == None) | (UserTos.id != None))\
             .group_by(UserGroup.user_id, GroupDatasetPermission.dataset_id, Dataset.name, Permission.name)
+
+        if not ignore_tos:
+            query = query.filter((Dataset.tos_id == None) | (UserTos.id != None))
 
         if self.read_only:
             query = query.filter(Permission.id != 2)
@@ -328,6 +330,7 @@ class User(db.Model):
 
     def create_cache(self):
         permissions = self._get_permissions()
+        permissions_v2_ignore_tos = self._get_permissions(ignore_tos=True)
 
         def permission_to_level(p):
             return {'none': 0, 'view': 1, 'edit': 2}.get(p, 0)
@@ -344,6 +347,7 @@ class User(db.Model):
             'groups': [x['name'] for x in self.get_groups()],
             'permissions': {x['name']: max(map(permission_to_level, x['permissions'])) for x in permissions},
             'permissions_v2': {x['name']: x['permissions'] for x in permissions},
+            'permissions_v2_ignore_tos': {x['name']: x['permissions'] for x in permissions_v2_ignore_tos},
             'missing_tos': self.datasets_missing_tos(),
         }
 
