@@ -80,7 +80,7 @@ importlib-metadata==6.1.0
     #   markdown
 itsdangerous==2.1.2
     # via flask
-jinja2==3.1.2
+jinja2==3.1.3
     # via flask
 mako==1.2.4
     # via alembic
