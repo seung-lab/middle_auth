@@ -144,7 +144,7 @@ uritemplate==3.0.1
     # via google-api-python-client
 urllib3==1.26.15
     # via requests
-werkzeug==2.2.3
+werkzeug==2.3.8
     # via flask
 wtforms==3.0.1
     # via flask-admin
