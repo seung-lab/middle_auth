@@ -11,6 +11,6 @@ SQLAlchemy<2.0
 Flask-SQLAlchemy<3.0
 middle-auth-client==3.15.0
 yarl
-Flask-Markdown
+MarkupSafe
 Flask-Migrate
 Flask-Admin

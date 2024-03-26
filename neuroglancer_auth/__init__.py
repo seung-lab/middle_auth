@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 from flask_session import Session
 from flask_cors import CORS
-from flaskext.markdown import Markdown
+from .markdown import Markdown
 from flask_migrate import Migrate
 
 from .server import blueprints, sticky_blueprints
