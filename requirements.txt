@@ -60,6 +60,8 @@ google-auth-oauthlib==0.4.1
     # via -r requirements.in
 googleapis-common-protos==1.63.0
     # via google-api-core
+greenlet==3.0.3
+    # via sqlalchemy
 hiredis==2.3.2
     # via -r requirements.in
 httplib2==0.22.0
@@ -72,7 +74,7 @@ idna==3.6
     #   yarl
 itsdangerous==2.1.2
     # via flask
-jinja2==3.1.3
+jinja2==3.1.4
     # via flask
 mako==1.3.2
     # via alembic
