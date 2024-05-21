@@ -60,6 +60,8 @@ google-auth-oauthlib==0.4.1
     # via -r requirements.in
 googleapis-common-protos==1.63.0
     # via google-api-core
+greenlet==3.0.3
+    # via sqlalchemy
 hiredis==2.3.2
     # via -r requirements.in
 httplib2==0.22.0
@@ -111,7 +113,7 @@ pyparsing==3.1.2
     # via httplib2
 redis==5.0.3
     # via -r requirements.in
-requests==2.31.0
+requests==2.32.0
     # via
     #   google-api-core
     #   middle-auth-client
