@@ -60,6 +60,8 @@ google-auth-oauthlib==0.4.1
     # via -r requirements.in
 googleapis-common-protos==1.63.0
     # via google-api-core
+greenlet==3.0.3
+    # via sqlalchemy
 hiredis==2.3.2
     # via -r requirements.in
 httplib2==0.22.0
@@ -135,7 +137,7 @@ typing-extensions==4.10.0
     # via alembic
 uritemplate==3.0.1
     # via google-api-python-client
-urllib3==2.2.1
+urllib3==2.2.2
     # via requests
 werkzeug==3.0.1
     # via flask
