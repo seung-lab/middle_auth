@@ -607,15 +607,21 @@ const userDataApp = {
 
       const id = Number.parseInt(param_id);
 
-      let [userInfo, usersGroups, groups] = await authFetch([
-        `${AUTH_URL}/user/${id}`,
-        `${AUTH_URL}/user/${id}/group`,
-        `${AUTH_URL}/group`,
-      ]);
+      let [userInfo, usersGroups, groups, toses, permissions] = await authFetch(
+        [
+          `${AUTH_URL}/user/${id}`,
+          `${AUTH_URL}/user/${id}/group`,
+          `${AUTH_URL}/group`,
+          `${AUTH_URL}/user/${id}/tos`,
+          `${AUTH_URL}/user/${id}/permissions`,
+        ]
+      );
 
       this.user = userInfo;
       this.groups = usersGroups;
       this.allGroups = groups;
+      this.toses = toses;
+      this.permissions = permissions;
 
       this.updateAvailableGroups();
 
@@ -699,7 +705,6 @@ const userDataApp = {
 			<div class="email">{{ user.email }}</div>
 			<div class="pi"><input v-model="user.pi" type="text"></input></div>
 			<div class="admin"><input v-model="user.admin" type="checkbox"></div>
-			<div class="gdpr_consent">{{ user.gdpr_consent }}</div>
 			<button @click="update">Save</button>
 		</div>
 
@@ -722,6 +727,35 @@ const userDataApp = {
 			</select>
 			<button @click="joinGroup">Join Group</button>
 		</div>
+
+		<div class="listContainer">
+			<div class="header">Terms of Service</div>
+			<div class="groups list twoColumn">
+				<div v-for="tos in toses">
+					<router-link :to="{ name: 'tosData', params: { id: tos.id }}">
+						{{ tos.name }}
+					</router-link>
+					<div class="" @click=""></div>
+				</div>
+			</div>
+		</div>
+
+		<div class="listContainer">
+		<div class="header">Unaccepted Terms of Service</div>
+		<div class="groups list twoColumn">
+			<div v-for="tos in permissions.missing_tos">
+				<router-link :to="{ name: 'tosData', params: { id: tos.tos_id }}">
+					{{ tos.tos_name }}
+				</router-link>
+				<div class="" @click="">
+					<router-link :to="{ name: 'datasetData', params: { id: tos.dataset_id }}">
+						{{ tos.dataset_name }}
+					</router-link>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	</template>
 	</div>
 	`,
