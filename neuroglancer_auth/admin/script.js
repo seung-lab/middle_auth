@@ -1,168 +1,179 @@
-const AUTH_URL = '../api/v1';
+const AUTH_URL = "../api/v1";
 
-const permissionNames = ['none', 'view', 'edit', 'admin_view'];
+const permissionNames = ["none", "view", "edit", "admin_view"];
 
 const datasetDataApp = {
-	data: () => ({
-		loading: true,
-		newEntry: false,
-		dataset: null,
-		errors: [],
-		groups: [],
-		admins: [],
-		permissions: [],
-		allGroups: [],
-		availableGroups: [],
-		toses: [],
-		selectedGroup: '',
-		selectedPermission: '',
-		availablePermissions: [],
-		chosen: ''
-	}),
-	async beforeRouteUpdate (to, from, next) {
-		await this.load(to.params.id);
-		next();
-	},
-	mounted: async function () {
-		await this.load(this.$route.params.id);
-	},
-	methods: {
-		async load(param_id) {
-			this.loading = true;
+  data: () => ({
+    loading: true,
+    newEntry: false,
+    dataset: null,
+    errors: [],
+    groups: [],
+    admins: [],
+    permissions: [],
+    allGroups: [],
+    availableGroups: [],
+    toses: [],
+    selectedGroup: "",
+    selectedPermission: "",
+    availablePermissions: [],
+    chosen: "",
+  }),
+  async beforeRouteUpdate(to, from, next) {
+    await this.load(to.params.id);
+    next();
+  },
+  mounted: async function () {
+    await this.load(this.$route.params.id);
+  },
+  methods: {
+    async load(param_id) {
+      this.loading = true;
 
-			this.toses = await authFetch(`${AUTH_URL}/tos`);
+      this.toses = await authFetch(`${AUTH_URL}/tos`);
 
-			this.newEntry = param_id === 'create';
+      this.newEntry = param_id === "create";
 
-			if (this.newEntry) {
-				this.loading = false;
+      if (this.newEntry) {
+        this.loading = false;
 
-				this.dataset = {
-					name: '',
-					tos_id: null,
-				};
+        this.dataset = {
+          name: "",
+          tos_id: null,
+        };
 
-				return;
-			}
+        return;
+      }
 
-			const id = Number.parseInt(param_id);
+      const id = Number.parseInt(param_id);
 
-			this.availablePermissions = await authFetch(`${AUTH_URL}/permission`);
+      this.availablePermissions = await authFetch(`${AUTH_URL}/permission`);
 
-			this.dataset = await authFetch(`${AUTH_URL}/dataset/${id}`);
-			this.permissions = await authFetch(`${AUTH_URL}/dataset/${id}/group`);
-			this.allGroups = await authFetch(`${AUTH_URL}/group`);
-			this.admins = await authFetch(`${AUTH_URL}/dataset/${id}/admin`);
-			await this.updateAvailableGroups();
+      this.dataset = await authFetch(`${AUTH_URL}/dataset/${id}`);
+      this.permissions = await authFetch(`${AUTH_URL}/dataset/${id}/group`);
+      this.allGroups = await authFetch(`${AUTH_URL}/group`);
+      this.admins = await authFetch(`${AUTH_URL}/dataset/${id}/admin`);
+      await this.updateAvailableGroups();
 
-			this.loading = false;
-		},
-		async updateAvailableGroups() {
-			this.availableGroups = this.allGroups;
-			/*.filter((group) => {
+      this.loading = false;
+    },
+    async updateAvailableGroups() {
+      this.availableGroups = this.allGroups;
+      /*.filter((group) => {
 				return !this.groups.map((g) => g.id).includes(group.id);
 			});*/
-		},
-		async addGroupDataset() {
-			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					group_id: this.selectedGroup,
-					permission_ids: [Number.parseInt(this.selectedPermission)]
-				})
-			});
-		
-			this.permissions = await authFetch(`${AUTH_URL}/dataset/${id}/group`);
-			await this.updateAvailableGroups();
-		},
-		async removeGroup(group) {
-			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group/${group.id}/permission/${group.permission_id}`, {
-				method: 'DELETE'
-			});
+    },
+    async addGroupDataset() {
+      await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/group`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          group_id: this.selectedGroup,
+          permission_ids: [Number.parseInt(this.selectedPermission)],
+        }),
+      });
 
-			this.permissions = await authFetch(`${AUTH_URL}/dataset/${id}/group`);
+      this.permissions = await authFetch(`${AUTH_URL}/dataset/${id}/group`);
+      await this.updateAvailableGroups();
+    },
+    async removeGroup(group) {
+      await authFetch(
+        `${AUTH_URL}/dataset/${this.dataset.id}/group/${group.id}/permission/${group.permission_id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-			await this.updateAvailableGroups();
-		},
-		async save() {
-			this.errors = [];
+      this.permissions = await authFetch(`${AUTH_URL}/dataset/${id}/group`);
 
-			if (!this.dataset.name) {
-				this.errors.push(['name', 'missing']);
-			}
+      await this.updateAvailableGroups();
+    },
+    async save() {
+      this.errors = [];
 
-			if (!this.errors.length) {
-				await authFetch(`${AUTH_URL}/dataset`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						name: this.dataset.name,
-						tos_id: this.dataset.tos_id,
-					})
-				}).then((res) => {
-					router.push({ name: 'datasetData', params: { id: res.id }});
-				})
-				.catch((res) => {
-					alert(res);
-				});
-			}
-		},
-		async update() {
-			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}`, {
-				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					name: this.dataset.name,
-					tos_id: this.dataset.tos_id,
-				})
-			});
+      if (!this.dataset.name) {
+        this.errors.push(["name", "missing"]);
+      }
 
-			await this.load(this.$route.params.id);
-		},
-		async simpleSuggestionList(email) {
-			const users =  await authFetch(`${AUTH_URL}/user?email=${email}`);
+      if (!this.errors.length) {
+        await authFetch(`${AUTH_URL}/dataset`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: this.dataset.name,
+            tos_id: this.dataset.tos_id,
+          }),
+        })
+          .then((res) => {
+            router.push({ name: "datasetData", params: { id: res.id } });
+          })
+          .catch((res) => {
+            alert(res);
+          });
+      }
+    },
+    async update() {
+      await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: this.dataset.name,
+          tos_id: this.dataset.tos_id,
+        }),
+      });
 
-			return users.map((user) => {
-				return {
-					id: user.id,
-					name: `${user.name} (${user.email})`
-				}
-			})
-		},
-		async addAdmin(user) {
-			if (!user) {
-				return;
-			}
+      await this.load(this.$route.params.id);
+    },
+    async simpleSuggestionList(email) {
+      const users = await authFetch(`${AUTH_URL}/user?email=${email}`);
 
-			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					dataset_id: this.dataset.id,
-					user_id: user.id
-				})
-			});
+      return users.map((user) => {
+        return {
+          id: user.id,
+          name: `${user.name} (${user.email})`,
+        };
+      });
+    },
+    async addAdmin(user) {
+      if (!user) {
+        return;
+      }
 
-			this.admins = await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`);
-		},
-		async removeAdmin(admin) {
-			await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin/${admin.id}`, {
-				method: 'DELETE'
-			});
+      await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dataset_id: this.dataset.id,
+          user_id: user.id,
+        }),
+      });
 
-			this.admins = await authFetch(`${AUTH_URL}/dataset/${this.dataset.id}/admin`);
-		}
-	},
-	template: `
+      this.admins = await authFetch(
+        `${AUTH_URL}/dataset/${this.dataset.id}/admin`
+      );
+    },
+    async removeAdmin(admin) {
+      await authFetch(
+        `${AUTH_URL}/dataset/${this.dataset.id}/admin/${admin.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      this.admins = await authFetch(
+        `${AUTH_URL}/dataset/${this.dataset.id}/admin`
+      );
+    },
+  },
+  template: `
 	<div id="datasetData">
 		<div class="title" v-if="newEntry">Create Dataset</div>
 		<div class="title" v-else>Edit Dataset</div>
@@ -233,200 +244,221 @@ const datasetDataApp = {
 			<button @click="update" v-else>Save</button>
 		</template>
 	</div>
-	`
+	`,
 };
 
 const groupDataApp = {
-	data: () => ({
-		loading: true,
-		newEntry: false,
-		group: null,
-		users: [],
-		serviceAccounts: [],
-		admins: [],
-		nonAdmins: [],
-		permissions: [],
-		availableDatasets: [],
-		allDatasets: [],
-		selectedUser: '',
-		selectedDataset: '',
-		selectedPermission: '',
-		availablePermissions: [],
-		chosen: ''
-	}),
-	async beforeRouteUpdate (to, from, next) {
-		await this.load(to.params.id);
-		next();
-	},
-	mounted: async function () {
-		await this.load(this.$route.params.id);
-	},
-	methods: {
-		async load(param_id) {
-			this.loading = true;
-			this.newEntry = param_id === 'create';
+  data: () => ({
+    loading: true,
+    newEntry: false,
+    group: null,
+    users: [],
+    serviceAccounts: [],
+    admins: [],
+    nonAdmins: [],
+    permissions: [],
+    availableDatasets: [],
+    allDatasets: [],
+    selectedUser: "",
+    selectedDataset: "",
+    selectedPermission: "",
+    availablePermissions: [],
+    chosen: "",
+  }),
+  async beforeRouteUpdate(to, from, next) {
+    await this.load(to.params.id);
+    next();
+  },
+  mounted: async function () {
+    await this.load(this.$route.params.id);
+  },
+  methods: {
+    async load(param_id) {
+      this.loading = true;
+      this.newEntry = param_id === "create";
 
-			if (param_id === 'create') {
-				this.loading = false;
+      if (param_id === "create") {
+        this.loading = false;
 
-				this.group = {
-					name: ''
-				};
+        this.group = {
+          name: "",
+        };
 
-				return;
-			}
+        return;
+      }
 
-			const id = Number.parseInt(param_id);
+      const id = Number.parseInt(param_id);
 
-			let [group, users, serviceAccounts, permissions, availableDatasets, availablePermissions] = await authFetch([
-				`${AUTH_URL}/group/${id}`,
-				`${AUTH_URL}/group/${id}/user`,
-				`${AUTH_URL}/group/${id}/service_account`,
-				`${AUTH_URL}/group/${id}/dataset`,
-				`${AUTH_URL}/dataset`,
-				`${AUTH_URL}/permission`,
-			]);
+      let [
+        group,
+        users,
+        serviceAccounts,
+        permissions,
+        availableDatasets,
+        availablePermissions,
+      ] = await authFetch([
+        `${AUTH_URL}/group/${id}`,
+        `${AUTH_URL}/group/${id}/user`,
+        `${AUTH_URL}/group/${id}/service_account`,
+        `${AUTH_URL}/group/${id}/dataset`,
+        `${AUTH_URL}/dataset`,
+        `${AUTH_URL}/permission`,
+      ]);
 
-			this.group = group;
+      this.group = group;
 
-			this.users = users;
-			this.serviceAccounts = serviceAccounts;
-			this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
-			this.updateNonAdmins();
-			this.permissions = permissions;
+      this.users = users;
+      this.serviceAccounts = serviceAccounts;
+      this.admins = await authFetch(`${AUTH_URL}/group/${id}/admin`);
+      this.updateNonAdmins();
+      this.permissions = permissions;
 
-			this.allDatasets = availableDatasets;
-			this.updateAvailableDatasets();
+      this.allDatasets = availableDatasets;
+      this.updateAvailableDatasets();
 
-			this.availablePermissions = availablePermissions;
+      this.availablePermissions = availablePermissions;
 
-			this.loading = false;
-		},
-		async simpleSuggestionList(email) {
-			const users =  await authFetch(`${AUTH_URL}/user?email=${email}`);
+      this.loading = false;
+    },
+    async simpleSuggestionList(email) {
+      const users = await authFetch(`${AUTH_URL}/user?email=${email}`);
 
-			return users.map((user) => {
-				user.member = this.users.map((other) => other.id).includes(user.id);
+      return users
+        .map((user) => {
+          user.member = this.users.map((other) => other.id).includes(user.id);
 
-				return user;
-			}).sort((a, b) => {
-				return a.member - b.member;
-			});
-		},
-		async addUser(user) {
-			if (!user) {
-				return;
-			}
+          return user;
+        })
+        .sort((a, b) => {
+          return a.member - b.member;
+        });
+    },
+    async addUser(user) {
+      if (!user) {
+        return;
+      }
 
-			await authFetch(`${AUTH_URL}/group/${this.group.id}/user`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					user_id: user.id
-				})
-			});
+      await authFetch(`${AUTH_URL}/group/${this.group.id}/user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+        }),
+      });
 
-			this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
-			this.serviceAccounts = await authFetch(`${AUTH_URL}/group/${this.group.id}/service_account`);
-			this.updateNonAdmins();
-		},
-		async removeUser(userId) {
-			await authFetch(`${AUTH_URL}/group/${this.group.id}/user/${userId}`, {
-				method: 'DELETE'
-			});
+      this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
+      this.serviceAccounts = await authFetch(
+        `${AUTH_URL}/group/${this.group.id}/service_account`
+      );
+      this.updateNonAdmins();
+    },
+    async removeUser(userId) {
+      await authFetch(`${AUTH_URL}/group/${this.group.id}/user/${userId}`, {
+        method: "DELETE",
+      });
 
-			this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
-			this.serviceAccounts = await authFetch(`${AUTH_URL}/group/${this.group.id}/service_account`);
-			this.admins = await authFetch(`${AUTH_URL}/group/${this.group.id}/admin`);
-			this.updateNonAdmins();
-		},
-		async makeAdmin() {
-			this.setAdmin(parseInt(this.selectedUser), true);
-		},
-		async setAdmin(userId, admin) {
-			await authFetch(`${AUTH_URL}/group/${this.group.id}/user/${userId}`, {
-				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					admin: admin
-				})
-			});
+      this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
+      this.serviceAccounts = await authFetch(
+        `${AUTH_URL}/group/${this.group.id}/service_account`
+      );
+      this.admins = await authFetch(`${AUTH_URL}/group/${this.group.id}/admin`);
+      this.updateNonAdmins();
+    },
+    async makeAdmin() {
+      this.setAdmin(parseInt(this.selectedUser), true);
+    },
+    async setAdmin(userId, admin) {
+      await authFetch(`${AUTH_URL}/group/${this.group.id}/user/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          admin: admin,
+        }),
+      });
 
-			this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
-			this.admins = await authFetch(`${AUTH_URL}/group/${this.group.id}/admin`);
-			this.updateNonAdmins();
-		},
-		async addGroupDataset() {
-			await authFetch(`${AUTH_URL}/dataset/${this.selectedDataset}/group`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					group_id: this.group.id,
-					permission_ids: [Number.parseInt(this.selectedPermission)]
-				})
-			});
-		
-			this.permissions = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
-			this.updateAvailableDatasets();
-		},
-		updateAvailableDatasets() {
-			this.availableDatasets = this.allDatasets;
-			/*.filter((dataset) => {
+      this.users = await authFetch(`${AUTH_URL}/group/${this.group.id}/user`);
+      this.admins = await authFetch(`${AUTH_URL}/group/${this.group.id}/admin`);
+      this.updateNonAdmins();
+    },
+    async addGroupDataset() {
+      await authFetch(`${AUTH_URL}/dataset/${this.selectedDataset}/group`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          group_id: this.group.id,
+          permission_ids: [Number.parseInt(this.selectedPermission)],
+        }),
+      });
+
+      this.permissions = await authFetch(
+        `${AUTH_URL}/group/${this.group.id}/dataset`
+      );
+      this.updateAvailableDatasets();
+    },
+    updateAvailableDatasets() {
+      this.availableDatasets = this.allDatasets;
+      /*.filter((dataset) => {
 				return !this.datasets.map((d) => d.id).includes(dataset.id);
 			});*/
-		},
-		updateNonAdmins() {
-			this.nonAdmins = this.users.filter((user) => {
-				return !this.admins.map((u) => u.id).includes(user.id);
-			});
-		},
-		async removeDatasetPermission(permission) {
-			await authFetch(`${AUTH_URL}/dataset/${permission.id}/group/${this.group.id}/permission/${permission.permission_id}`, {
-				method: 'DELETE'
-			});
+    },
+    updateNonAdmins() {
+      this.nonAdmins = this.users.filter((user) => {
+        return !this.admins.map((u) => u.id).includes(user.id);
+      });
+    },
+    async removeDatasetPermission(permission) {
+      await authFetch(
+        `${AUTH_URL}/dataset/${permission.id}/group/${this.group.id}/permission/${permission.permission_id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-			this.permissions = await authFetch(`${AUTH_URL}/group/${this.group.id}/dataset`);
-			this.updateAvailableDatasets();
-		},
-		async save() {
-			this.errors = [];
+      this.permissions = await authFetch(
+        `${AUTH_URL}/group/${this.group.id}/dataset`
+      );
+      this.updateAvailableDatasets();
+    },
+    async save() {
+      this.errors = [];
 
-			if (this.newEntry) {
-				console.log('save new entry!');
+      if (this.newEntry) {
+        console.log("save new entry!");
 
-				if (!this.group.name) {
-					this.errors.push(['name', 'missing']);
-				}
+        if (!this.group.name) {
+          this.errors.push(["name", "missing"]);
+        }
 
-				if (!this.errors.length) {
-					authFetch(`${AUTH_URL}/group`, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({
-							name: this.group.name
-						})
-					}).then((res) => {
-						console.log('updated entry!');
-						router.push('./')
-					})
-					.catch((res) => {
-						alert(res);
-					})
-				}
-			} else {
-				console.log('update entry!');
-			}
-		}
-	},
-	template: `
+        if (!this.errors.length) {
+          authFetch(`${AUTH_URL}/group`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: this.group.name,
+            }),
+          })
+            .then((res) => {
+              console.log("updated entry!");
+              router.push("./");
+            })
+            .catch((res) => {
+              alert(res);
+            });
+        }
+      } else {
+        console.log("update entry!");
+      }
+    },
+  },
+  template: `
 	<div id="groupData">
 		<template v-if="loading">
 			<div>Loading...</div>
@@ -538,117 +570,117 @@ const groupDataApp = {
 			</vue-simple-suggest>
 		</template>
 	</div>
-	`
+	`,
 };
 
 const userDataApp = {
-	data: () => ({
-		loading: true,
-		newEntry: false,
-		user: null,
-		groups: [],
-		availableGroups: [],
-		allGroups: [],
-		selectedGroup: ''
-	}),
-	async beforeRouteUpdate (to, from, next) {
-		await this.load(to.params.id);
-		next();
-	},
-	mounted: async function () {
-		await this.load(this.$route.params.id);
-	},
-	methods: {
-		async load(param_id) {
-			this.loading = true;
-			this.newEntry = param_id === 'create';
+  data: () => ({
+    loading: true,
+    newEntry: false,
+    user: null,
+    groups: [],
+    availableGroups: [],
+    allGroups: [],
+    selectedGroup: "",
+  }),
+  async beforeRouteUpdate(to, from, next) {
+    await this.load(to.params.id);
+    next();
+  },
+  mounted: async function () {
+    await this.load(this.$route.params.id);
+  },
+  methods: {
+    async load(param_id) {
+      this.loading = true;
+      this.newEntry = param_id === "create";
 
-			if (param_id === 'create') {
-				this.loading = false;
+      if (param_id === "create") {
+        this.loading = false;
 
-				this.user = {
-					name: ''
-				};
+        this.user = {
+          name: "",
+        };
 
-				return;
-			}
+        return;
+      }
 
-			const id = Number.parseInt(param_id);
+      const id = Number.parseInt(param_id);
 
-			let [userInfo, usersGroups, groups] = await authFetch([
-				`${AUTH_URL}/user/${id}`,
-				`${AUTH_URL}/user/${id}/group`,
-				`${AUTH_URL}/group`]
-			);
+      let [userInfo, usersGroups, groups] = await authFetch([
+        `${AUTH_URL}/user/${id}`,
+        `${AUTH_URL}/user/${id}/group`,
+        `${AUTH_URL}/group`,
+      ]);
 
-			this.user = userInfo;
-			this.groups = usersGroups;
-			this.allGroups = groups;
+      this.user = userInfo;
+      this.groups = usersGroups;
+      this.allGroups = groups;
 
-			this.updateAvailableGroups();
+      this.updateAvailableGroups();
 
-			this.loading = false;
-		},
-		updateAvailableGroups() {
-			this.availableGroups = this.allGroups.filter((group) => {
-				return !this.groups.map((g) => g.id).includes(group.id);
-			});
-		},
-		async create() {
-			const user = await authFetch(`${AUTH_URL}/user`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					name: this.user.name,
-					email: this.user.email,
-					pi: this.user.pi,
-				})
-			});
+      this.loading = false;
+    },
+    updateAvailableGroups() {
+      this.availableGroups = this.allGroups.filter((group) => {
+        return !this.groups.map((g) => g.id).includes(group.id);
+      });
+    },
+    async create() {
+      const user = await authFetch(`${AUTH_URL}/user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: this.user.name,
+          email: this.user.email,
+          pi: this.user.pi,
+        }),
+      });
 
-			if (user) {
-				router.push({ name: 'userData', params: { id: user.id }});
-			}
-		},
-		async update() {
-			await authFetch(`${AUTH_URL}/user/${this.user.id}`, {
-				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					admin: this.user.admin,
-					pi: this.user.pi,
-				})
-			});
+      if (user) {
+        router.push({ name: "userData", params: { id: user.id } });
+      }
+    },
+    async update() {
+      await authFetch(`${AUTH_URL}/user/${this.user.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          admin: this.user.admin,
+          pi: this.user.pi,
+        }),
+      });
 
-			this.user = await authFetch(`${AUTH_URL}/user/${this.user.id}`);
-		},
-		async joinGroup() {
-			await authFetch(`${AUTH_URL}/group/${this.selectedGroup}/user`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					user_id: this.user.id
-				})
-			});
+      this.user = await authFetch(`${AUTH_URL}/user/${this.user.id}`);
+    },
+    async joinGroup() {
+      await authFetch(`${AUTH_URL}/group/${this.selectedGroup}/user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: this.user.id,
+        }),
+      });
 
-			this.groups = await authFetch(`${AUTH_URL}/user/${this.user.id}/group`);
-			this.updateAvailableGroups();
-		},
-		async leaveGroup(groupId) {
-			await authFetch(`${AUTH_URL}/group/${groupId}/user/${this.user.id}`, {
-				method: 'DELETE'
-			});
+      this.groups = await authFetch(`${AUTH_URL}/user/${this.user.id}/group`);
+      this.updateAvailableGroups();
+    },
+    async leaveGroup(groupId) {
+      await authFetch(`${AUTH_URL}/group/${groupId}/user/${this.user.id}`, {
+        method: "DELETE",
+      });
 
-			this.groups = await authFetch(`${AUTH_URL}/user/${this.user.id}/group`);
-			this.updateAvailableGroups();
-		}
-	},
-	template: `
+      this.groups = await authFetch(`${AUTH_URL}/user/${this.user.id}/group`);
+      this.updateAvailableGroups();
+    },
+  },
+  template: `
 	<div id="userData">
 	<template v-if="loading">
 		<div>Loading...</div>
@@ -692,132 +724,154 @@ const userDataApp = {
 		</div>
 	</template>
 	</div>
-	`
+	`,
 };
 
 const serviceAccountDataApp = {
-	data: () => ({
-		loading: true,
-		newEntry: false,
-		serviceAccount: null,
-		groups: [],
-		availableGroups: [],
-		allGroups: [],
-		selectedGroup: '',
-		token: null,
-	}),
-	async beforeRouteUpdate (to, from, next) {
-		await this.load(to.params.id);
-		next();
-	},
-	mounted: async function () {
-		await this.load(this.$route.params.id);
-	},
-	methods: {
-		async load(param_id) {
-			this.loading = true;
-			this.newEntry = param_id === 'create';
+  data: () => ({
+    loading: true,
+    newEntry: false,
+    serviceAccount: null,
+    groups: [],
+    availableGroups: [],
+    allGroups: [],
+    selectedGroup: "",
+    token: null,
+  }),
+  async beforeRouteUpdate(to, from, next) {
+    await this.load(to.params.id);
+    next();
+  },
+  mounted: async function () {
+    await this.load(this.$route.params.id);
+  },
+  methods: {
+    async load(param_id) {
+      this.loading = true;
+      this.newEntry = param_id === "create";
 
-			if (param_id === 'create') {
-				this.loading = false;
+      if (param_id === "create") {
+        this.loading = false;
 
-				this.serviceAccount = {
-					name: ''
-				};
+        this.serviceAccount = {
+          name: "",
+        };
 
-				return;
-			}
+        return;
+      }
 
-			const id = Number.parseInt(param_id);
+      const id = Number.parseInt(param_id);
 
-			let [serviceAccountInfo, serviceAccountGroups, groups] = await authFetch([
-				`${AUTH_URL}/service_account/${id}`,
-				`${AUTH_URL}/service_account/${id}/group`,
-				`${AUTH_URL}/group`]
-			);
+      let [serviceAccountInfo, serviceAccountGroups, groups] = await authFetch([
+        `${AUTH_URL}/service_account/${id}`,
+        `${AUTH_URL}/service_account/${id}/group`,
+        `${AUTH_URL}/group`,
+      ]);
 
-			this.serviceAccount = serviceAccountInfo;
-			this.groups = serviceAccountGroups;
-			this.allGroups = groups;
+      this.serviceAccount = serviceAccountInfo;
+      this.groups = serviceAccountGroups;
+      this.allGroups = groups;
 
-			this.updateAvailableGroups();
+      this.updateAvailableGroups();
 
-			this.loading = false;
-		},
-		updateAvailableGroups() {
-			this.availableGroups = this.allGroups.filter((group) => {
-				return !this.groups.map((g) => g.id).includes(group.id);
-			});
-		},
-		async create() {
-			const serviceAccount = await authFetch(`${AUTH_URL}/service_account`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					name: this.serviceAccount.name,
-				})
-			});
+      this.loading = false;
+    },
+    updateAvailableGroups() {
+      this.availableGroups = this.allGroups.filter((group) => {
+        return !this.groups.map((g) => g.id).includes(group.id);
+      });
+    },
+    async create() {
+      const serviceAccount = await authFetch(`${AUTH_URL}/service_account`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: this.serviceAccount.name,
+        }),
+      });
 
-			router.push({ name: 'serviceAccountData', params: { id: serviceAccount.id }});
+      router.push({
+        name: "serviceAccountData",
+        params: { id: serviceAccount.id },
+      });
 
-			if (serviceAccount) {
-				router.push({ name: 'serviceAccountData', params: { id: serviceAccount.id }});
-			}
-		},
-		async update() {
-			await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}`, {
-				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					read_only: this.serviceAccount.read_only,
-				})
-			});
+      if (serviceAccount) {
+        router.push({
+          name: "serviceAccountData",
+          params: { id: serviceAccount.id },
+        });
+      }
+    },
+    async update() {
+      await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          read_only: this.serviceAccount.read_only,
+        }),
+      });
 
-			this.serviceAccount = await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}`);
-		},
-		async deleteSA() { // cant use delete because it conflicts with javascript keyword
-			await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}`, {
-				method: 'DELETE'
-			});
+      this.serviceAccount = await authFetch(
+        `${AUTH_URL}/service_account/${this.serviceAccount.id}`
+      );
+    },
+    async deleteSA() {
+      // cant use delete because it conflicts with javascript keyword
+      await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}`, {
+        method: "DELETE",
+      });
 
-			router.push({ name: 'serviceAccountList' });
-		},
-		async getToken() {
-			this.token = await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}/token`, {
-				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json'
-				}
-			});
-		},
-		async joinGroup() {
-			await authFetch(`${AUTH_URL}/group/${this.selectedGroup}/service_account`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					sa_id: this.serviceAccount.id
-				})
-			});
+      router.push({ name: "serviceAccountList" });
+    },
+    async getToken() {
+      this.token = await authFetch(
+        `${AUTH_URL}/service_account/${this.serviceAccount.id}/token`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    },
+    async joinGroup() {
+      await authFetch(
+        `${AUTH_URL}/group/${this.selectedGroup}/service_account`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sa_id: this.serviceAccount.id,
+          }),
+        }
+      );
 
-			this.groups = await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}/group`);
-			this.updateAvailableGroups();
-		},
-		async leaveGroup(groupId) {
-			await authFetch(`${AUTH_URL}/group/${groupId}/service_account/${this.serviceAccount.id}`, {
-				method: 'DELETE'
-			});
+      this.groups = await authFetch(
+        `${AUTH_URL}/service_account/${this.serviceAccount.id}/group`
+      );
+      this.updateAvailableGroups();
+    },
+    async leaveGroup(groupId) {
+      await authFetch(
+        `${AUTH_URL}/group/${groupId}/service_account/${this.serviceAccount.id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-			this.groups = await authFetch(`${AUTH_URL}/service_account/${this.serviceAccount.id}/group`);
-			this.updateAvailableGroups();
-		}
-	},
-	template: `
+      this.groups = await authFetch(
+        `${AUTH_URL}/service_account/${this.serviceAccount.id}/group`
+      );
+      this.updateAvailableGroups();
+    },
+  },
+  template: `
 	<div id="serviceAccountData">
 	<template v-if="loading">
 		<div>Loading...</div>
@@ -861,12 +915,12 @@ const serviceAccountDataApp = {
 		</div>
 	</template>
 	</div>
-	`
+	`,
 };
 
-Vue.component('myText', {
-	props: ['placeholder', 'label', 'name', 'value', 'required'],
-	template: `
+Vue.component("myText", {
+  props: ["placeholder", "label", "name", "value", "required"],
+  template: `
 <div>
 	<label v-if="label">{{label}}</label>
 	<input type="text"
@@ -875,12 +929,12 @@ Vue.component('myText', {
 				 @input="$emit('input',$event.target.value)"
 				 :placeholder="placeholder"
 				 :required="required">
-</div>`
+</div>`,
 });
 
-Vue.component('myTextArea', {
-	props: ['placeholder', 'label', 'name', 'value', 'required'],
-	template: `
+Vue.component("myTextArea", {
+  props: ["placeholder", "label", "name", "value", "required"],
+  template: `
 <div>
 	<label v-if="label">{{label}}</label>
 	<textarea
@@ -889,111 +943,109 @@ Vue.component('myTextArea', {
 				 @input="$emit('input',$event.target.value)"
 				 :placeholder="placeholder"
 				 :required="required"></textarea>
-</div>`
+</div>`,
 });
 
 const dataApp = {
-	data: () => ({
-		loading: true,
-		newEntry: false,
-		type: null,
-		typeName: null,
-		thing: null,
-		initial: null,
-		properties: {},
-		fields: [],
-		// users: [],
-		// serviceAccounts: [],
-		// admins: [],
-		// nonAdmins: [],
-		// datasets: [],
-		// availableDatasets: [],
-		// allDatasets: [],
-		// selectedUser: '',
-		// selectedDataset: '',
-		// selectedPermission: '',
-		// selectedPermissions: ['none', 'view', 'edit'],
-		// chosen: ''
-	}),
-	async beforeRouteUpdate (to, from, next) {
-		await this.load(to.params.id);
-		next();
-	},
-	mounted: async function () {
-		await this.load(this.$route.params.id);
-	},
-	methods: {
-		updateForm(fieldName, value) {
-			this.$set(this.thing, fieldName, value);
-			this.$emit('input', this.thing);
-		},
-		async load(param_id) {
-			this.loading = true;
-			this.newEntry = param_id === 'create';
+  data: () => ({
+    loading: true,
+    newEntry: false,
+    type: null,
+    typeName: null,
+    thing: null,
+    initial: null,
+    properties: {},
+    fields: [],
+    // users: [],
+    // serviceAccounts: [],
+    // admins: [],
+    // nonAdmins: [],
+    // datasets: [],
+    // availableDatasets: [],
+    // allDatasets: [],
+    // selectedUser: '',
+    // selectedDataset: '',
+    // selectedPermission: '',
+    // selectedPermissions: ['none', 'view', 'edit'],
+    // chosen: ''
+  }),
+  async beforeRouteUpdate(to, from, next) {
+    await this.load(to.params.id);
+    next();
+  },
+  mounted: async function () {
+    await this.load(this.$route.params.id);
+  },
+  methods: {
+    updateForm(fieldName, value) {
+      this.$set(this.thing, fieldName, value);
+      this.$emit("input", this.thing);
+    },
+    async load(param_id) {
+      this.loading = true;
+      this.newEntry = param_id === "create";
 
-			if (param_id === 'create') {
-				this.loading = false;
+      if (param_id === "create") {
+        this.loading = false;
 
-				this.thing = this.initial; //JSON.parse(JSON.stringify(init))
+        this.thing = this.initial; //JSON.parse(JSON.stringify(init))
 
-				return;
-			}
+        return;
+      }
 
-			const id = Number.parseInt(param_id);
+      const id = Number.parseInt(param_id);
 
-			let [thing] = await authFetch([
-				`${AUTH_URL}/${this.type}/${id}`,
-			]);
+      let [thing] = await authFetch([`${AUTH_URL}/${this.type}/${id}`]);
 
-			this.thing = thing;
+      this.thing = thing;
 
-			this.loading = false;
-		},
-		async save() {
-			this.errors = [];
+      this.loading = false;
+    },
+    async save() {
+      this.errors = [];
 
-			if (this.newEntry) {
-				console.log('save new entry!');
+      if (this.newEntry) {
+        console.log("save new entry!");
 
-				// if (!this.thing.name) {
-				// 	this.errors.push(['name', 'missing']);
-				// }
+        // if (!this.thing.name) {
+        // 	this.errors.push(['name', 'missing']);
+        // }
 
-				if (!this.errors.length) {
-					const res = await authFetch(`${AUTH_URL}/${this.type}`, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify(this.thing)
-					}).then((res) => {
-						if (this.newEntry) {
-							console.log('created entry!');
-						} else {
-							console.log('updated entry!');
-						}
+        if (!this.errors.length) {
+          const res = await authFetch(`${AUTH_URL}/${this.type}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(this.thing),
+          })
+            .then((res) => {
+              if (this.newEntry) {
+                console.log("created entry!");
+              } else {
+                console.log("updated entry!");
+              }
 
-						console.log('res', res);
-						
-						router.push('./')
-					})
-					.catch((res) => {
-						alert(res);
-					})
-				}
-			} else {
-				await authFetch(`${AUTH_URL}/${this.type}/${this.thing.id}`, {
-					method: 'PUT',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(this.thing)
-				});
+              console.log("res", res);
 
-			}
-		}
-	},
-	template: `
+              router.push("./");
+            })
+            .catch((res) => {
+              alert(res);
+            });
+        }
+      } else {
+        await authFetch(`${AUTH_URL}/${this.type}/${this.thing.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(this.thing),
+        });
+      }
+    },
+  },
+  template: `
 	<div class="dataAppContainer">
 		<template v-if="loading">
 			<div>Loading...</div>
@@ -1014,82 +1066,98 @@ const dataApp = {
 			<button v-else @click="save">Update</button>
 		</template>
 	</div>
-	`
+	`,
 };
 
 const tosDataApp = {
-	mixins: [dataApp],
-	data: () => ({
-		fields: [
-			{name: "name", placeholder: "name", fieldType: "my-text", required: true},
-			{name: "text", placeholder: "textarea", fieldType: "my-text-area"}
-		],
-		initial: {name: '', text: ''},
-		type: 'tos',
-		typeName: 'Terms of Service',
-	})
+  mixins: [dataApp],
+  data: () => ({
+    fields: [
+      {
+        name: "name",
+        placeholder: "name",
+        fieldType: "my-text",
+        required: true,
+      },
+      { name: "text", placeholder: "textarea", fieldType: "my-text-area" },
+    ],
+    initial: { name: "", text: "" },
+    type: "tos",
+    typeName: "Terms of Service",
+  }),
 };
 
 const permissionDataApp = {
-	mixins: [dataApp],
-	data: () => ({
-		fields: [
-			{name: "name", placeholder: "name", fieldType: "my-text", required: true},
-		],
-		initial: {name: ''},
-		type: 'permission',
-		typeName: 'Permission',
-	})
+  mixins: [dataApp],
+  data: () => ({
+    fields: [
+      {
+        name: "name",
+        placeholder: "name",
+        fieldType: "my-text",
+        required: true,
+      },
+    ],
+    initial: { name: "" },
+    type: "permission",
+    typeName: "Permission",
+  }),
 };
 
 const listApp = {
-	data: () => ({
-		loading: true,
-		rows: [],
-		searchInput: '',
-		url: '',
-		searchKey: '',
-		title: '',
-		displayedProps: ['id'],
-		canCreate: false,
-		page: 1,
-		pages: 1,
-	}),
-	watch: {
-		page: function () {
-			if (this.page === "") { return; }
-			this.refresh();
-		}
-	},
-	methods: {
-		refresh() {
-			this.loading = true;
-			const searchQuery = new URLSearchParams();
+  data: () => ({
+    loading: true,
+    rows: [],
+    searchInput: "",
+    url: "",
+    searchKey: "",
+    title: "",
+    displayedProps: ["id"],
+    canCreate: false,
+    page: 1,
+    pages: 1,
+  }),
+  watch: {
+    page: function () {
+      if (this.page === "") {
+        return;
+      }
+      this.refresh();
+    },
+  },
+  methods: {
+    refresh() {
+      this.loading = true;
+      const searchQuery = new URLSearchParams();
 
-			if (this.searchInput.length) {
-				searchQuery.set(this.searchKey, this.searchInput);
-			}
+      if (this.searchInput.length) {
+        searchQuery.set(this.searchKey, this.searchInput);
+      }
 
-			searchQuery.set('page', this.page);
+      searchQuery.set("page", this.page);
 
-			const searchQueryString = searchQuery.toString();
-		
-			authFetch(`${AUTH_URL}${this.url}${searchQueryString ? '?' + searchQueryString : ''}`).then((rows) => {
-				if (rows.pages !== undefined) {
-					this.rows = rows.items;
-					this.pages = rows.pages;
-				} else {
-					this.rows = rows;
-				}
+      const searchQueryString = searchQuery.toString();
 
-				this.loading = false;
-			});
-		}
-	},
-	mounted: function () {
-		this.refresh();
-	},
-	template: `
+      authFetch(
+        `${AUTH_URL}${this.url}${
+          searchQueryString ? "?" + searchQueryString : ""
+        }`
+      ).then((rows) => {
+        if (rows.pages !== undefined) {
+          this.rows = rows.items;
+          this.pages = rows.pages;
+        } else {
+          this.rows = rows;
+        }
+
+        this.loading = false;
+      });
+    },
+  },
+  mounted: function () {
+    this.refresh();
+  },
+  template: `
 	<div id="searchUsers" class="searchAndResults">
 	
 	<div class="listControls">
@@ -1124,56 +1192,62 @@ const listApp = {
 	<router-link v-if="canCreate" :to="{ path: 'create' }" append>Create</router-link>
 
 	</div>
-	`
-}
+	`,
+};
 
 const userStatsApp = {
-	data: () => ({
-		loading: true,
-		rows: [],
-		fromInput: '',
-		toInput: '',
-		url: '/user',
-		title: 'User Stats',
-		displayedProps: ['name', 'email', 'created'],
-	}),
-	methods: {
-		refresh() {
-			const searchQuery = new URLSearchParams();
+  data: () => ({
+    loading: true,
+    rows: [],
+    fromInput: "",
+    toInput: "",
+    url: "/user",
+    title: "User Stats",
+    displayedProps: ["name", "email", "created"],
+  }),
+  methods: {
+    refresh() {
+      const searchQuery = new URLSearchParams();
 
-			function unitTimestamp(date) {
-				return parseInt((new Date(date).getTime() / 1000).toFixed(0))
-			}
+      function unitTimestamp(date) {
+        return parseInt((new Date(date).getTime() / 1000).toFixed(0));
+      }
 
-			if (this.fromInput.length) {
-				searchQuery.set('from', unitTimestamp(new Date(this.fromInput)))
-			}
+      if (this.fromInput.length) {
+        searchQuery.set("from", unitTimestamp(new Date(this.fromInput)));
+      }
 
-			if (this.toInput.length) {
-				searchQuery.set('to', unitTimestamp(new Date(this.toInput)))
-			}
-			
-			const searchQueryString = searchQuery.toString();
-		
-			authFetch(`${AUTH_URL}${this.url}${searchQueryString ? '?' + searchQueryString : ''}`).then((rows) => {
-				this.rows = rows;
-				this.loading = false;
-			});
-		},
-		exportToCSV() {
-			let csvContent = "data:text/csv;charset=utf-8,";
-			csvContent += this.displayedProps.join('\t');
-			if (this.rows) {
-				csvContent += '\n';
-			}
-			csvContent += this.rows.map((r) => this.displayedProps.map((p) => r[p]).join('\t')).join('\n');
-			window.open(encodeURI(csvContent));
-		}
-	},
-	mounted: function () {
-		this.refresh();
-	},
-	template: `
+      if (this.toInput.length) {
+        searchQuery.set("to", unitTimestamp(new Date(this.toInput)));
+      }
+
+      const searchQueryString = searchQuery.toString();
+
+      authFetch(
+        `${AUTH_URL}${this.url}${
+          searchQueryString ? "?" + searchQueryString : ""
+        }`
+      ).then((rows) => {
+        this.rows = rows;
+        this.loading = false;
+      });
+    },
+    exportToCSV() {
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += this.displayedProps.join("\t");
+      if (this.rows) {
+        csvContent += "\n";
+      }
+      csvContent += this.rows
+        .map((r) => this.displayedProps.map((p) => r[p]).join("\t"))
+        .join("\n");
+      window.open(encodeURI(csvContent));
+    },
+  },
+  mounted: function () {
+    this.refresh();
+  },
+  template: `
 	<div id="searchUsers" class="searchAndResults">
 	<div class="searchForm right">
 		<label for="fromInput">From</label>
@@ -1202,250 +1276,275 @@ const userStatsApp = {
 	</div>
 
 	</div>
-	`
-}
+	`,
+};
 
 const userListApp = {
-	mixins: [listApp],
-	data: () => ({
-		url: '/user',
-		searchKey: 'email',
-		title: 'Users',
-		displayedProps: ['name', 'email'],
-		canCreate: true
-	})
+  mixins: [listApp],
+  data: () => ({
+    url: "/user",
+    searchKey: "email",
+    title: "Users",
+    displayedProps: ["name", "email"],
+    canCreate: true,
+  }),
 };
 
 const serviceAccountListApp = {
-	mixins: [listApp],
-	data: () => ({
-		url: '/service_account',
-		searchKey: 'name',
-		title: 'Service Accounts',
-		displayedProps: ['name'],
-		canCreate: true
-	})
+  mixins: [listApp],
+  data: () => ({
+    url: "/service_account",
+    searchKey: "name",
+    title: "Service Accounts",
+    displayedProps: ["name"],
+    canCreate: true,
+  }),
 };
 
 const groupListApp = {
-	mixins: [listApp],
-	data: () => ({
-		url: '/group',
-		searchKey: 'name',
-		title: 'Groups',
-		displayedProps: ['name'],
-		canCreate: true
-	})
+  mixins: [listApp],
+  data: () => ({
+    url: "/group",
+    searchKey: "name",
+    title: "Groups",
+    displayedProps: ["name"],
+    canCreate: true,
+  }),
 };
 
 const datasetListApp = {
-	mixins: [listApp],
-	data: () => ({
-		url: '/dataset',
-		searchKey: 'name',
-		title: 'Datasets',
-		displayedProps: ['name'],
-		canCreate: true
-	})
+  mixins: [listApp],
+  data: () => ({
+    url: "/dataset",
+    searchKey: "name",
+    title: "Datasets",
+    displayedProps: ["name"],
+    canCreate: true,
+  }),
 };
 
 const tosListApp = {
-	mixins: [listApp],
-	data: () => ({
-		url: '/tos',
-		searchKey: 'name',
-		title: 'Terms of Services',
-		displayedProps: ['name'],
-		canCreate: true
-	})
+  mixins: [listApp],
+  data: () => ({
+    url: "/tos",
+    searchKey: "name",
+    title: "Terms of Services",
+    displayedProps: ["name"],
+    canCreate: true,
+  }),
 };
 
 const permissionListApp = {
-	mixins: [listApp],
-	data: () => ({
-		url: '/permission',
-		searchKey: 'name',
-		title: 'Permissions',
-		displayedProps: ['name'],
-		canCreate: true
-	})
+  mixins: [listApp],
+  data: () => ({
+    url: "/permission",
+    searchKey: "name",
+    title: "Permissions",
+    displayedProps: ["name"],
+    canCreate: true,
+  }),
 };
 
 const routes = [
-	{ path: '/user', name: 'userList', component: userListApp },
-	{ path: '/user/:id', name: 'userData', component: userDataApp },
-	{ path: '/service_account', name: 'serviceAccountList', component: serviceAccountListApp },
-	{ path: '/service_account/:id', name: 'serviceAccountData', component: serviceAccountDataApp },
-	{ path: '/group', name: 'groupList', component: groupListApp },
-	{ path: '/group/:id', name: 'groupData', component: groupDataApp },
-	{ path: '/dataset', name: 'datasetList', component: datasetListApp },
-	{ path: '/dataset/:id', name: 'datasetData', component: datasetDataApp },
-	{ path: '/tos', name: 'tosList', component: tosListApp },
-	{ path: '/tos/:id', name: 'tosData', component: tosDataApp },
-	{ path: '/permission', name: 'permissionList', component: permissionListApp },
-	{ path: '/permission/:id', name: 'permissionData', component: permissionDataApp },
-	{ path: '/stats', name: 'userStats', component: userStatsApp },
+  { path: "/user", name: "userList", component: userListApp },
+  { path: "/user/:id", name: "userData", component: userDataApp },
+  {
+    path: "/service_account",
+    name: "serviceAccountList",
+    component: serviceAccountListApp,
+  },
+  {
+    path: "/service_account/:id",
+    name: "serviceAccountData",
+    component: serviceAccountDataApp,
+  },
+  { path: "/group", name: "groupList", component: groupListApp },
+  { path: "/group/:id", name: "groupData", component: groupDataApp },
+  { path: "/dataset", name: "datasetList", component: datasetListApp },
+  { path: "/dataset/:id", name: "datasetData", component: datasetDataApp },
+  { path: "/tos", name: "tosList", component: tosListApp },
+  { path: "/tos/:id", name: "tosData", component: tosDataApp },
+  { path: "/permission", name: "permissionList", component: permissionListApp },
+  {
+    path: "/permission/:id",
+    name: "permissionData",
+    component: permissionDataApp,
+  },
+  { path: "/stats", name: "userStats", component: userStatsApp },
 ];
 
 const router = new VueRouter({
-	routes
+  routes,
 });
 
 function wait(time) {
-	return new Promise((f, r) => {
-		setTimeout(f, time);
-	});
+  return new Promise((f, r) => {
+    setTimeout(f, time);
+  });
 }
 
 const mainApp = new Vue({
-	el: "#vueApp",
-	router: router,
-	data: {
-		loggedInUser: null,
-		networkResponse: null
-	},
-	watch: {
-		networkResponse: function (newMessage) {
-			if (newMessage) {
-				setTimeout(() => {
-					this.networkResponse = null;
-				}, 400 + 500);
-			}
-		}
-	},
-	methods: {
-		login(force=false) {
-			authFetch(`${AUTH_URL}/user/me${force ? '?middle_auth_token=null' : ''}`).then((userData) => {
-				this.loggedInUser = userData;
-			});
-		},
-		logout() {
-			authFetch(`${AUTH_URL}/logout`).then(() => {
-				this.loggedInUser = null;
-				localStorage.removeItem('auth_token');
-				// window.location.reload(false);
-			});
-		}
-	}
+  el: "#vueApp",
+  router: router,
+  data: {
+    loggedInUser: null,
+    networkResponse: null,
+  },
+  watch: {
+    networkResponse: function (newMessage) {
+      if (newMessage) {
+        setTimeout(() => {
+          this.networkResponse = null;
+        }, 400 + 500);
+      }
+    },
+  },
+  methods: {
+    login(force = false) {
+      authFetch(
+        `${AUTH_URL}/user/me${force ? "?middle_auth_token=null" : ""}`
+      ).then((userData) => {
+        this.loggedInUser = userData;
+      });
+    },
+    logout() {
+      authFetch(`${AUTH_URL}/logout`).then(() => {
+        this.loggedInUser = null;
+        localStorage.removeItem("auth_token");
+        // window.location.reload(false);
+      });
+    },
+  },
 });
-
 
 // returns a token to be used with services that use the given auth service
 async function authorize(auth_url) {
-	const plainURL = `${location.origin}${location.pathname}`.replace(/[^/]*$/, '');
+  const plainURL = `${location.origin}${location.pathname}`.replace(
+    /[^/]*$/,
+    ""
+  );
 
-	const auth_popup = window.open(`${auth_url}?redirect=${encodeURI(plainURL + 'redirect.html')}`);
+  const auth_popup = window.open(
+    `${auth_url}?redirect=${encodeURI(plainURL + "redirect.html")}`
+  );
 
-	if (!auth_popup) {
-		alert('Allow popups on this page to authenticate');
-		return;
-	}
+  if (!auth_popup) {
+    alert("Allow popups on this page to authenticate");
+    return;
+  }
 
-	return new Promise((f, r) => {
-		const tokenListener = (ev) => {
-			if (ev.source === auth_popup) {
-				auth_popup.close();
-				window.removeEventListener("message", tokenListener);
-				f(ev.data.token);
-			}
-		}
-		
-		window.addEventListener("message", tokenListener);
-	});
+  return new Promise((f, r) => {
+    const tokenListener = (ev) => {
+      if (ev.source === auth_popup) {
+        auth_popup.close();
+        window.removeEventListener("message", tokenListener);
+        f(ev.data.token);
+      }
+    };
+
+    window.addEventListener("message", tokenListener);
+  });
 }
 
 function parseWWWAuthHeader(headerVal) {
-	const tuples = headerVal.split('Bearer ')[1].split(', ').map((x) => x.split('='));
-	const wwwAuthMap = {};
+  const tuples = headerVal
+    .split("Bearer ")[1]
+    .split(", ")
+    .map((x) => x.split("="));
+  const wwwAuthMap = {};
 
-	for ([key, val] of tuples) {
-		wwwAuthMap[key] = val.replace(/"/g, "");
-	}
+  for ([key, val] of tuples) {
+    wwwAuthMap[key] = val.replace(/"/g, "");
+  }
 
-	return wwwAuthMap;
+  return wwwAuthMap;
 }
 
 async function authFetch(input, init, retry = 1) {
-	if (Array.isArray(input)) {
-		return Promise.all(input.map((url) => {
-			return authFetch(url, init, retry);
-		}));
-	}
-	
-	if (!input) {
-		return fetch(input); // to keep the errors consistent
-	}
+  if (Array.isArray(input)) {
+    return Promise.all(
+      input.map((url) => {
+        return authFetch(url, init, retry);
+      })
+    );
+  }
 
-	const token = localStorage.getItem('auth_token');
+  if (!input) {
+    return fetch(input); // to keep the errors consistent
+  }
 
-	options = init ? JSON.parse(JSON.stringify(init)) : {};
+  const token = localStorage.getItem("auth_token");
 
-	options.headers = options.headers || new Headers();
+  options = init ? JSON.parse(JSON.stringify(init)) : {};
 
-	function addHeader(key, value) {
-		if (options.headers instanceof Headers) {
-			options.headers.append(key, value);
-		} else {
-			options.headers[key] = value;
-		}
-	}
+  options.headers = options.headers || new Headers();
 
-	addHeader('X-Requested-With', 'Fetch');
-	
-	if (token) {
-		addHeader('Authorization', `Bearer ${token}`);
-	}
+  function addHeader(key, value) {
+    if (options.headers instanceof Headers) {
+      options.headers.append(key, value);
+    } else {
+      options.headers[key] = value;
+    }
+  }
 
-	let res = await fetch(input, options);
+  addHeader("X-Requested-With", "Fetch");
 
-	if ([400, 401].includes(res.status)) {
-		const wwwAuth = res.headers.get('WWW-Authenticate');
+  if (token) {
+    addHeader("Authorization", `Bearer ${token}`);
+  }
 
-		if (wwwAuth) {
-			if (wwwAuth.startsWith('Bearer ')) {
-				const wwwAuthMap = parseWWWAuthHeader(wwwAuth);
+  let res = await fetch(input, options);
 
-				if (!wwwAuthMap.error || wwwAuthMap.error === 'invalid_token') {
-					// missing or expired
-					if (retry > 0) {
-						return reauthenticate(wwwAuthMap.realm).then(() => {
-							return authFetch(input, init, retry - 1);
-						});
-					}
-				}
+  if ([400, 401].includes(res.status)) {
+    const wwwAuth = res.headers.get("WWW-Authenticate");
 
-				throw new Error(`status ${res.status} auth error - ${wwwAuthMap.error} + " Reason: ${wwwAuthMap.error_description}`);
-			}
-		}
-	}
+    if (wwwAuth) {
+      if (wwwAuth.startsWith("Bearer ")) {
+        const wwwAuthMap = parseWWWAuthHeader(wwwAuth);
 
-	const httpMethod = (init && init.method) || 'GET';
+        if (!wwwAuthMap.error || wwwAuthMap.error === "invalid_token") {
+          // missing or expired
+          if (retry > 0) {
+            return reauthenticate(wwwAuthMap.realm).then(() => {
+              return authFetch(input, init, retry - 1);
+            });
+          }
+        }
 
+        throw new Error(
+          `status ${res.status} auth error - ${wwwAuthMap.error} + " Reason: ${wwwAuthMap.error_description}`
+        );
+      }
+    }
+  }
 
-	const contentType = res.headers.get("content-type");
+  const httpMethod = (init && init.method) || "GET";
 
-	const message = await ((contentType === 'application/json') ? res.json() : res.text());
+  const contentType = res.headers.get("content-type");
 
+  const message = await (contentType === "application/json"
+    ? res.json()
+    : res.text());
 
-	if (httpMethod !== 'GET') {
-		mainApp.networkResponse = {
-			message: res.status === 200 ? 'Success!' : message,
-			error: res.status !== 200
-		};
-	}
+  if (httpMethod !== "GET") {
+    mainApp.networkResponse = {
+      message: res.status === 200 ? "Success!" : message,
+      error: res.status !== 200,
+    };
+  }
 
-	if (res.status === 200) {
-		return message;
-	} else {
-		throw new Error(`status: ${res.status} message: ${message}`);
-	}
+  if (res.status === 200) {
+    return message;
+  } else {
+    throw new Error(`status: ${res.status} message: ${message}`);
+  }
 }
 
 async function reauthenticate(realm) {
-	const token = await authorize(realm);
-	localStorage.setItem('auth_token', token);
+  const token = await authorize(realm);
+  localStorage.setItem("auth_token", token);
 }
 
-if (localStorage.getItem('auth_token')) {
-	mainApp.login();
+if (localStorage.getItem("auth_token")) {
+  mainApp.login();
 }
